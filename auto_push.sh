@@ -31,4 +31,4 @@ fi
 git commit -m "$COMMIT_MESSAGE"
 
 # 推送到远程仓库
-git push origin main || echo "Git push failed. Check your network or credentials."
+git push || echo "Git push failed. Check your network or credentials."
