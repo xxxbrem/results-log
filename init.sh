@@ -14,5 +14,3 @@ cd ~/results-log
 python get_subset.py
 
 cp -r ./output ../snow-spider-agent/methods/spider-self-refine
-
-echo "*/10 * * * * /root/results-log/auto_push.sh" | crontab -
