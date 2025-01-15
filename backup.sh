@@ -1,5 +1,5 @@
 #!/bin/bash
 while true; do
   /root/results-log/auto_push.sh
-  sleep 600
+  sleep 3600
 done
