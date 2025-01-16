@@ -1,32 +1,28 @@
-WITH
-  number_of_variants_cte AS (
-    SELECT COUNT(*) AS "number_of_variants"
-    FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t
-    WHERE t."start_position" BETWEEN 55039447 AND 55064852
-  ),
-  total_number_of_alleles_cte AS (
-    SELECT SUM(t."AN") AS "total_number_of_alleles"
-    FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t
-    WHERE t."start_position" BETWEEN 55039447 AND 55064852
-  ),
-  total_allele_count_cte AS (
-    SELECT SUM(ab.value:"AC"::NUMBER) AS "total_allele_count"
-    FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
-    LATERAL FLATTEN(input => t."alternate_bases") ab
-    WHERE t."start_position" BETWEEN 55039447 AND 55064852
-  ),
-  distinct_gene_symbols_cte AS (
-    SELECT DISTINCT vep_item.value:"SYMBOL"::STRING AS "gene_symbol"
-    FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
-    LATERAL FLATTEN(input => t."alternate_bases") ab,
-    LATERAL FLATTEN(input => ab.value:"vep") vep_item
-    WHERE t."start_position" BETWEEN 55039447 AND 55064852
-      AND vep_item.value:"SYMBOL" IS NOT NULL
-  )
+WITH region_variants AS (
+  SELECT *
+  FROM "GNOMAD"."GNOMAD"."V3_GENOMES__CHR1"
+  WHERE "start_position" BETWEEN 55039447 AND 55064852
+),
+allele_counts AS (
+  SELECT
+    SUM(TO_NUMBER(ab.value:"AC"::STRING)) AS total_allele_count
+  FROM region_variants rv,
+  LATERAL FLATTEN(input => rv."alternate_bases") AS ab
+),
+gene_symbols AS (
+  SELECT DISTINCT vep.value:"SYMBOL"::STRING AS gene_symbol
+  FROM region_variants rv,
+  LATERAL FLATTEN(input => rv."alternate_bases") AS ab,
+  LATERAL FLATTEN(input => ab.value:"vep") AS vep
+  WHERE vep.value:"SYMBOL" IS NOT NULL
+)
 SELECT
-  (SELECT "number_of_variants" FROM number_of_variants_cte) AS "number_of_variants",
-  (SELECT "total_allele_count" FROM total_allele_count_cte) AS "total_allele_count",
-  (SELECT "total_number_of_alleles" FROM total_number_of_alleles_cte) AS "total_number_of_alleles",
-  ARRAY_AGG(DISTINCT "gene_symbol") AS "distinct_gene_symbols",
-  ROUND((55064852 - 55039447)::FLOAT / NULLIF((SELECT "number_of_variants" FROM number_of_variants_cte), 0), 4) AS "density_of_mutations"
-FROM distinct_gene_symbols_cte;
+  COUNT(*) AS "Number_of_variants",
+  (SELECT total_allele_count FROM allele_counts) AS "Total_allele_count",
+  SUM("AN") AS "Total_number_of_alleles",
+  (
+    SELECT LISTAGG(gene_symbol, ', ') WITHIN GROUP (ORDER BY gene_symbol)
+    FROM gene_symbols
+  ) AS "Distinct_gene_symbols",
+  ROUND(25405.0 / COUNT(*), 4) AS "Density_of_mutations"
+FROM region_variants;

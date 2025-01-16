@@ -1,31 +1,23 @@
-WITH avg_intrinsic_values AS (
-    SELECT
-        CASE
-            WHEN p.value:"PartyID"::STRING = 'PREDICTNQ' THEN 'feeling-lucky'
-            WHEN p.value:"PartyID"::STRING = 'PREDICTES' THEN 'momentum'
-        END AS "Strategy",
-        AVG(t."LastPx" - t."StrikePrice") AS "avg_intrinsic_value"
-    FROM
-        CYMBAL_INVESTMENTS.CYMBAL_INVESTMENTS.TRADE_CAPTURE_REPORT t,
-        LATERAL FLATTEN(input => t."Sides") s,
-        LATERAL FLATTEN(input => s.value:"PartyIDs") p
-    WHERE
-        t."StrikePrice" IS NOT NULL
-        AND t."LastPx" IS NOT NULL
-        AND s.value:"Side"::STRING = 'LONG'
-        AND p.value:"PartyID"::STRING IN ('PREDICTNQ', 'PREDICTES')
-    GROUP BY
-        CASE
-            WHEN p.value:"PartyID"::STRING = 'PREDICTNQ' THEN 'feeling-lucky'
-            WHEN p.value:"PartyID"::STRING = 'PREDICTES' THEN 'momentum'
-        END
-)
 SELECT
     ROUND(
-        ABS(
-            (SELECT "avg_intrinsic_value" FROM avg_intrinsic_values WHERE "Strategy" = 'feeling-lucky')
-            -
-            (SELECT "avg_intrinsic_value" FROM avg_intrinsic_values WHERE "Strategy" = 'momentum')
-        ),
+        AVG(CASE WHEN "Strategy" = 'momentum' THEN "IntrinsicValue" END) -
+        AVG(CASE WHEN "Strategy" = 'feeling-lucky' THEN "IntrinsicValue" END),
         4
-    ) AS "difference";
+    ) AS "difference"
+FROM (
+    SELECT
+        CASE
+            WHEN f2.value:"PartyID"::STRING ILIKE '%LUCKY%' THEN 'feeling-lucky'
+            WHEN f2.value:"PartyID"::STRING ILIKE '%MOMO%' THEN 'momentum'
+        END AS "Strategy",
+        t."LastPx" - t."StrikePrice" AS "IntrinsicValue"
+    FROM
+        "CYMBAL_INVESTMENTS"."CYMBAL_INVESTMENTS"."TRADE_CAPTURE_REPORT" t,
+        LATERAL FLATTEN(input => t."Sides") f,
+        LATERAL FLATTEN(input => f.value:"PartyIDs") f2
+    WHERE
+        f.value:"Side"::STRING = 'LONG'
+        AND t."LastPx" IS NOT NULL
+        AND t."StrikePrice" IS NOT NULL
+        AND (f2.value:"PartyID"::STRING ILIKE '%LUCKY%' OR f2.value:"PartyID"::STRING ILIKE '%MOMO%')
+) AS sub;

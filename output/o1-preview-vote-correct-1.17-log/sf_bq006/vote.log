@@ -1,0 +1,44 @@
+Based on the comparison of the SQL scripts and their correctness in calculating the Z-scores for the daily counts of 'PUBLIC INTOXICATION' incidents in Austin for the year 2016, the **`1result.sql`** script is the correct choice.
+
+**Reason:**
+
+1. **Date Filtering:** The script correctly filters the data to include only incidents from the year 2016 by specifying:
+
+   ```sql
+   WHERE "date" BETWEEN '2016-01-01' AND '2016-12-31'
+   ```
+
+2. **Accurate Standard Deviation Calculation:** It uses the **sample standard deviation** function `STDDEV_SAMP()` which is appropriate when dealing with a sample of data (even though we have all incidents from 2016, treating them as a sample is statistically prudent):
+
+   ```sql
+   STDDEV_SAMP(incident_count) OVER ()
+   ```
+
+3. **Z-Score Calculation:** The Z-scores are calculated using window functions, which efficiently compute the mean and standard deviation over the entire dataset without the need for additional joins or cross joins:
+
+   ```sql
+   (incident_count - AVG(incident_count) OVER ())
+   ----------------------------------------------
+   NULLIF(STDDEV_SAMP(incident_count) OVER (), 0)
+   ```
+
+4. **Rounding Float Values:** The script ensures that the Z-score values are rounded to 4 decimal places as per the requirement:
+
+   ```sql
+   ROUND(..., 4) AS z_score
+   ```
+
+5. **Selecting the Second Highest Z-Score:** By ordering the results in descending order of Z-score and using `LIMIT 1 OFFSET 1`, it retrieves the date with the second highest Z-score:
+
+   ```sql
+   ORDER BY z_score DESC NULLS LAST
+   LIMIT 1 OFFSET 1;
+   ```
+
+6. **Conciseness and Readability:** The script is concise and uses nested subqueries, making it easier to read and understand without compromising on correctness.
+
+Given these points, **`1result.sql`** is the correct SQL script that accurately computes the desired result.
+
+```plain
+1result.sql
+```
