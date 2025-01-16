@@ -1,0 +1,52 @@
+Both SQL queries are functionally equivalent and produce the same results for the task. They both:
+
+- Select the file extension using `REGEXP_SUBSTR` and convert it to lowercase.
+- Filter files to those with a directory depth greater than 10.
+- Filter files to those with extensions `.py`, `.c`, `.ipynb`, `.java`, or `.js`.
+- Group the results by the file extension and count the number of files for each.
+
+**Comparison of the SQL Queries:**
+
+**SQL 1:**
+
+```sql
+SELECT
+    LOWER(REGEXP_SUBSTR("path", '\\.[^\\.]+$')) AS "extension",
+    COUNT(*) AS "file_count"
+FROM GITHUB_REPOS.GITHUB_REPOS.SAMPLE_FILES
+WHERE (LENGTH("path") - LENGTH(REPLACE("path", '/', ''))) > 10
+  AND LOWER(REGEXP_SUBSTR("path", '\\.[^\\.]+$')) IN ('.py', '.c', '.ipynb', '.java', '.js')
+GROUP BY "extension"
+ORDER BY "file_count" DESC NULLS LAST;
+```
+
+- **Order of Conditions:** The directory depth condition is checked first, followed by the file extension condition.
+- **Column Alias:** The file extension column is aliased as `"extension"`.
+
+**SQL 2:**
+
+```sql
+SELECT
+    LOWER(REGEXP_SUBSTR("path", '\\.[^\\.]+$')) AS "file_type",
+    COUNT(*) AS "file_count"
+FROM GITHUB_REPOS.GITHUB_REPOS.SAMPLE_FILES
+WHERE LOWER(REGEXP_SUBSTR("path", '\\.[^\\.]+$')) IN ('.py', '.c', '.ipynb', '.java', '.js')
+  AND (LENGTH("path") - LENGTH(REPLACE("path", '/', ''))) > 10
+GROUP BY "file_type"
+ORDER BY "file_count" DESC NULLS LAST;
+```
+
+- **Order of Conditions:** The file extension condition is checked first, followed by the directory depth condition.
+- **Column Alias:** The file extension column is aliased as `"file_type"`.
+
+**Reason for Choosing SQL 2:**
+
+- **Clarity in Filtering:** SQL 2 filters by file extension first, directly targeting the file types of interest as per the task's requirements.
+- **Descriptive Alias:** The alias `"file_type"` may be more descriptive in the context of the task.
+- **Readability:** The order of conditions and naming may enhance the readability and align with the logical flow of first selecting the file types, then applying the directory depth condition.
+
+**Therefore, the correct SQL query is:**
+
+```plain
+2result.sql
+```
