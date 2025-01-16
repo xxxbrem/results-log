@@ -5028,3 +5028,163 @@ The error information is:
 000002 (0A000): 01b9c049-0004-7c54-0001-11c300d93732: Unsupported feature 'lateral table function called with OUTER JOIN syntax or a join predicate (ON clause)'.
 Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
 
+2025-01-16 14:02:25 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 14:02:25 - root - INFO - ```sql
+WITH top_assignee AS (
+    SELECT f1.value:"name"::STRING AS "assignee_name"
+    FROM PATENTS.PATENTS.PUBLICATIONS t,
+         LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+         LATERAL FLATTEN(input => t."cpc") f2
+    WHERE f2.value:"code"::STRING LIKE 'A61%'
+    GROUP BY f1.value:"name"::STRING
+    ORDER BY COUNT(DISTINCT t."application_number") DESC NULLS LAST
+    LIMIT 1
+)
+SELECT SUBSTRING(t."filing_date"::STRING, 1, 4) AS "year",
+       COUNT(DISTINCT t."application_number") AS "number_of_applications"
+FROM PATENTS.PATENTS.PUBLICATIONS t,
+     LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+     LATERAL FLATTEN(input => t."cpc") f2,
+     top_assignee ta
+WHERE f1.value:"name"::STRING = ta.assignee_name
+  AND f2.value:"code"::STRING LIKE 'A61%'
+GROUP BY "year"
+ORDER BY "number_of_applications" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 14:02:25 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 14:02:25 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 14:02:25 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 14:02:27 - snowflake.connector.connection - INFO - closed
+2025-01-16 14:02:27 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 14:02:27 - root - INFO - itercount: 7
+2025-01-16 14:02:27 - root - INFO - 000904 (42000): 01b9c04a-0004-7b48-0001-11c300d942be: SQL compilation error: error line 17 at position 32
+invalid identifier 'TA.ASSIGNEE_NAME'
+2025-01-16 14:02:27 - root - INFO - Input sql:
+WITH top_assignee AS (
+    SELECT f1.value:"name"::STRING AS "assignee_name"
+    FROM PATENTS.PATENTS.PUBLICATIONS t,
+         LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+         LATERAL FLATTEN(input => t."cpc") f2
+    WHERE f2.value:"code"::STRING LIKE 'A61%'
+    GROUP BY f1.value:"name"::STRING
+    ORDER BY COUNT(DISTINCT t."application_number") DESC NULLS LAST
+    LIMIT 1
+)
+SELECT SUBSTRING(t."filing_date"::STRING, 1, 4) AS "year",
+       COUNT(DISTINCT t."application_number") AS "number_of_applications"
+FROM PATENTS.PATENTS.PUBLICATIONS t,
+     LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+     LATERAL FLATTEN(input => t."cpc") f2,
+     top_assignee ta
+WHERE f1.value:"name"::STRING = ta.assignee_name
+  AND f2.value:"code"::STRING LIKE 'A61%'
+GROUP BY "year"
+ORDER BY "number_of_applications" DESC NULLS LAST
+LIMIT 1;
+The error information is:
+000904 (42000): 01b9c04a-0004-7b48-0001-11c300d942be: SQL compilation error: error line 17 at position 32
+invalid identifier 'TA.ASSIGNEE_NAME'
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 14:04:24 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 14:04:24 - root - INFO - ```sql
+WITH top_assignee_name AS (
+    SELECT f1.value:"name"::STRING AS assignee_name
+    FROM PATENTS.PATENTS.PUBLICATIONS t,
+         LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+         LATERAL FLATTEN(input => t."cpc") f2
+    WHERE f2.value:"code"::STRING LIKE 'A61%'
+    GROUP BY assignee_name
+    ORDER BY COUNT(DISTINCT t."application_number") DESC NULLS LAST
+    LIMIT 1
+)
+SELECT SUBSTRING(t."filing_date"::STRING, 1, 4) AS "year",
+       COUNT(DISTINCT t."application_number") AS "number_of_applications"
+FROM PATENTS.PATENTS.PUBLICATIONS t,
+     LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+     LATERAL FLATTEN(input => t."cpc") f2
+WHERE f1.value:"name"::STRING = (SELECT assignee_name FROM top_assignee_name)
+  AND f2.value:"code"::STRING LIKE 'A61%'
+GROUP BY "year"
+ORDER BY "number_of_applications" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 14:04:24 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 14:04:24 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 14:04:24 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 14:04:26 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 14:04:26 - snowflake.connector.connection - INFO - closed
+2025-01-16 14:04:27 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 14:04:27 - root - INFO - itercount: 8
+2025-01-16 14:04:27 - root - INFO - 0
+2025-01-16 14:04:27 - root - INFO - results: 
+year,number_of_applications
+1997,15
+
+
+2025-01-16 14:04:27 - root - INFO - Please check the answer again by reviewing In which year did the assignee with the most applications in the patent category 'A61' file the most?, reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+year,number_of_applications
+year:int,applications:int
+```
+
+The table shows the year in which the assignee with the most applications in the patent category 'A61' filed the highest number of applications, along with the number of applications filed that year. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+year,number_of_applications
+1997,15
+Current sql:
+WITH top_assignee_name AS (
+    SELECT f1.value:"name"::STRING AS assignee_name
+    FROM PATENTS.PATENTS.PUBLICATIONS t,
+         LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+         LATERAL FLATTEN(input => t."cpc") f2
+    WHERE f2.value:"code"::STRING LIKE 'A61%'
+    GROUP BY assignee_name
+    ORDER BY COUNT(DISTINCT t."application_number") DESC NULLS LAST
+    LIMIT 1
+)
+SELECT SUBSTRING(t."filing_date"::STRING, 1, 4) AS "year",
+       COUNT(DISTINCT t."application_number") AS "number_of_applications"
+FROM PATENTS.PATENTS.PUBLICATIONS t,
+     LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+     LATERAL FLATTEN(input => t."cpc") f2
+WHERE f1.value:"name"::STRING = (SELECT assignee_name FROM top_assignee_name)
+  AND f2.value:"code"::STRING LIKE 'A61%'
+GROUP BY "year"
+ORDER BY "number_of_applications" DESC NULLS LAST
+LIMIT 1;When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 14:05:03 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 14:05:03 - root - INFO - ```sql
+WITH top_assignee_name AS (
+    SELECT f1.value:"name"::STRING AS assignee_name
+    FROM PATENTS.PATENTS.PUBLICATIONS t,
+         LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+         LATERAL FLATTEN(input => t."cpc") f2
+    WHERE f2.value:"code"::STRING LIKE 'A61%'
+    GROUP BY assignee_name
+    ORDER BY COUNT(DISTINCT t."application_number") DESC NULLS LAST
+    LIMIT 1
+)
+SELECT SUBSTRING(t."filing_date"::STRING, 1, 4) AS "year",
+       COUNT(DISTINCT t."application_number") AS "number_of_applications"
+FROM PATENTS.PATENTS.PUBLICATIONS t,
+     LATERAL FLATTEN(input => t."assignee_harmonized") f1,
+     LATERAL FLATTEN(input => t."cpc") f2
+WHERE f1.value:"name"::STRING = (SELECT assignee_name FROM top_assignee_name)
+  AND f2.value:"code"::STRING LIKE 'A61%'
+GROUP BY "year"
+ORDER BY "number_of_applications" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 14:05:03 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 14:05:03 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 14:05:03 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 14:05:05 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 14:05:05 - snowflake.connector.connection - INFO - closed
+2025-01-16 14:05:05 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 14:05:05 - root - INFO - itercount: 9
+2025-01-16 14:05:05 - root - INFO - 0
+2025-01-16 14:05:05 - root - INFO - Total iteration counts: 9
