@@ -11166,3 +11166,321 @@ When handling TO_TIMESTAMP_NTZ conversions, use query like: SELECT CASE WHEN "da
 When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
 Keep all decimals to four decimal places.
 
+2025-01-16 17:03:52 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:03:52 - root - INFO - ```sql
+WITH t_pubs AS (
+  SELECT "publication_number", "filing_date", "grant_date"
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+  WHERE "country_code" = 'US' AND "kind_code" = 'B2' AND "grant_date" BETWEEN 20100101 AND 20141231
+),
+t_pubs_with_citations AS (
+  SELECT t_pubs."publication_number" AS focal_pub_num, t_pubs."filing_date" AS focal_filing_date, t_pubs."grant_date", t_abs."cited_by"
+  FROM t_pubs
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+    ON t_pubs."publication_number" = t_abs."publication_number"
+  WHERE t_abs."cited_by" IS NOT NULL
+),
+t_citations AS (
+  SELECT t_pubs_with_citations.focal_pub_num, t_pubs_with_citations.focal_filing_date, t_pubs_with_citations."grant_date",
+         citing_pub_num.value:"publication_number"::STRING AS citing_pub_num
+  FROM t_pubs_with_citations,
+       LATERAL FLATTEN(input => t_pubs_with_citations."cited_by") citing_pub_num
+),
+t_citations_with_dates AS (
+  SELECT t_citations.focal_pub_num, t_citations.focal_filing_date, t_citations."grant_date", t_citations.citing_pub_num,
+         t_citing_pubs."filing_date" AS citing_filing_date
+  FROM t_citations
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t_citing_pubs
+    ON t_citations.citing_pub_num = t_citing_pubs."publication_number"
+  WHERE t_citing_pubs."filing_date" IS NOT NULL
+),
+t_citations_within_month AS (
+  SELECT t_cwd.focal_pub_num, t_cwd.focal_filing_date, t_cwd."grant_date", t_cwd.citing_pub_num
+  FROM t_citations_with_dates t_cwd
+  WHERE DATEDIFF('day', TO_DATE(t_cwd.focal_filing_date::VARCHAR, 'YYYYMMDD'), TO_DATE(t_cwd.citing_filing_date::VARCHAR, 'YYYYMMDD')) BETWEEN 0 AND 30
+),
+t_forward_citations_count AS (
+  SELECT focal_pub_num, focal_filing_date, "grant_date", COUNT(*) AS number_of_forward_citations_within_a_month
+  FROM t_citations_within_month
+  GROUP BY focal_pub_num, focal_filing_date, "grant_date"
+),
+t_max_citation AS (
+  SELECT focal_pub_num, focal_filing_date, "grant_date", number_of_forward_citations_within_a_month
+  FROM t_forward_citations_count
+  ORDER BY number_of_forward_citations_within_a_month DESC NULLS LAST
+  LIMIT 1
+),
+t_focal_info AS (
+  SELECT t_max_citation.focal_pub_num, t_max_citation.focal_filing_date, t_max_citation."grant_date",
+         t_max_citation.number_of_forward_citations_within_a_month,
+         SUBSTR(t_max_citation.focal_filing_date::VARCHAR,1,4) AS focal_filing_year
+  FROM t_max_citation
+),
+t_focal_emb AS (
+  SELECT t_abs."publication_number", t_abs."embedding_v1" AS emb_focal
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+  WHERE t_abs."publication_number" = (SELECT focal_pub_num FROM t_focal_info) AND t_abs."embedding_v1" IS NOT NULL
+),
+t_focal_emb_flat AS (
+  SELECT emb_focal_i.seq, emb_focal_i.value::FLOAT AS emb_focal_value
+  FROM t_focal_emb,
+       LATERAL FLATTEN(input => t_focal_emb.emb_focal) AS emb_focal_i
+),
+t_same_year_pubs AS (
+  SELECT t_pub."publication_number", t_pub."filing_date", t_abs."embedding_v1" AS emb_other
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t_pub
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+    ON t_pub."publication_number" = t_abs."publication_number"
+  WHERE t_pub."filing_date" IS NOT NULL
+    AND SUBSTR(t_pub."filing_date"::VARCHAR,1,4) = (SELECT focal_filing_year FROM t_focal_info)
+    AND t_pub."publication_number" != (SELECT focal_pub_num FROM t_focal_info)
+    AND t_abs."embedding_v1" IS NOT NULL
+),
+t_similarity AS (
+  SELECT t_syp."publication_number" AS similar_patent_publication_number,
+         SUM(t_focal_emb_flat.emb_focal_value * emb_other_i.value::FLOAT) AS similarity_score
+  FROM t_same_year_pubs t_syp,
+       LATERAL FLATTEN(input => t_syp.emb_other) emb_other_i
+  JOIN t_focal_emb_flat
+    ON emb_other_i.SEQ = t_focal_emb_flat.seq
+  GROUP BY t_syp."publication_number"
+),
+t_most_similar AS (
+  SELECT similar_patent_publication_number, similarity_score
+  FROM t_similarity
+  ORDER BY similarity_score DESC NULLS LAST
+  LIMIT 1
+)
+SELECT t_focal_info.focal_pub_num AS publication_number,
+       TO_DATE(t_focal_info.focal_filing_date::VARCHAR, 'YYYYMMDD') AS filing_date,
+       TO_DATE(t_focal_info."grant_date"::VARCHAR, 'YYYYMMDD') AS grant_date,
+       t_focal_info.number_of_forward_citations_within_a_month,
+       t_most_similar.similar_patent_publication_number,
+       ROUND(t_most_similar.similarity_score,4) AS similarity_score
+FROM t_focal_info CROSS JOIN t_most_similar;
+```
+2025-01-16 17:03:52 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:03:52 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:03:52 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:03:54 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 17:03:54 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:03:55 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:03:55 - root - INFO - itercount: 1
+2025-01-16 17:03:55 - root - INFO - 0
+2025-01-16 17:03:55 - root - INFO - results: 
+PUBLICATION_NUMBER,FILING_DATE,GRANT_DATE,NUMBER_OF_FORWARD_CITATIONS_WITHIN_A_MONTH,SIMILAR_PATENT_PUBLICATION_NUMBER,SIMILARITY_SCORE
+US-7877798-B2,2008-12-09,2011-01-25,1,US-8471807-B2,-0.0058
+
+
+2025-01-16 17:03:55 - root - INFO - Please check the answer again by reviewing For United States utility patents under the B2 classification granted between 2010 and 2014, find the one with the most forward citations within a month of its filing date, and identify the most similar patent from the same filing year, regardless of its type., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+publication_number,filing_date,grant_date,number_of_forward_citations_within_a_month,similar_patent_publication_number,similarity_score
+US7654321B2,2012-05-10,2014-08-15,50,US1234567A1,0.9123
+```
+
+**Explanation:**
+
+- **publication_number**: The US utility patent under the B2 classification granted between 2010 and 2014 that received the most forward citations within a month of its filing date.
+- **filing_date**: The filing date of this patent.
+- **grant_date**: The grant date of this patent.
+- **number_of_forward_citations_within_a_month**: The highest number of forward citations received by this patent within one month after its filing date.
+- **similar_patent_publication_number**: The publication number of the most similar patent filed in the same year (2012), regardless of its type.
+- **similarity_score**: The similarity score between the two patents, calculated using the dot product of their embedding vectors. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+PUBLICATION_NUMBER,FILING_DATE,GRANT_DATE,NUMBER_OF_FORWARD_CITATIONS_WITHIN_A_MONTH,SIMILAR_PATENT_PUBLICATION_NUMBER,SIMILARITY_SCORE
+US-7877798-B2,2008-12-09,2011-01-25,1,US-8471807-B2,-0.0058
+Current sql:
+WITH t_pubs AS (
+  SELECT "publication_number", "filing_date", "grant_date"
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+  WHERE "country_code" = 'US' AND "kind_code" = 'B2' AND "grant_date" BETWEEN 20100101 AND 20141231
+),
+t_pubs_with_citations AS (
+  SELECT t_pubs."publication_number" AS focal_pub_num, t_pubs."filing_date" AS focal_filing_date, t_pubs."grant_date", t_abs."cited_by"
+  FROM t_pubs
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+    ON t_pubs."publication_number" = t_abs."publication_number"
+  WHERE t_abs."cited_by" IS NOT NULL
+),
+t_citations AS (
+  SELECT t_pubs_with_citations.focal_pub_num, t_pubs_with_citations.focal_filing_date, t_pubs_with_citations."grant_date",
+         citing_pub_num.value:"publication_number"::STRING AS citing_pub_num
+  FROM t_pubs_with_citations,
+       LATERAL FLATTEN(input => t_pubs_with_citations."cited_by") citing_pub_num
+),
+t_citations_with_dates AS (
+  SELECT t_citations.focal_pub_num, t_citations.focal_filing_date, t_citations."grant_date", t_citations.citing_pub_num,
+         t_citing_pubs."filing_date" AS citing_filing_date
+  FROM t_citations
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t_citing_pubs
+    ON t_citations.citing_pub_num = t_citing_pubs."publication_number"
+  WHERE t_citing_pubs."filing_date" IS NOT NULL
+),
+t_citations_within_month AS (
+  SELECT t_cwd.focal_pub_num, t_cwd.focal_filing_date, t_cwd."grant_date", t_cwd.citing_pub_num
+  FROM t_citations_with_dates t_cwd
+  WHERE DATEDIFF('day', TO_DATE(t_cwd.focal_filing_date::VARCHAR, 'YYYYMMDD'), TO_DATE(t_cwd.citing_filing_date::VARCHAR, 'YYYYMMDD')) BETWEEN 0 AND 30
+),
+t_forward_citations_count AS (
+  SELECT focal_pub_num, focal_filing_date, "grant_date", COUNT(*) AS number_of_forward_citations_within_a_month
+  FROM t_citations_within_month
+  GROUP BY focal_pub_num, focal_filing_date, "grant_date"
+),
+t_max_citation AS (
+  SELECT focal_pub_num, focal_filing_date, "grant_date", number_of_forward_citations_within_a_month
+  FROM t_forward_citations_count
+  ORDER BY number_of_forward_citations_within_a_month DESC NULLS LAST
+  LIMIT 1
+),
+t_focal_info AS (
+  SELECT t_max_citation.focal_pub_num, t_max_citation.focal_filing_date, t_max_citation."grant_date",
+         t_max_citation.number_of_forward_citations_within_a_month,
+         SUBSTR(t_max_citation.focal_filing_date::VARCHAR,1,4) AS focal_filing_year
+  FROM t_max_citation
+),
+t_focal_emb AS (
+  SELECT t_abs."publication_number", t_abs."embedding_v1" AS emb_focal
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+  WHERE t_abs."publication_number" = (SELECT focal_pub_num FROM t_focal_info) AND t_abs."embedding_v1" IS NOT NULL
+),
+t_focal_emb_flat AS (
+  SELECT emb_focal_i.seq, emb_focal_i.value::FLOAT AS emb_focal_value
+  FROM t_focal_emb,
+       LATERAL FLATTEN(input => t_focal_emb.emb_focal) AS emb_focal_i
+),
+t_same_year_pubs AS (
+  SELECT t_pub."publication_number", t_pub."filing_date", t_abs."embedding_v1" AS emb_other
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t_pub
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+    ON t_pub."publication_number" = t_abs."publication_number"
+  WHERE t_pub."filing_date" IS NOT NULL
+    AND SUBSTR(t_pub."filing_date"::VARCHAR,1,4) = (SELECT focal_filing_year FROM t_focal_info)
+    AND t_pub."publication_number" != (SELECT focal_pub_num FROM t_focal_info)
+    AND t_abs."embedding_v1" IS NOT NULL
+),
+t_similarity AS (
+  SELECT t_syp."publication_number" AS similar_patent_publication_number,
+         SUM(t_focal_emb_flat.emb_focal_value * emb_other_i.value::FLOAT) AS similarity_score
+  FROM t_same_year_pubs t_syp,
+       LATERAL FLATTEN(input => t_syp.emb_other) emb_other_i
+  JOIN t_focal_emb_flat
+    ON emb_other_i.SEQ = t_focal_emb_flat.seq
+  GROUP BY t_syp."publication_number"
+),
+t_most_similar AS (
+  SELECT similar_patent_publication_number, similarity_score
+  FROM t_similarity
+  ORDER BY similarity_score DESC NULLS LAST
+  LIMIT 1
+)
+SELECT t_focal_info.focal_pub_num AS publication_number,
+       TO_DATE(t_focal_info.focal_filing_date::VARCHAR, 'YYYYMMDD') AS filing_date,
+       TO_DATE(t_focal_info."grant_date"::VARCHAR, 'YYYYMMDD') AS grant_date,
+       t_focal_info.number_of_forward_citations_within_a_month,
+       t_most_similar.similar_patent_publication_number,
+       ROUND(t_most_similar.similarity_score,4) AS similarity_score
+FROM t_focal_info CROSS JOIN t_most_similar;When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:04:47 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:04:47 - root - INFO - ```sql
+WITH t_pubs AS (
+  SELECT "publication_number", "filing_date", "grant_date"
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+  WHERE "country_code" = 'US' AND "kind_code" = 'B2' AND "grant_date" BETWEEN 20100101 AND 20141231
+),
+t_pubs_with_citations AS (
+  SELECT t_pubs."publication_number" AS focal_pub_num, t_pubs."filing_date" AS focal_filing_date, t_pubs."grant_date", t_abs."cited_by"
+  FROM t_pubs
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+    ON t_pubs."publication_number" = t_abs."publication_number"
+  WHERE t_abs."cited_by" IS NOT NULL
+),
+t_citations AS (
+  SELECT t_pubs_with_citations.focal_pub_num, t_pubs_with_citations.focal_filing_date, t_pubs_with_citations."grant_date",
+         citing_pub_num.value:"publication_number"::STRING AS citing_pub_num
+  FROM t_pubs_with_citations,
+       LATERAL FLATTEN(input => t_pubs_with_citations."cited_by") citing_pub_num
+),
+t_citations_with_dates AS (
+  SELECT t_citations.focal_pub_num, t_citations.focal_filing_date, t_citations."grant_date", t_citations.citing_pub_num,
+         t_citing_pubs."filing_date" AS citing_filing_date
+  FROM t_citations
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t_citing_pubs
+    ON t_citations.citing_pub_num = t_citing_pubs."publication_number"
+  WHERE t_citing_pubs."filing_date" IS NOT NULL
+),
+t_citations_within_month AS (
+  SELECT t_cwd.focal_pub_num, t_cwd.focal_filing_date, t_cwd."grant_date", t_cwd.citing_pub_num
+  FROM t_citations_with_dates t_cwd
+  WHERE DATEDIFF('day', TO_DATE(t_cwd.focal_filing_date::VARCHAR, 'YYYYMMDD'), TO_DATE(t_cwd.citing_filing_date::VARCHAR, 'YYYYMMDD')) BETWEEN 0 AND 30
+),
+t_forward_citations_count AS (
+  SELECT focal_pub_num, focal_filing_date, "grant_date", COUNT(*) AS number_of_forward_citations_within_a_month
+  FROM t_citations_within_month
+  GROUP BY focal_pub_num, focal_filing_date, "grant_date"
+),
+t_max_citation AS (
+  SELECT focal_pub_num, focal_filing_date, "grant_date", number_of_forward_citations_within_a_month
+  FROM t_forward_citations_count
+  ORDER BY number_of_forward_citations_within_a_month DESC NULLS LAST
+  LIMIT 1
+),
+t_focal_info AS (
+  SELECT t_max_citation.focal_pub_num, t_max_citation.focal_filing_date, t_max_citation."grant_date",
+         t_max_citation.number_of_forward_citations_within_a_month,
+         SUBSTR(t_max_citation.focal_filing_date::VARCHAR,1,4) AS focal_filing_year
+  FROM t_max_citation
+),
+t_focal_emb AS (
+  SELECT t_abs."publication_number", t_abs."embedding_v1" AS emb_focal
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+  WHERE t_abs."publication_number" = (SELECT focal_pub_num FROM t_focal_info) AND t_abs."embedding_v1" IS NOT NULL
+),
+t_focal_emb_flat AS (
+  SELECT emb_focal_i.seq, emb_focal_i.value::FLOAT AS emb_focal_value
+  FROM t_focal_emb,
+       LATERAL FLATTEN(input => t_focal_emb.emb_focal) AS emb_focal_i
+),
+t_same_year_pubs AS (
+  SELECT t_pub."publication_number", t_pub."filing_date", t_abs."embedding_v1" AS emb_other
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t_pub
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t_abs
+    ON t_pub."publication_number" = t_abs."publication_number"
+  WHERE t_pub."filing_date" IS NOT NULL
+    AND SUBSTR(t_pub."filing_date"::VARCHAR,1,4) = (SELECT focal_filing_year FROM t_focal_info)
+    AND t_pub."publication_number" != (SELECT focal_pub_num FROM t_focal_info)
+    AND t_abs."embedding_v1" IS NOT NULL
+),
+t_similarity AS (
+  SELECT t_syp."publication_number" AS similar_patent_publication_number,
+         SUM(t_focal_emb_flat.emb_focal_value * emb_other_i.value::FLOAT) AS similarity_score
+  FROM t_same_year_pubs t_syp,
+       LATERAL FLATTEN(input => t_syp.emb_other) emb_other_i
+  JOIN t_focal_emb_flat
+    ON emb_other_i.SEQ = t_focal_emb_flat.seq
+  GROUP BY t_syp."publication_number"
+),
+t_most_similar AS (
+  SELECT similar_patent_publication_number, similarity_score
+  FROM t_similarity
+  ORDER BY similarity_score DESC NULLS LAST
+  LIMIT 1
+)
+SELECT t_focal_info.focal_pub_num AS publication_number,
+       TO_DATE(t_focal_info.focal_filing_date::VARCHAR, 'YYYYMMDD') AS filing_date,
+       TO_DATE(t_focal_info."grant_date"::VARCHAR, 'YYYYMMDD') AS grant_date,
+       t_focal_info.number_of_forward_citations_within_a_month,
+       t_most_similar.similar_patent_publication_number,
+       ROUND(t_most_similar.similarity_score, 4) AS similarity_score
+FROM t_focal_info CROSS JOIN t_most_similar;
+```
+2025-01-16 17:04:47 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:04:47 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:04:47 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:04:49 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 17:04:49 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:04:49 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:04:49 - root - INFO - itercount: 2
+2025-01-16 17:04:49 - root - INFO - 0
+2025-01-16 17:04:49 - root - INFO - Total iteration counts: 2

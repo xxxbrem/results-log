@@ -7082,3 +7082,2019 @@ When handling TO_TIMESTAMP_NTZ conversions, use query like: SELECT CASE WHEN "da
 When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
 Keep all decimals to four decimal places.
 
+2025-01-16 17:04:00 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:04:00 - root - INFO - ```sql
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    WHERE c."cited_publication_number" IN (SELECT "publication_number" FROM P)
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+TargetPatent AS (
+    SELECT *
+    FROM FinalCounts
+    ORDER BY "number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+
+PatentYear AS
+(
+    SELECT TO_CHAR("filing_date",'YYYY') AS "filing_year"
+    FROM TargetPatent
+),
+
+PatentEmbeddings AS (
+    SELECT pe1."publication_number",
+           pe.idx,
+           pe.val
+    FROM (
+        SELECT p."publication_number", p."filing_date",
+               emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+        WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = (SELECT "filing_year" FROM PatentYear)
+        AND p."publication_number" != (SELECT "publication_number" FROM TargetPatent)
+    ) pe1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => pe1."embedding_v1"))
+    ) pe
+),
+
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM (
+        SELECT emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        WHERE emb."publication_number" = (SELECT "publication_number" FROM TargetPatent)
+    ) te1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => te1."embedding_v1"))
+    ) te
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp CROSS JOIN Similarities s;
+```
+2025-01-16 17:04:00 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:04:00 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:04:00 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:04:03 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:04:03 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:04:04 - root - INFO - itercount: 1
+2025-01-16 17:04:04 - root - INFO - 002031 (42601): None: SQL compilation error:
+Unsupported subquery type cannot be evaluated
+2025-01-16 17:04:04 - root - INFO - Input sql:
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    WHERE c."cited_publication_number" IN (SELECT "publication_number" FROM P)
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+TargetPatent AS (
+    SELECT *
+    FROM FinalCounts
+    ORDER BY "number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+
+PatentYear AS
+(
+    SELECT TO_CHAR("filing_date",'YYYY') AS "filing_year"
+    FROM TargetPatent
+),
+
+PatentEmbeddings AS (
+    SELECT pe1."publication_number",
+           pe.idx,
+           pe.val
+    FROM (
+        SELECT p."publication_number", p."filing_date",
+               emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+        WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = (SELECT "filing_year" FROM PatentYear)
+        AND p."publication_number" != (SELECT "publication_number" FROM TargetPatent)
+    ) pe1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => pe1."embedding_v1"))
+    ) pe
+),
+
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM (
+        SELECT emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        WHERE emb."publication_number" = (SELECT "publication_number" FROM TargetPatent)
+    ) te1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => te1."embedding_v1"))
+    ) te
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp CROSS JOIN Similarities s;
+The error information is:
+002031 (42601): None: SQL compilation error:
+Unsupported subquery type cannot be evaluated
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:05:04 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:05:04 - root - INFO - ```sql
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    WHERE c."cited_publication_number" IN (SELECT "publication_number" FROM P)
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+TargetPatent AS (
+    SELECT tp.*, TO_CHAR(tp."filing_date",'YYYY') AS "filing_year"
+    FROM (
+        SELECT *
+        FROM FinalCounts
+        ORDER BY "number_of_forward_citations_within_a_month" DESC NULLS LAST
+        LIMIT 1
+    ) tp
+),
+
+PatentEmbeddings AS (
+    SELECT pe1."publication_number",
+           pe.idx,
+           pe.val
+    FROM (
+        SELECT p."publication_number", p."filing_date",
+               emb."embedding_v1",
+               tp."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+        CROSS JOIN TargetPatent tp
+        WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = tp."filing_year"
+        AND p."publication_number" != tp."publication_number"
+    ) pe1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => pe1."embedding_v1"))
+    ) pe
+),
+
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM (
+        SELECT emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        JOIN TargetPatent tp
+        ON emb."publication_number" = tp."publication_number"
+    ) te1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => te1."embedding_v1"))
+    ) te
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp CROSS JOIN Similarities s;
+```
+2025-01-16 17:05:04 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:05:04 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:05:04 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:05:06 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:05:06 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:05:06 - root - INFO - itercount: 2
+2025-01-16 17:05:06 - root - INFO - 002031 (42601): None: SQL compilation error:
+Unsupported subquery type cannot be evaluated
+2025-01-16 17:05:06 - root - INFO - Input sql:
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    WHERE c."cited_publication_number" IN (SELECT "publication_number" FROM P)
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+TargetPatent AS (
+    SELECT tp.*, TO_CHAR(tp."filing_date",'YYYY') AS "filing_year"
+    FROM (
+        SELECT *
+        FROM FinalCounts
+        ORDER BY "number_of_forward_citations_within_a_month" DESC NULLS LAST
+        LIMIT 1
+    ) tp
+),
+
+PatentEmbeddings AS (
+    SELECT pe1."publication_number",
+           pe.idx,
+           pe.val
+    FROM (
+        SELECT p."publication_number", p."filing_date",
+               emb."embedding_v1",
+               tp."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+        CROSS JOIN TargetPatent tp
+        WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = tp."filing_year"
+        AND p."publication_number" != tp."publication_number"
+    ) pe1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => pe1."embedding_v1"))
+    ) pe
+),
+
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM (
+        SELECT emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        JOIN TargetPatent tp
+        ON emb."publication_number" = tp."publication_number"
+    ) te1,
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => te1."embedding_v1"))
+    ) te
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp CROSS JOIN Similarities s;
+The error information is:
+002031 (42601): None: SQL compilation error:
+Unsupported subquery type cannot be evaluated
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:06:49 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:06:49 - root - INFO - ```sql
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, TO_CHAR(p."filing_date",'YYYY') AS "filing_year"
+    FROM FinalCounts p
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+
+-- Extract variables from TargetPatent
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+
+PatentEmbeddings AS (
+    SELECT p."publication_number",
+           pe.idx,
+           pe.val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+    CROSS JOIN Variables v
+    WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = v.target_filing_year
+      AND p."publication_number" != v.target_pub_num
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => emb."embedding_v1"))
+    ) pe
+),
+
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v
+    WHERE emb."publication_number" = v.target_pub_num
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => emb."embedding_v1"))
+    ) te
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+```
+2025-01-16 17:06:49 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:06:49 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:06:49 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:06:50 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:06:50 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:06:51 - root - INFO - itercount: 3
+2025-01-16 17:06:51 - root - INFO - 001003 (42000): 01b9c102-0004-7b48-0001-11c300dd39fe: SQL compilation error:
+syntax error line 68 at position 4 unexpected 'LATERAL'.
+syntax error line 71 at position 6 unexpected 'pe'.
+2025-01-16 17:06:51 - root - INFO - Input sql:
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, TO_CHAR(p."filing_date",'YYYY') AS "filing_year"
+    FROM FinalCounts p
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+
+-- Extract variables from TargetPatent
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+
+PatentEmbeddings AS (
+    SELECT p."publication_number",
+           pe.idx,
+           pe.val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+    CROSS JOIN Variables v
+    WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = v.target_filing_year
+      AND p."publication_number" != v.target_pub_num
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => emb."embedding_v1"))
+    ) pe
+),
+
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v
+    WHERE emb."publication_number" = v.target_pub_num
+    LATERAL (
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM TABLE(FLATTEN(input => emb."embedding_v1"))
+    ) te
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+The error information is:
+001003 (42000): 01b9c102-0004-7b48-0001-11c300dd39fe: SQL compilation error:
+syntax error line 68 at position 4 unexpected 'LATERAL'.
+syntax error line 71 at position 6 unexpected 'pe'.
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:07:54 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:07:54 - root - INFO - ```sql
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, TO_CHAR(p."filing_date",'YYYY') AS "filing_year"
+    FROM FinalCounts p
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+
+-- Extract variables from TargetPatent
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+
+PatentEmbeddings AS (
+    SELECT p."publication_number",
+           ROW_NUMBER() OVER (PARTITION BY p."publication_number" ORDER BY seq8()) AS idx,
+           pe.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS pe
+    WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = v.target_filing_year
+      AND p."publication_number" != v.target_pub_num
+),
+
+TargetEmbedding AS (
+    SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+```
+2025-01-16 17:07:54 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:07:54 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:07:54 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:08:00 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:08:01 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:08:01 - root - INFO - itercount: 4
+2025-01-16 17:08:01 - root - INFO - 100097 (22007): 01b9c103-0004-7c54-0001-11c300dd61be: Can't parse '0' as date with format 'YYYYMMDD'
+2025-01-16 17:08:01 - root - INFO - Input sql:
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' AND "kind_code" = 'B2' 
+          AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL
+),
+
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, TO_CHAR(p."filing_date",'YYYY') AS "filing_year"
+    FROM FinalCounts p
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+
+-- Extract variables from TargetPatent
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+
+PatentEmbeddings AS (
+    SELECT p."publication_number",
+           ROW_NUMBER() OVER (PARTITION BY p."publication_number" ORDER BY seq8()) AS idx,
+           pe.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS pe
+    WHERE TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = v.target_filing_year
+      AND p."publication_number" != v.target_pub_num
+),
+
+TargetEmbedding AS (
+    SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+The error information is:
+100097 (22007): 01b9c103-0004-7c54-0001-11c300dd61be: Can't parse '0' as date with format 'YYYYMMDD'
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:08:32 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:08:32 - root - INFO - ```sql
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' 
+      AND "kind_code" = 'B2' 
+      AND "filing_date" IS NOT NULL AND "filing_date" != 0
+      AND "grant_date" IS NOT NULL AND "grant_date" != 0
+      AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, TO_CHAR(p."filing_date",'YYYY') AS "filing_year"
+    FROM FinalCounts p
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+-- Extract variables from TargetPatent
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT p."publication_number",
+           ROW_NUMBER() OVER (PARTITION BY p."publication_number" ORDER BY seq8()) AS idx,
+           pe.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS pe
+    WHERE p."filing_date" IS NOT NULL AND p."filing_date" != 0
+      AND TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = v.target_filing_year
+      AND p."publication_number" != v.target_pub_num
+),
+TargetEmbedding AS (
+    SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+```
+2025-01-16 17:08:32 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:08:32 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:08:32 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:08:33 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:08:34 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:08:34 - root - INFO - itercount: 5
+2025-01-16 17:08:34 - root - INFO - 100097 (22007): 01b9c104-0004-7c54-0001-11c300dd6cb2: Can't parse '0' as date with format 'YYYYMMDD'
+2025-01-16 17:08:34 - root - INFO - Input sql:
+WITH P AS (
+    SELECT "publication_number", 
+           TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') AS "filing_date",
+           TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') AS "grant_date"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "country_code" = 'US' 
+      AND "kind_code" = 'B2' 
+      AND "filing_date" IS NOT NULL AND "filing_date" != 0
+      AND "grant_date" IS NOT NULL AND "grant_date" != 0
+      AND TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, TO_CHAR(p."filing_date",'YYYY') AS "filing_year"
+    FROM FinalCounts p
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+-- Extract variables from TargetPatent
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT p."publication_number",
+           ROW_NUMBER() OVER (PARTITION BY p."publication_number" ORDER BY seq8()) AS idx,
+           pe.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        ON p."publication_number" = emb."publication_number"
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS pe
+    WHERE p."filing_date" IS NOT NULL AND p."filing_date" != 0
+      AND TO_CHAR(TO_DATE(CAST(p."filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') = v.target_filing_year
+      AND p."publication_number" != v.target_pub_num
+),
+TargetEmbedding AS (
+    SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v,
+    TABLE(FLATTEN(input => emb."embedding_v1")) AS te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+The error information is:
+100097 (22007): 01b9c104-0004-7c54-0001-11c300dd6cb2: Can't parse '0' as date with format 'YYYYMMDD'
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:10:01 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:10:01 - root - INFO - ```sql
+WITH PubDates AS (
+    SELECT "publication_number",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "filing_date",
+        CASE 
+            WHEN "grant_date" IS NOT NULL AND "grant_date" != 0 
+            THEN TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "grant_date",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_CHAR(TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') 
+            ELSE NULL 
+        END AS "filing_year"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+),
+P AS (
+    SELECT pd."publication_number", 
+           pd."filing_date",
+           pd."grant_date",
+           pd."filing_year"
+    FROM PubDates pd
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p ON pd."publication_number" = p."publication_number"
+    WHERE p."country_code" = 'US' 
+      AND p."kind_code" = 'B2' 
+      AND pd."filing_date" IS NOT NULL
+      AND pd."grant_date" IS NOT NULL
+      AND pd."grant_date" BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           CASE 
+               WHEN cp."filing_date" IS NOT NULL AND cp."filing_date" != 0 
+               THEN TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') 
+               ELSE NULL 
+           END AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, p."filing_year"
+    FROM FinalCounts p
+    WHERE p."filing_date" IS NOT NULL
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT pe."publication_number", pe.idx, pe.val
+    FROM (
+        SELECT p."publication_number", emb."embedding_v1", p."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb ON p."publication_number" = emb."publication_number"
+        JOIN PubDates pd ON p."publication_number" = pd."publication_number"
+        CROSS JOIN Variables v
+        WHERE pd."filing_year" = v.target_filing_year
+          AND p."publication_number" != v.target_pub_num
+    ) pe_base,
+    TABLE(
+        SELECT ROW_NUMBER() OVER (PARTITION BY pe_base."publication_number" ORDER BY seq8()) AS idx, 
+               value::FLOAT AS val, 
+               pe_base."publication_number"
+        FROM pe_base,
+        LATERAL FLATTEN(input => pe_base."embedding_v1")
+    ) pe
+),
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM (
+        SELECT emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        CROSS JOIN Variables v
+        WHERE emb."publication_number" = v.target_pub_num
+    ) te_base,
+    TABLE(
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM te_base,
+        LATERAL FLATTEN(input => te_base."embedding_v1")
+    ) te
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+```
+2025-01-16 17:10:01 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:10:01 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:10:01 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:10:03 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:10:03 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:10:03 - root - INFO - itercount: 6
+2025-01-16 17:10:03 - root - INFO - 001003 (42000): 01b9c106-0004-7c54-0001-11c300dda5a2: SQL compilation error:
+syntax error line 90 at position 4 unexpected 'TABLE'.
+syntax error line 96 at position 6 unexpected 'pe'.
+2025-01-16 17:10:03 - root - INFO - Input sql:
+WITH PubDates AS (
+    SELECT "publication_number",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "filing_date",
+        CASE 
+            WHEN "grant_date" IS NOT NULL AND "grant_date" != 0 
+            THEN TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "grant_date",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_CHAR(TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') 
+            ELSE NULL 
+        END AS "filing_year"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+),
+P AS (
+    SELECT pd."publication_number", 
+           pd."filing_date",
+           pd."grant_date",
+           pd."filing_year"
+    FROM PubDates pd
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p ON pd."publication_number" = p."publication_number"
+    WHERE p."country_code" = 'US' 
+      AND p."kind_code" = 'B2' 
+      AND pd."filing_date" IS NOT NULL
+      AND pd."grant_date" IS NOT NULL
+      AND pd."grant_date" BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           CASE 
+               WHEN cp."filing_date" IS NOT NULL AND cp."filing_date" != 0 
+               THEN TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') 
+               ELSE NULL 
+           END AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, p."filing_year"
+    FROM FinalCounts p
+    WHERE p."filing_date" IS NOT NULL
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT pe."publication_number", pe.idx, pe.val
+    FROM (
+        SELECT p."publication_number", emb."embedding_v1", p."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb ON p."publication_number" = emb."publication_number"
+        JOIN PubDates pd ON p."publication_number" = pd."publication_number"
+        CROSS JOIN Variables v
+        WHERE pd."filing_year" = v.target_filing_year
+          AND p."publication_number" != v.target_pub_num
+    ) pe_base,
+    TABLE(
+        SELECT ROW_NUMBER() OVER (PARTITION BY pe_base."publication_number" ORDER BY seq8()) AS idx, 
+               value::FLOAT AS val, 
+               pe_base."publication_number"
+        FROM pe_base,
+        LATERAL FLATTEN(input => pe_base."embedding_v1")
+    ) pe
+),
+TargetEmbedding AS (
+    SELECT te.idx, te.val
+    FROM (
+        SELECT emb."embedding_v1"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+        CROSS JOIN Variables v
+        WHERE emb."publication_number" = v.target_pub_num
+    ) te_base,
+    TABLE(
+        SELECT ROW_NUMBER() OVER (ORDER BY seq8()) AS idx, value::FLOAT AS val
+        FROM te_base,
+        LATERAL FLATTEN(input => te_base."embedding_v1")
+    ) te
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+The error information is:
+001003 (42000): 01b9c106-0004-7c54-0001-11c300dda5a2: SQL compilation error:
+syntax error line 90 at position 4 unexpected 'TABLE'.
+syntax error line 96 at position 6 unexpected 'pe'.
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:11:35 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:11:35 - root - INFO - ```sql
+WITH PubDates AS (
+    SELECT "publication_number",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "filing_date",
+        CASE 
+            WHEN "grant_date" IS NOT NULL AND "grant_date" != 0 
+            THEN TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "grant_date",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_CHAR(TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') 
+            ELSE NULL 
+        END AS "filing_year"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+),
+P AS (
+    SELECT pd."publication_number", 
+           pd."filing_date",
+           pd."grant_date",
+           pd."filing_year"
+    FROM PubDates pd
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p ON pd."publication_number" = p."publication_number"
+    WHERE p."country_code" = 'US' 
+      AND p."kind_code" = 'B2' 
+      AND pd."filing_date" IS NOT NULL
+      AND pd."grant_date" IS NOT NULL
+      AND pd."grant_date" BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           CASE 
+               WHEN cp."filing_date" IS NOT NULL AND cp."filing_date" != 0 
+               THEN TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') 
+               ELSE NULL 
+           END AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, p."filing_year"
+    FROM FinalCounts p
+    WHERE p."filing_date" IS NOT NULL
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT pe_base."publication_number", 
+           ROW_NUMBER() OVER (PARTITION BY pe_base."publication_number" ORDER BY pe.seq) AS idx,
+           pe.value::FLOAT AS val
+    FROM (
+        SELECT p."publication_number", emb."embedding_v1", pd."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb 
+          ON p."publication_number" = emb."publication_number"
+        JOIN PubDates pd ON p."publication_number" = pd."publication_number"
+        CROSS JOIN Variables v
+        WHERE pd."filing_year" = v.target_filing_year
+          AND p."publication_number" != v.target_pub_num
+    ) pe_base
+    , LATERAL FLATTEN(input => pe_base."embedding_v1") pe
+),
+TargetEmbedding AS (
+    SELECT 
+        ROW_NUMBER() OVER (ORDER BY te.seq) AS idx,
+        te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v
+    , LATERAL FLATTEN(input => emb."embedding_v1") te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+```
+2025-01-16 17:11:35 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:11:35 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:11:35 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:11:37 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:11:37 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:11:37 - root - INFO - itercount: 7
+2025-01-16 17:11:37 - root - INFO - 000904 (42000): 01b9c107-0004-7b48-0001-11c300dddbf2: SQL compilation error: error line 69 at position 16
+invalid identifier 'P."filing_year"'
+2025-01-16 17:11:37 - root - INFO - Input sql:
+WITH PubDates AS (
+    SELECT "publication_number",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "filing_date",
+        CASE 
+            WHEN "grant_date" IS NOT NULL AND "grant_date" != 0 
+            THEN TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "grant_date",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_CHAR(TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') 
+            ELSE NULL 
+        END AS "filing_year"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+),
+P AS (
+    SELECT pd."publication_number", 
+           pd."filing_date",
+           pd."grant_date",
+           pd."filing_year"
+    FROM PubDates pd
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p ON pd."publication_number" = p."publication_number"
+    WHERE p."country_code" = 'US' 
+      AND p."kind_code" = 'B2' 
+      AND pd."filing_date" IS NOT NULL
+      AND pd."grant_date" IS NOT NULL
+      AND pd."grant_date" BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           CASE 
+               WHEN cp."filing_date" IS NOT NULL AND cp."filing_date" != 0 
+               THEN TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') 
+               ELSE NULL 
+           END AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*, p."filing_year"
+    FROM FinalCounts p
+    WHERE p."filing_date" IS NOT NULL
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT pe_base."publication_number", 
+           ROW_NUMBER() OVER (PARTITION BY pe_base."publication_number" ORDER BY pe.seq) AS idx,
+           pe.value::FLOAT AS val
+    FROM (
+        SELECT p."publication_number", emb."embedding_v1", pd."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb 
+          ON p."publication_number" = emb."publication_number"
+        JOIN PubDates pd ON p."publication_number" = pd."publication_number"
+        CROSS JOIN Variables v
+        WHERE pd."filing_year" = v.target_filing_year
+          AND p."publication_number" != v.target_pub_num
+    ) pe_base
+    , LATERAL FLATTEN(input => pe_base."embedding_v1") pe
+),
+TargetEmbedding AS (
+    SELECT 
+        ROW_NUMBER() OVER (ORDER BY te.seq) AS idx,
+        te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v
+    , LATERAL FLATTEN(input => emb."embedding_v1") te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+The error information is:
+000904 (42000): 01b9c107-0004-7b48-0001-11c300dddbf2: SQL compilation error: error line 69 at position 16
+invalid identifier 'P."filing_year"'
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:12:49 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:12:49 - root - INFO - ```sql
+WITH PubDates AS (
+    SELECT "publication_number",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "filing_date",
+        CASE 
+            WHEN "grant_date" IS NOT NULL AND "grant_date" != 0 
+            THEN TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "grant_date",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_CHAR(TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') 
+            ELSE NULL 
+        END AS "filing_year"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+),
+P AS (
+    SELECT pd."publication_number", 
+           pd."filing_date",
+           pd."grant_date",
+           pd."filing_year"
+    FROM PubDates pd
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p ON pd."publication_number" = p."publication_number"
+    WHERE p."country_code" = 'US' 
+      AND p."kind_code" = 'B2' 
+      AND pd."filing_date" IS NOT NULL
+      AND pd."grant_date" IS NOT NULL
+      AND pd."grant_date" BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           CASE 
+               WHEN cp."filing_date" IS NOT NULL AND cp."filing_date" != 0 
+               THEN TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') 
+               ELSE NULL 
+           END AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date", p."filing_year",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date", p."filing_year"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*
+    FROM FinalCounts p
+    WHERE p."filing_date" IS NOT NULL
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT pe_base."publication_number", 
+           ROW_NUMBER() OVER (PARTITION BY pe_base."publication_number" ORDER BY pe.seq) AS idx,
+           pe.value::FLOAT AS val
+    FROM (
+        SELECT p."publication_number", emb."embedding_v1", pd."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb 
+          ON p."publication_number" = emb."publication_number"
+        JOIN PubDates pd ON p."publication_number" = pd."publication_number"
+        CROSS JOIN Variables v
+        WHERE pd."filing_year" = v.target_filing_year
+          AND p."publication_number" != v.target_pub_num
+    ) pe_base
+    , LATERAL FLATTEN(input => pe_base."embedding_v1") pe
+),
+TargetEmbedding AS (
+    SELECT 
+        ROW_NUMBER() OVER (ORDER BY te.seq) AS idx,
+        te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v
+    , LATERAL FLATTEN(input => emb."embedding_v1") te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+```
+2025-01-16 17:12:49 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:12:49 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:12:49 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:12:51 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 17:12:51 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:12:51 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:12:52 - root - INFO - itercount: 8
+2025-01-16 17:12:52 - root - INFO - 0
+2025-01-16 17:12:52 - root - INFO - results: 
+publication_number,filing_date,grant_date,number_of_forward_citations_within_a_month,similar_patent_publication_number,similarity_score
+US-7877798-B2,2008-12-09,2011-01-25,1,CN-201338846-Y,0.4411
+
+
+2025-01-16 17:12:52 - root - INFO - Please check the answer again by reviewing For United States utility patents under the B2 classification granted between 2010 and 2014, find the one with the most forward citations within a month of its filing date, and identify the most similar patent from the same filing year, regardless of its type., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+publication_number,filing_date,grant_date,number_of_forward_citations_within_a_month,similar_patent_publication_number,similarity_score
+US_patent_id,date:yyyy-mm-dd,date:yyyy-mm-dd,num:int,similar_US_patent_id,float
+```
+
+The above table shows the United States utility patent under the B2 classification granted between 2010 and 2014 with the most forward citations received within a month of its filing date (`publication_number`). It includes the patent's filing date, grant date, and the number of forward citations it received within a month of filing. Additionally, it identifies the most similar patent from the same filing year (`similar_patent_publication_number`), regardless of its type, along with the similarity score between the two patents. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+publication_number,filing_date,grant_date,number_of_forward_citations_within_a_month,similar_patent_publication_number,similarity_score
+US-7877798-B2,2008-12-09,2011-01-25,1,CN-201338846-Y,0.4411
+Current sql:
+WITH PubDates AS (
+    SELECT "publication_number",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "filing_date",
+        CASE 
+            WHEN "grant_date" IS NOT NULL AND "grant_date" != 0 
+            THEN TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "grant_date",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_CHAR(TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') 
+            ELSE NULL 
+        END AS "filing_year"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+),
+P AS (
+    SELECT pd."publication_number", 
+           pd."filing_date",
+           pd."grant_date",
+           pd."filing_year"
+    FROM PubDates pd
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p ON pd."publication_number" = p."publication_number"
+    WHERE p."country_code" = 'US' 
+      AND p."kind_code" = 'B2' 
+      AND pd."filing_date" IS NOT NULL
+      AND pd."grant_date" IS NOT NULL
+      AND pd."grant_date" BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           CASE 
+               WHEN cp."filing_date" IS NOT NULL AND cp."filing_date" != 0 
+               THEN TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') 
+               ELSE NULL 
+           END AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date", p."filing_year",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date", p."filing_year"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*
+    FROM FinalCounts p
+    WHERE p."filing_date" IS NOT NULL
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT pe_base."publication_number", 
+           ROW_NUMBER() OVER (PARTITION BY pe_base."publication_number" ORDER BY pe.seq) AS idx,
+           pe.value::FLOAT AS val
+    FROM (
+        SELECT p."publication_number", emb."embedding_v1", pd."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb 
+          ON p."publication_number" = emb."publication_number"
+        JOIN PubDates pd ON p."publication_number" = pd."publication_number"
+        CROSS JOIN Variables v
+        WHERE pd."filing_year" = v.target_filing_year
+          AND p."publication_number" != v.target_pub_num
+    ) pe_base
+    , LATERAL FLATTEN(input => pe_base."embedding_v1") pe
+),
+TargetEmbedding AS (
+    SELECT 
+        ROW_NUMBER() OVER (ORDER BY te.seq) AS idx,
+        te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v
+    , LATERAL FLATTEN(input => emb."embedding_v1") te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 17:13:50 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 17:13:50 - root - INFO - ```sql
+WITH PubDates AS (
+    SELECT "publication_number",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "filing_date",
+        CASE 
+            WHEN "grant_date" IS NOT NULL AND "grant_date" != 0 
+            THEN TO_DATE(CAST("grant_date" AS VARCHAR), 'YYYYMMDD') 
+            ELSE NULL 
+        END AS "grant_date",
+        CASE 
+            WHEN "filing_date" IS NOT NULL AND "filing_date" != 0 
+            THEN TO_CHAR(TO_DATE(CAST("filing_date" AS VARCHAR), 'YYYYMMDD'), 'YYYY') 
+            ELSE NULL 
+        END AS "filing_year"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+),
+P AS (
+    SELECT pd."publication_number", 
+           pd."filing_date",
+           pd."grant_date",
+           pd."filing_year"
+    FROM PubDates pd
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p ON pd."publication_number" = p."publication_number"
+    WHERE p."country_code" = 'US' 
+      AND p."kind_code" = 'B2' 
+      AND pd."filing_date" IS NOT NULL
+      AND pd."grant_date" IS NOT NULL
+      AND pd."grant_date" BETWEEN '2010-01-01' AND '2014-12-31'
+),
+Citations AS (
+    SELECT t."publication_number" AS "citing_publication_number", 
+           cv.value:"publication_number"::STRING AS "cited_publication_number"
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t, 
+         LATERAL FLATTEN(input => t."citation") cv
+    WHERE cv.value:"publication_number" IS NOT NULL
+),
+ForwardCitations AS (
+    SELECT c."cited_publication_number" AS "publication_number",
+           c."citing_publication_number"
+    FROM Citations c
+    JOIN P ON c."cited_publication_number" = P."publication_number"
+),
+CitingPatents AS (
+    SELECT fc."publication_number", fc."citing_publication_number", 
+           CASE 
+               WHEN cp."filing_date" IS NOT NULL AND cp."filing_date" != 0 
+               THEN TO_DATE(CAST(cp."filing_date" AS VARCHAR), 'YYYYMMDD') 
+               ELSE NULL 
+           END AS "citing_filing_date"
+    FROM ForwardCitations fc
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS cp
+    ON fc."citing_publication_number" = cp."publication_number"
+    WHERE cp."filing_date" IS NOT NULL AND cp."filing_date" != 0
+),
+FinalCounts AS (
+    SELECT p."publication_number", p."filing_date", p."grant_date", p."filing_year",
+           COUNT(cp."citing_publication_number") AS "number_of_forward_citations_within_a_month"
+    FROM P p
+    LEFT JOIN CitingPatents cp
+    ON p."publication_number" = cp."publication_number"
+    AND cp."citing_filing_date" BETWEEN p."filing_date" AND DATEADD(month, 1, p."filing_date")
+    GROUP BY p."publication_number", p."filing_date", p."grant_date", p."filing_year"
+),
+-- Get the patent with the most forward citations within a month
+TargetPatent AS (
+    SELECT p.*
+    FROM FinalCounts p
+    WHERE p."filing_date" IS NOT NULL
+    ORDER BY p."number_of_forward_citations_within_a_month" DESC NULLS LAST
+    LIMIT 1
+),
+Variables AS (
+    SELECT tp."publication_number" AS target_pub_num, tp."filing_year" AS target_filing_year
+    FROM TargetPatent tp
+),
+PatentEmbeddings AS (
+    SELECT pe_base."publication_number", 
+           ROW_NUMBER() OVER (PARTITION BY pe_base."publication_number" ORDER BY pe.seq) AS idx,
+           pe.value::FLOAT AS val
+    FROM (
+        SELECT p."publication_number", emb."embedding_v1", pd."filing_year"
+        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+        JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb 
+          ON p."publication_number" = emb."publication_number"
+        JOIN PubDates pd ON p."publication_number" = pd."publication_number"
+        CROSS JOIN Variables v
+        WHERE pd."filing_year" = v.target_filing_year
+          AND p."publication_number" != v.target_pub_num
+    ) pe_base
+    , LATERAL FLATTEN(input => pe_base."embedding_v1") pe
+),
+TargetEmbedding AS (
+    SELECT 
+        ROW_NUMBER() OVER (ORDER BY te.seq) AS idx,
+        te.value::FLOAT AS val
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB emb
+    CROSS JOIN Variables v
+    , LATERAL FLATTEN(input => emb."embedding_v1") te
+    WHERE emb."publication_number" = v.target_pub_num
+),
+Similarities AS (
+    SELECT pe."publication_number",
+           SUM(pe.val * te.val) AS "similarity_score"
+    FROM PatentEmbeddings pe
+    JOIN TargetEmbedding te ON pe.idx = te.idx
+    GROUP BY pe."publication_number"
+    ORDER BY "similarity_score" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    tp."publication_number",
+    TO_CHAR(tp."filing_date",'YYYY-MM-DD') AS "filing_date",
+    TO_CHAR(tp."grant_date",'YYYY-MM-DD') AS "grant_date",
+    tp."number_of_forward_citations_within_a_month",
+    s."publication_number" AS "similar_patent_publication_number",
+    ROUND(s."similarity_score", 4) AS "similarity_score"
+FROM TargetPatent tp, Similarities s;
+```
+2025-01-16 17:13:50 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 17:13:50 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 17:13:50 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 17:13:51 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 17:13:51 - snowflake.connector.connection - INFO - closed
+2025-01-16 17:13:52 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 17:13:52 - root - INFO - itercount: 9
+2025-01-16 17:13:52 - root - INFO - 0
+2025-01-16 17:13:52 - root - INFO - Total iteration counts: 9
