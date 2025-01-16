@@ -1,0 +1,1790 @@
+2025-01-16 07:59:25 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:00:27 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:00:27 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:00:27 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:00:27 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:00:29 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:00:29 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:00:54 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:00:54 - root - INFO - The error you're encountering is due to the SQL syntax. In SQL, the `WHERE` clause cannot stand alone; it must be used within a complete SQL statement, such as `SELECT`, `UPDATE`, or `DELETE`. The `WHERE` clause specifies the conditions that filter rows returned by the query, but it needs to be associated with the data retrieval or manipulation command.
+
+**Explanation of the Error:**
+
+- **Error Message:**
+
+  ```
+  001003 (42000): 01b9bee0-0004-7b0e-0001-11c300ca113a: SQL compilation error:
+  syntax error line 1 at position 0 unexpected 'WHERE'.
+  ```
+
+- **Cause:**
+
+  The SQL engine encountered the `WHERE` keyword at the very beginning of the statement and didn't expect it there because SQL statements typically start with a command like `SELECT`.
+
+**Solution:**
+
+Include a `SELECT` statement and specify the table from which you're querying data using the `FROM` clause.
+
+**Corrected SQL Query:**
+
+Here's how you can modify your SQL query to include the `SELECT` and `FROM` clauses:
+
+```sql
+SELECT *
+FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+WHERE "start_position" BETWEEN 55039447 AND 55064852;
+```
+
+This query will select all columns (`*`) from the `V3_GENOMES__CHR1` table where the `start_position` is between `55039447` and `55064852`.
+
+**Further Guidance:**
+
+If you want to select specific columns or perform more detailed analysis, you can specify the columns you're interested in. Here are some examples:
+
+1. **Select Specific Columns:**
+
+   ```sql
+   SELECT "start_position", "end_position", "AN", "variant_type"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+2. **Count the Number of Variants:**
+
+   ```sql
+   SELECT COUNT(*) AS "number_of_variants"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+3. **Calculate Total Allele Count:**
+
+   ```sql
+   SELECT SUM("AN") AS "total_allele_count"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+4. **Retrieve Distinct Gene Symbols (Assuming Gene Symbols are in "names"):**
+
+   The `"names"` column is of type `VARIANT`, so you can use `LATERAL FLATTEN` to extract values.
+
+   ```sql
+   SELECT DISTINCT f.value::STRING AS "gene_symbol"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
+   LATERAL FLATTEN(input => t."names") f
+   WHERE t."start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+5. **Compute Mutation Density:**
+
+   First, count the number of variants and then calculate the density based on the length of the region.
+
+   ```sql
+   -- Count the number of variants
+   SELECT COUNT(*) AS "number_of_variants"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+   Then calculate the density in your application code by dividing the length of the region (55064852 - 55039447) by the number of variants.
+
+**Key Points to Remember:**
+
+- Always start your SQL queries with a command like `SELECT`, `UPDATE`, or `DELETE`.
+- The `FROM` clause specifies the table you're querying.
+- The `WHERE` clause comes after the `FROM` clause and filters the data based on conditions.
+- Enclose table and column names in double quotes if they contain uppercase letters or special characters.
+- Use `LATERAL FLATTEN` to extract values from `VARIANT` or `ARRAY` data types.
+
+**Example of a Complete Query for Your Task:**
+
+To generate the summary statistics as per your original task, you can execute the following SQL queries step by step:
+
+1. **Calculate the Number of Variants:**
+
+   ```sql
+   SELECT COUNT(*) AS "number_variants"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+2. **Calculate the Total Number of Alleles (`AN`):**
+
+   ```sql
+   SELECT SUM("AN") AS "total_number_alleles"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+3. **Retrieve Distinct Gene Symbols:**
+
+   ```sql
+   SELECT DISTINCT f.value::STRING AS "gene_symbol"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
+   LATERAL FLATTEN(input => t."names") f
+   WHERE t."start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+4. **Compute Mutation Density (in Application Code):**
+
+   - Calculate the length of the region:
+
+     ```
+     region_length = 55064852 - 55039447 = 25405 bases
+     ```
+
+   - Divide the region length by the number of variants (from step 1):
+
+     ```
+     mutation_density = region_length / number_of_variants
+     ```
+
+**Putting It All Together:**
+
+After running the above queries, you can assemble the results in your desired `csv` format.
+
+**Sample Output Format:**
+
+```csv
+number_variants,total_allele_count,total_number_alleles,distinct_gene_symbols,mutation_density
+num_variants:int,total_allele_count:int,total_alleles:int,genes:str list,density:float
+```
+
+**Note:** Replace `num_variants:int`, `total_allele_count:int`, etc., with the actual numerical results from your queries.
+
+---
+
+Feel free to adjust the queries based on your specific needs or let me know if you have any more questions or need further assistance!
+2025-01-16 08:00:54 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:00:54 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:00:54 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:00:56 - snowflake.connector.cursor - INFO - Number of results in first chunk: 3729
+2025-01-16 08:00:56 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:00:56 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:00:56 - root - INFO - SQL:
+SELECT DISTINCT f.value::STRING AS "gene_symbol"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
+   LATERAL FLATTEN(input => t."names") f
+   WHERE t."start_position" BETWEEN 55039447 AND 55064852;
+Results:
+Too long, hard cut:
+gene_symbol
+rs912336722
+rs1279089880
+rs1183483152
+rs1329516405
+rs1225227497
+rs926011277
+rs1208660581
+rs1204920753
+rs1409580314
+rs1377475783
+rs570762001
+rs562305231
+rs960707966
+rs1230608167
+rs1367103910
+rs1434965256
+rs749789895
+rs192122768
+rs72646537
+rs12084215
+rs886046454
+rs142676213
+rs560276251
+rs527413419
+rs1159578239
+rs1158369135
+rs1435876499
+rs150898485
+rs1172893623
+rs981847079
+rs1486707493
+rs928687661
+rs1305245246
+rs1157095728
+rs964719254
+rs548007497
+rs1349229018
+rs913880764
+rs750475817
+rs1448518625
+rs1022422650
+rs1322617476
+rs530671596
+rs776658758
+rs918536804
+rs566363207
+rs58255540
+rs1234048747
+rs1169449489
+rs1414174768
+rs1237571876
+rs1162178715
+rs1223281476
+rs1350986560
+rs1386792300
+rs533273863
+rs199815786
+rs112099148
+rs4275490
+rs7530425
+rs769034027
+rs560266371
+rs28362208
+rs1412031973
+rs1306944900
+rs1312563958
+rs1185285717
+rs890798723
+rs1263110535
+rs902513887
+rs1431847164
+rs768337538
+rs662145
+rs564642204
+rs567060267
+rs576806431
+rs754936553
+rs1256146794
+rs1198998812
+rs1267710162
+rs1364202722
+rs1384444962
+rs1271529118
+rs901171079
+rs1299080475
+rs1474757061
+rs1382458053
+rs1020429551
+rs961340886
+rs894477175
+rs1477514312
+rs568053170
+rs1336428560
+rs182195151
+rs540409272
+rs143291739
+rs145264023
+rs981991042
+rs913496211
+rs550679929
+rs1157271008
+rs532231087
+rs1297081743
+rs1322263364
+rs760064829
+rs760611664
+rs117004014
+rs185905805
+rs1215612655
+rs1458752002
+rs992045197
+rs1453893690
+rs1410346158
+rs970905803
+rs937620571
+rs1171550193
+rs748509798
+rs373295327
+rs976635604
+rs10465832
+rs28362283
+rs962983897
+rs576035975
+rs376753957
+rs767139884
+rs1439130943
+rs1415187173
+rs1464305858
+rs1300492081
+rs1343593101
+rs1040559134
+rs1301648940
+rs1228077712
+rs947693452
+rs1441695964
+rs1490006558
+rs1372491902
+rs1251353896
+rs920926982
+rs1218737574
+rs1417208141
+rs887803504
+rs1437609366
+rs546058081
+rs531460512
+rs909352079
+rs1048115172
+rs377727000
+rs1254346075
+rs1264017823
+rs1326323424
+rs1274491255
+rs1367014114
+rs758946245
+rs554139080
+rs1404934492
+rs747039310
+rs79710883
+rs28385703
+rs901690629
+rs1330200413
+rs1340421117
+rs1408908134
+rs891075305
+rs1381356866
+rs778382130
+rs1356205937
+rs1407201043
+rs961307031
+rs1161307902
+rs1272258483
+rs553203766
+rs541766358
+rs1383613631
+rs547860327
+rs28362285
+rs505151
+rs999784036
+rs1278923467
+rs28362246
+rs79512647
+rs12082241
+rs1228532297
+rs960463472
+rs1180452405
+rs954898315
+rs1039803103
+rs1026546611
+rs772355707
+rs1180931178
+rs1193354199
+rs984642906
+rs1479318278
+rs1363099525
+rs1328391061
+rs1392759118
+rs1372501320
+rs767853868
+rs1173182513
+rs1289823401
+rs1343558203
+rs902324768
+rs1027099584
+rs538452399
+rs1305358293
+rs1426825231
+rs1490468295
+rs1315315993
+rs144721237
+rs1424060885
+rs1019518370
+rs1370704687
+rs528061974
+rs182743566
+rs1005961089
+rs1241940062
+rs1157576122
+rs1309091183
+rs1365226747
+rs1386927526
+rs1455638774
+rs1380294031
+rs1025272264
+rs1318324469
+rs1293660596
+rs1243202679
+rs546354834
+rs776456935
+rs1346541609
+rs1222515081
+rs569816960
+rs149837083
+rs1038804171
+rs72646505
+rs1166429706
+rs148612296
+rs115451406
+rs192280354
+rs535856008
+rs1031163713
+rs1367975898
+rs1366193688
+rs1430402295
+rs1294211274
+rs1039870002
+rs1161310100
+rs1165442994
+rs1212363229
+rs1340874815
+rs1452955461
+rs995912529
+rs771108863
+rs1403745956
+rs1203144529
+rs1344664482
+rs1468523758
+rs565908479
+rs1201168226
+rs1369000137
+rs751846541
+rs1021880277
+rs1004125446
+rs1159122739
+rs1199462488
+rs1262131300
+rs777931489
+rs1289910389
+rs1434087656
+rs1177855729
+rs971952110
+rs1386457401
+rs751658486
+rs1361697425
+rs914968675
+rs28362202
+rs1483527445
+rs1249863417
+rs1243883156
+rs1454558073
+rs1456146063
+rs1481484240
+rs373226998
+rs965962204
+rs1000288995
+rs1380524723
+rs927208593
+rs140641462
+rs141995194
+rs472495
+rs548070210
+rs2479413
+rs1165287
+rs1265714793
+rs1250411955
+rs970838215
+rs1282539206
+rs1436412590
+rs761767572
+rs1251033958
+rs774194697
+rs753657596
+rs1248271479
+rs1255990716
+rs1431494590
+rs1238787072
+rs145373574
+rs1183735296
+rs1401709532
+rs970712596
+rs1012000861
+rs1301155928
+rs764945034
+rs562318675
+rs942008578
+rs1476027018
+rs1275415853
+rs931000526
+rs916166986
+rs1334318104
+rs1252745682
+rs1463201799
+rs1018398034
+rs1023264647
+rs982393879
+rs534377991
+rs1166374399
+rs1237004678
+rs1438844552
+rs1220547613
+rs901573253
+rs1461888646
+rs1235560461
+rs1474966729
+rs1024677257
+rs367785668
+rs913697996
+rs1362694853
+rs1025809302
+rs763487583
+rs1033084294
+rs483462
+rs28362252
+rs45490396
+rs12136600
+rs12079495
+rs970597452
+rs1288635465
+rs1054595868
+rs1271407639
+rs1237083440
+rs7552841
+rs1180980269
+rs1383587131
+rs1048494572
+rs1007269758
+rs888043168
+rs1308188970
+rs548323322
+rs1300604710
+rs956955551
+rs1004901805
+rs945689887
+rs554237555
+rs754744118
+rs1419491926
+rs911513341
+rs749502601
+rs187156578
+rs28362234
+rs559878234
+rs1444653837
+rs1209183230
+rs1033102531
+rs1341471583
+rs934216160
+rs923247943
+rs780193533
+rs1458939975
+rs1402156136
+rs28362219
+rs1339311010
+rs1272656891
+rs1374964578
+rs981388817
+rs1221933751
+rs1359899317
+rs1283688377
+rs967472302
+rs918182381
+rs1390903765
+rs372844138
+rs533076442
+rs887529032
+rs746121167
+rs901995386
+rs1200471738
+rs914767385
+rs865848494
+rs1223799711
+rs1449180236
+rs14386535
+
+2025-01-16 08:00:56 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:00:56 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:00:56 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:00:57 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:00:58 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:27 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:01:27 - root - INFO - I see that you're encountering an error when you try to execute an SQL statement that starts with a `WHERE` clause:
+
+```
+SQL compilation error:
+syntax error line 1 at position 0 unexpected 'WHERE'.
+```
+
+**Explanation:**
+
+In SQL, the `WHERE` clause is used to filter records, but it cannot stand alone; it must be part of a complete SQL statement. The typical structure of a `SELECT` statement is:
+
+```sql
+SELECT column1, column2, ...
+FROM table_name
+WHERE condition;
+```
+
+Starting an SQL statement directly with `WHERE` without a preceding `SELECT` and `FROM` is not valid syntax, which is why you're receiving the error.
+
+**Solution:**
+
+To fix the error, you need to include the `WHERE` clause within a `SELECT` statement. Here's how you can modify your SQL queries:
+
+1. **Filter by Chromosome Number:**
+
+   Instead of starting with `WHERE`, include a `SELECT` and `FROM` clause:
+
+   ```sql
+   SELECT *
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "reference_name" = '1';
+   ```
+
+2. **Filter by Start Position:**
+
+   Similarly, when filtering by positions:
+
+   ```sql
+   SELECT *
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+   ```
+
+**Examples of Corrected Queries:**
+
+Based on your needs, here are the corrected versions of the queries:
+
+- **Counting Variants in the Specified Region:**
+
+  ```sql
+  SELECT COUNT(*) AS "number_of_variants"
+  FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+  WHERE "start_position" BETWEEN 55039447 AND 55064852;
+  ```
+
+- **Summing Allele Counts in the Region:**
+
+  ```sql
+  SELECT SUM("AN") AS "total_allele_count"
+  FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+  WHERE "start_position" BETWEEN 55039447 AND 55064852;
+  ```
+
+- **Retrieving Distinct Gene Symbols:**
+
+  ```sql
+  SELECT DISTINCT f.value::STRING AS "gene_symbol"
+  FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
+       LATERAL FLATTEN(input => t."names") f
+  WHERE t."start_position" BETWEEN 55039447 AND 55064852;
+  ```
+
+**Explanation of the Corrected Queries:**
+
+- **`SELECT` Clause:**
+
+  Specifies the columns to retrieve. You can use `*` to select all columns or specify the columns you need.
+
+- **`FROM` Clause:**
+
+  Indicates the table from which to retrieve the data.
+
+- **`WHERE` Clause:**
+
+  Filters the records based on the specified conditions.
+
+**Key Points:**
+
+- **Always Start with a `SELECT` Statement:**
+
+  The SQL engine expects a command at the start of the statement. `SELECT` is used to retrieve data from a database.
+
+- **Use Fully Qualified Table Names:**
+
+  When accessing tables in specific databases and schemas, include the database and schema names.
+
+  ```sql
+  FROM database_name.schema_name.table_name
+  ```
+
+- **Enclose Identifiers in Double Quotes If Needed:**
+
+  If your table or column names contain uppercase letters, special characters, or match SQL keywords, enclose them in double quotes.
+
+- **Example of a Complete Query:**
+
+  If you want to retrieve all variants on chromosome 1 between the specified positions, your query should look like this:
+
+  ```sql
+  SELECT *
+  FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+  WHERE "reference_name" = '1'
+    AND "start_position" BETWEEN 55039447 AND 55064852;
+  ```
+
+**Additional Guidance:**
+
+- **Calculating Mutation Density:**
+
+  After obtaining the number of variants, you can calculate mutation density by dividing the length of the region by the number of variants.
+
+  ```sql
+  SELECT
+    COUNT(*) AS "number_of_variants",
+    (55064852 - 55039447) AS "region_length",
+    (55064852 - 55039447) / COUNT(*) AS "mutation_density"
+  FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+  WHERE "start_position" BETWEEN 55039447 AND 55064852;
+  ```
+
+- **Understanding the Data Types:**
+
+  Ensure that the columns you're querying are of the expected data types, especially when performing calculations.
+
+**Conclusion:**
+
+The error occurs because the `WHERE` clause cannot be used without a preceding `SELECT` statement. By structuring your queries to include `SELECT` and `FROM`, you can retrieve the data you need without errors.
+
+If you have any more questions or need further assistance with your queries, feel free to ask!
+2025-01-16 08:01:27 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:27 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:27 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:29 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 08:01:29 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:29 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:29 - root - INFO - SQL:
+SELECT
+    COUNT(*) AS "number_of_variants",
+    (55064852 - 55039447) AS "region_length",
+    (55064852 - 55039447) / COUNT(*) AS "mutation_density"
+  FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+  WHERE "start_position" BETWEEN 55039447 AND 55064852;
+Results:
+number_of_variants,region_length,mutation_density
+5604,25405,4.533369
+
+2025-01-16 08:01:29 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:29 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:29 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:30 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 08:01:30 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:30 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:31 - root - INFO - SQL:
+SELECT DISTINCT "reference_name"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   LIMIT 1000;
+Results:
+reference_name
+chr1
+
+2025-01-16 08:01:31 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:31 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:31 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:32 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 08:01:32 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:32 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:33 - root - INFO - SQL:
+SELECT COUNT(*)
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+Results:
+COUNT(*)
+5604
+
+2025-01-16 08:01:33 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:33 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:33 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:34 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 08:01:34 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:34 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:34 - root - INFO - SQL:
+SELECT "AN"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852
+   LIMIT 1000;
+Results:
+Too long, hard cut:
+AN
+143204
+143202
+143214
+142794
+143270
+143304
+142842
+131220
+143262
+131300
+143324
+143274
+143322
+143314
+143114
+143184
+143258
+142374
+143344
+142048
+143254
+143266
+143296
+143140
+143310
+143332
+143302
+143052
+142948
+143326
+143268
+143166
+143312
+143302
+143086
+140634
+143244
+143134
+143250
+143266
+143304
+143138
+143048
+143318
+143332
+143176
+138702
+143290
+143338
+143238
+143342
+143334
+143264
+143240
+143298
+143234
+143274
+143336
+143126
+143224
+131110
+143324
+131344
+143252
+143336
+143184
+143300
+143322
+143160
+141740
+143218
+143282
+142720
+143136
+142938
+142852
+143240
+143208
+143152
+143250
+143208
+143314
+143230
+142170
+143214
+143272
+143276
+143308
+142730
+143326
+143174
+143236
+143326
+143166
+143274
+143292
+143322
+143312
+141868
+143286
+143272
+143298
+143314
+143340
+143302
+143328
+143282
+143316
+143168
+143314
+143338
+143196
+143316
+143376
+143158
+143320
+143292
+143200
+143374
+143334
+143374
+143322
+143292
+143310
+143182
+143322
+143320
+143372
+143304
+143320
+143330
+143330
+143336
+143336
+143360
+143306
+143346
+143324
+143198
+143324
+143108
+143286
+143248
+143330
+143310
+143176
+143118
+143250
+143310
+143278
+143336
+143324
+143200
+143278
+143184
+143388
+143332
+143194
+143276
+143298
+143360
+143320
+143282
+143118
+110706
+115298
+142822
+143304
+143310
+143294
+143286
+143318
+143162
+138318
+139010
+142778
+142486
+143112
+138354
+143178
+141540
+143314
+140488
+129776
+142982
+143252
+142684
+143132
+140658
+142776
+140728
+142792
+143132
+143192
+137506
+142946
+142868
+142592
+142690
+141464
+143196
+140662
+143250
+143270
+140662
+143176
+142370
+143208
+143014
+134630
+142660
+131350
+143136
+143120
+138844
+142906
+141372
+143344
+143284
+117888
+143346
+139318
+143276
+143360
+143328
+143342
+143322
+143266
+143286
+143276
+143198
+143284
+143218
+143206
+143292
+143328
+142810
+143212
+143296
+143310
+142870
+143232
+143266
+143336
+143226
+143150
+143324
+143336
+143292
+143278
+143282
+143248
+143334
+143284
+143352
+143310
+143284
+139678
+143330
+143198
+143162
+143280
+143326
+143276
+143206
+143254
+143196
+143208
+143264
+142708
+143310
+143222
+143352
+143330
+143272
+143292
+134068
+142736
+143346
+143348
+143276
+143270
+143284
+143216
+143246
+143290
+143308
+143296
+143086
+142956
+143270
+142688
+143226
+143240
+143324
+143284
+142062
+143258
+143358
+143304
+143190
+143294
+143238
+143294
+143312
+142054
+143292
+143306
+143258
+143302
+143318
+143306
+143212
+143306
+143220
+143330
+143308
+143326
+143312
+143248
+143282
+143334
+138246
+143328
+141566
+143248
+143286
+143172
+142884
+143210
+143322
+143230
+143336
+140122
+143212
+143292
+143310
+143328
+141892
+143244
+143170
+143326
+143328
+141942
+142492
+143358
+143286
+143316
+143298
+131344
+143292
+140158
+143280
+143346
+143308
+143280
+143350
+134634
+143356
+143290
+143276
+143312
+143252
+143298
+143254
+143274
+142294
+143200
+142580
+143240
+143268
+143188
+143180
+143292
+143328
+143268
+143298
+143272
+143294
+143286
+143270
+143316
+143282
+143312
+143312
+143308
+143310
+141964
+143284
+143134
+143340
+143238
+141462
+143292
+143312
+143314
+143324
+143300
+143266
+143314
+143224
+143286
+143144
+143282
+143286
+143306
+143318
+143296
+143308
+143336
+143240
+143330
+143256
+143240
+143276
+143266
+143318
+143238
+143032
+143288
+143324
+143268
+143296
+143254
+143264
+143314
+143328
+143264
+143246
+142236
+143326
+142046
+143270
+143264
+141314
+143296
+143232
+143222
+139678
+142988
+143348
+143290
+143282
+141472
+143308
+143330
+143312
+143174
+143040
+143324
+143078
+143286
+143312
+143252
+143270
+143310
+143242
+143296
+143122
+143164
+143230
+143326
+143268
+143256
+143266
+143226
+143278
+143294
+143250
+143268
+143340
+143144
+143316
+143324
+143346
+143302
+142876
+143306
+142924
+143302
+143352
+143216
+134634
+143282
+143322
+143306
+143314
+143308
+143280
+143278
+143322
+143162
+143280
+143348
+143326
+143330
+143280
+143328
+143308
+143288
+143348
+143342
+143264
+143310
+143328
+143326
+140008
+143254
+143242
+143232
+143346
+142874
+143296
+143214
+143258
+138354
+143278
+143332
+143358
+143320
+140742
+143242
+143208
+143312
+143260
+141500
+143268
+143350
+143314
+143226
+143264
+143354
+143328
+143248
+142832
+143342
+143318
+143338
+143338
+143270
+139006
+143268
+143316
+142670
+143216
+143316
+143336
+143348
+143348
+143318
+143302
+143340
+139014
+143300
+142516
+143290
+142728
+143268
+143338
+143294
+143330
+119414
+142916
+143238
+143344
+143186
+143250
+143234
+143248
+143122
+129780
+143322
+143170
+143318
+143320
+143298
+143148
+143364
+143258
+143310
+143262
+143328
+143256
+143128
+143246
+134634
+143320
+143224
+143218
+143310
+143274
+143320
+143314
+143330
+143290
+143326
+143338
+143304
+143360
+143336
+143312
+143346
+143358
+143386
+143298
+143264
+143300
+143286
+143274
+143378
+143366
+143390
+143308
+143350
+143222
+143388
+143352
+143332
+143228
+143296
+143202
+143226
+143378
+143366
+143300
+143358
+143342
+143386
+143284
+143284
+143280
+143322
+142060
+143376
+143338
+143358
+143344
+143300
+143238
+143260
+143234
+143224
+143318
+143348
+143364
+143356
+143192
+143326
+143326
+143330
+143334
+143372
+143270
+143346
+143164
+143340
+143182
+143362
+143304
+140010
+143350
+143372
+143318
+143334
+143334
+143366
+143342
+143292
+143308
+143360
+143284
+143202
+143244
+142992
+143360
+143250
+143306
+143282
+143376
+143326
+143374
+143334
+143326
+143336
+143208
+143308
+143342
+143224
+143358
+143304
+143360
+143264
+143384
+143302
+143346
+143354
+143390
+143232
+143374
+143344
+143386
+143314
+143252
+143304
+143332
+143368
+143248
+143320
+143286
+143320
+143322
+143300
+143310
+143364
+
+2025-01-16 08:01:34 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:34 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:34 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:36 - snowflake.connector.cursor - INFO - Number of results in first chunk: 2
+2025-01-16 08:01:36 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:36 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:36 - root - INFO - SQL:
+SELECT DISTINCT "variant_type"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1"
+   WHERE "start_position" BETWEEN 55039447 AND 55064852;
+Results:
+variant_type
+indel
+snv
+
+2025-01-16 08:01:36 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:36 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:36 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:38 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 08:01:38 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:38 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:38 - root - INFO - SQL:
+SELECT t."start_position", f.value::STRING AS "gene_symbol"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
+   LATERAL FLATTEN(input => t."names") f
+   WHERE t."start_position" BETWEEN 55039447 AND 55064852
+   LIMIT 1000;
+Results:
+Too long, hard cut:
+start_position,gene_symbol
+55062761,rs498588
+55063191,rs540108245
+55063024,rs749789895
+55062793,rs184297608
+55061820,rs144546842
+55062932,rs10465831
+55061875,rs745444129
+55062822,rs528529582
+55061661,rs28362278
+55061649,rs630431
+55063373,rs28362285
+55062787,rs28362282
+55061547,rs142118418
+55062955,rs12067569
+55063209,rs72646529
+55061631,rs72646527
+55061566,rs72646526
+55063261,rs574293036
+55063122,rs561885328
+55063192,rs72646528
+55063133,rs10465832
+55063132,rs547966100
+55062635,rs545843566
+55062703,rs75266432
+55063051,rs568138865
+55061543,rs140364657
+55062686,rs778486544
+55061805,rs631220
+55062997,rs28362283
+55062465,rs1036368974
+55062575,rs562305110
+55062204,rs531275625
+55062380,rs773284824
+55062244,rs643257
+55062259,rs1411314854
+55062466,rs554546729
+55062147,rs28362280
+55062081,rs1011591303
+55062176,rs747243416
+55062581,rs923857336
+55062557,rs192122768
+55061974,rs1572033
+55062216,rs962983897
+55062591,rs576035975
+55063513,rs505151
+55063658,rs28362287
+55063611,rs189293781
+55064025,rs1222515081
+55063848,rs368297335
+55064270,rs539259897
+55063928,rs17111555
+55063951,rs151125363
+55063929,rs770857069
+55064022,rs563834186
+55063718,rs534769041
+55063817,rs182138201
+55064154,rs662145
+55064250,rs911759536
+55063815,rs145330737
+55064304,rs950291623
+55064044,rs979554949
+55064119,rs72646535
+55064237,rs571711835
+55064083,rs548989313
+55063998,rs1018994107
+55064841,rs778769653
+55064386,rs529378080
+55064647,rs145806888
+55064379,rs113241059
+55064635,rs149837083
+55064751,rs377553033
+55064733,rs563024336
+55064721,rs1013698888
+55064533,rs72646537
+55064431,rs72646536
+55064553,rs28362293
+55064635,rs557703061
+55064708,rs140641462
+55064829,rs886046454
+55064347,rs28362290
+55064426,rs28362291
+55064341,rs968588765
+55064564,rs543667904
+55050969,rs1040614377
+55047208,rs502576
+55047795,rs183118876
+55056741,rs79844613
+55060130,rs187592053
+55061172,rs542704543
+55056867,rs199916214
+55059469,rs28362269
+55058939,rs551379054
+55057402,rs148562777
+55051039,rs7546522
+55047227,rs572778710
+55060116,rs545187568
+55047215,rs114587475
+55060154,rs868054523
+55058411,rs28362265
+55047454,rs573785574
+55046815,rs547965847
+55057719,rs28362260
+55052516,rs1262501881
+55059307,rs117389879
+55056854,rs979205259
+55056215,rs28362252
+55061307,rs72646523
+55052524,rs7552350
+55058879,rs529506779
+55048399,rs2479412
+55059679,rs200529774
+55052417,rs72646506
+55060502,rs748705694
+55054873,rs45508296
+55059007,rs111976283
+55056460,rs887422160
+55058665,rs869211452
+55056223,rs769521310
+55056932,rs879910208
+55060065,rs188445083
+55056867,rs1038804171
+55061354,rs372844138
+55056389,rs964493187
+55060616,rs999983470
+55060265,rs142325411
+55051060,rs115563225
+55046771,rs141901482
+55059478,rs72646520
+55054820,rs572868033
+55052525,rs572643297
+55058689,rs778365092
+55056867,rs148820549
+55058665,rs765668920
+55048982,rs574039144
+55057308,rs762110607
+55056446,rs28362255
+55056567,rs28362256
+55050964,rs545041872
+55047713,rs933288399
+55046344,rs28385707
+55060550,rs186792359
+55048051,rs531701
+55059297,rs11206516
+55056591,rs887529032
+55058683,rs781641312
+55048559,rs189648416
+55047727,rs569816960
+55046407,rs542423698
+55061166,rs41297885
+55056185,rs376753957
+55059639,rs28362270
+55060155,rs1338229033
+55046498,rs200109442
+55047500,rs573984387
+55046291,rs72646504
+55060491,rs28362271
+55057195,rs142149050
+55048807,rs577879799
+55048738,rs932286765
+55051050,rs747532143
+55047847,rs529787
+55060072,rs373832219
+55054870,rs28362250
+55047796,rs187408994
+55056686,rs999784036
+55048857,rs7554001
+55048508,rs535471
+55058665,rs35115360
+55060585,rs528601797
+55058574,rs28362268
+55047893,rs987432539
+55058638,rs201395805
+55059837,rs1472354396
+55056239,rs764619970
+55054815,rs986034742
+55048808,rs115451406
+55051107,rs599037
+55060012,rs752684225
+55056751,rs7525407
+55058563,rs562556
+55054772,rs972968810
+55060102,rs772476377
+55061333,rs376563480
+55060048,rs137886411
+55048364,rs999122650
+55047003,rs549297683
+55047540,rs988485983
+55047387,rs10888897
+55058630,rs139669564
+55054674,rs28362248
+55058897,rs776031156
+55060403,rs1416541739
+55048845,rs12028752
+55060610,rs547246380
+55048541,rs557211
+55056909,rs540429866
+55048372,rs534473
+55058722,rs926763834
+55059971,rs912923479
+55058665,rs772583304
+55058930,rs538452399
+55048937,rs676297
+55056771,rs142676213
+55057849,rs562491023
+55058665,rs1271308149
+55058665,rs771257845
+55058180,rs28362262
+55054771,rs11804420
+55052419,rs11800243
+55047345,rs763300221
+55056409,rs45598138
+55058217,rs72646516
+55047538,rs192280354
+55048924,rs115505813
+55060028,rs1046393459
+55061326,rs370894526
+55050834,rs10888898
+55056749,rs962045749
+55060218,rs182246133
+55046691,rs72646505
+55059725,rs45439391
+55057122,rs28362258
+55051009,rs536492847
+55047350,rs557880940
+55056230,rs546221307
+55056869,rs191259798
+55057098,rs185840193
+55058878,rs75175498
+55057000,rs11587071
+55058538,rs146960060
+55058665,rs1307336808
+55056233,rs767853260
+55058665,rs1169100027
+55059168,rs568052
+55056510,rs977518880
+55058665,rs754174667
+55057652,rs956593700
+55046722,rs753353734
+55058382,rs369118278
+55048477,rs533076442
+55056231,rs774346961
+55058105,rs
+
+2025-01-16 08:01:38 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:38 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:38 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:40 - snowflake.connector.cursor - INFO - Number of results in first chunk: 32
+2025-01-16 08:01:42 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:42 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:01:42 - root - INFO - SQL:
+SELECT t."start_position", f.value::STRING AS "alternate_allele"
+   FROM GNOMAD.GNOMAD."V3_GENOMES__CHR1" t,
+   LATERAL FLATTEN(input => t."alternate_bases") f
+   WHERE t."start_position" BETWEEN 55039447 AND 55064852
+   LIMIT 1000;
+Results:
+Too long, hard cut:
+start_position,alternate_allele
+55062761,"{""AC"":139447,""AC_afr"":38349,""AC_afr_female"":20687,""AC_afr_male"":17662,""AC_ami"":900,""AC_ami_female"":470,""AC_ami_male"":430,""AC_amr"":13543,""AC_amr_female"":5864,""AC_amr_male"":7679,""AC_asj"":3324,""AC_asj_female"":1762,""AC_asj_male"":1562,""AC_eas"":3134,""AC_eas_female"":1448,""AC_eas_male"":1686,""AC_female"":71759,""AC_fin"":10484,""AC_fin_female"":2506,""AC_fin_male"":7978,""AC_male"":67688,""AC_nfe"":64565,""AC_nfe_female"":37386,""AC_nfe_male"":27179,""AC_oth"":2105,""AC_oth_female"":1074,""AC_oth_male"":1031,""AC_raw"":139545,""AC_sas"":3043,""AC_sas_female"":562,""AC_sas_male"":2481,""AF"":9.732070000000000e-01,""AF_afr"":9.130710000000000e-01,""AF_afr_female"":9.120450000000000e-01,""AF_afr_male"":9.142770000000000e-01,""AF_ami"":1.000000000000000e+00,""AF_ami_female"":1.000000000000000e+00,""AF_ami_male"":1.000000000000000e+00,""AF_amr"":9.911450000000001e-01,""AF_amr_female"":9.922170000000000e-01,""AF_amr_male"":9.903280000000000e-01,""AF_asj"":1.000000000000000e+00,""AF_asj_female"":1.000000000000000e+00,""AF_asj_male"":1.000000000000000e+00,""AF_eas"":1.000000000000000e+00,""AF_eas_female"":1.000000000000000e+00,""AF_eas_male"":1.000000000000000e+00,""AF_female"":9.718700000000000e-01,""AF_fin"":1.000000000000000e+00,""AF_fin_female"":1.000000000000000e+00,""AF_fin_male"":1.000000000000000e+00,""AF_male"":9.746290000000000e-01,""AF_nfe"":9.997060000000000e-01,""AF_nfe_female"":9.996790000000000e-01,""AF_nfe_male"":9.997430000000000e-01,""AF_oth"":9.781600000000000e-01,""AF_oth_female"":9.781420000000000e-01,""AF_oth_male"":9.781780000000000e-01,""AF_raw"":9.731170000000000e-01,""AF_sas"":9.996710000000000e-01,""AF_sas_female"":1.000000000000000e+00,""AF_sas_male"":9.995970000000000e-01,""alt"":""C"",""faf95_afr"":9.054150000000000e-01,""faf95_amr"":9.771770000000000e-01,""faf95_eas"":9.708000000000000e-01,""faf95_nfe"":9.932420000000000e-01,""faf95_sas"":9.700510000000000e-01,""faf99_afr"":9.054150000000000e-01,""faf99_amr"":9.771770000000000e-01,""faf99_eas"":9.708000000000000e-01,""faf99_nfe"":9.932420000000000e-01,""faf99_sas"":9.700510000000000e-01,""n_alt_alleles"":1,""nhomalt"":67963,""nhomalt_afr"":17505,""nhomalt_afr_female"":9439,""nhomalt_afr_male"":8066,""nhomalt_ami"":450,""nhomalt_ami_female"":235,""nhomalt_ami_male"":215,""nhomalt_amr"":6711,""nhomalt_amr_female"":2909,""nhomalt_amr_male"":3802,""nhomalt_asj"":1662,""nhomalt_asj_female"":881,""nhomalt_asj_male"":781,""nhomalt_eas"":1567,""nhomalt_eas_female"":724,""nhomalt_eas_male"":843,""nhomalt_female"":34936,""nhomalt_fin"":5242,""nhomalt_fin_female"":1253,""nhomalt_fin_male"":3989,""nhomalt_male"":33027,""nhomalt_nfe"":32273,""nhomalt_nfe_female"":18687,""nhomalt_nfe_male"":13586,""nhomalt_oth"":1032,""nhomalt_oth_female"":527,""nhomalt_oth_male"":505,""nhomalt_raw"":68007,""nhomalt_sas"":1521,""nhomalt_sas_female"":281,""nhomalt_sas_male"":1240,""vep"":[{""BIOTYPE"":""protein_coding"",""Consequence"":""downstream_gene_variant"",""Feature"":""ENST00000294383"",""Feature_type"":""Transcript"",""Gene"":""ENSG00000162402"",""IMPACT"":""MODIFIER"",""SYMBOL"":""USP24"",""allele"":""C""},{""BIOTYPE"":""protein_coding"",""Consequence"":""intron_variant"",""Feature"":""ENST00000302118"",""Feature_type"":""Transcript"",""Gene"":""ENSG00000169174"",""IMPACT"":""MODIFIER"",""INTRON"":""11/11"",""SYMBOL"":""PCSK9"",""allele"":""C""},{""BIOTYPE"":""processed_transcript"",""Consequence"":""intron_variant&non_coding_transcript_variant"",""Feature"":""ENST00000490692"",""Feature_type"":""Transcript"",""Gene"":""ENSG00000169174"",""IMPACT"":""MODIFIER"",""INTRON"":""7/7"",""SYMBOL"":""PCSK9"",""allele"":""C""}]}"
+55063191,"{""AC"":50,""AC_afr"":1,""AC_afr_female"":1,""AC_afr_male"":0,""AC_ami"":0,""AC_ami_female"":0,""AC_ami_male"":0,""AC_amr"":1,""AC_amr_female"":0,""AC_amr_male"":1,""AC_asj"":23,""AC_asj_female"":10,""AC_asj_male"":13,""AC_eas"":0,""AC_eas_female"":0,""AC_eas_male"":0,""AC_female"":21,""AC_fin"":0,""AC_fin_female"":0,""AC_fin_male"":0,""AC_male"":29,""AC_nfe"":24,""AC_nfe_female"":9,""AC_nfe_male"":15,""AC_oth"":1,""AC_oth_female"":1,""AC_oth_male"":0,""AC_raw"":50,""AC_sas"":0,""AC_sas_female"":0,""AC_sas_male"":0,""AF"":3.495040000000000e-04,""AF_afr"":2.383790000000000e-05,""AF_afr_female"":4.414620000000000e-05,""AF_afr_male"":0.000000000000000e+00,""AF_ami"":0.000000000000000e+00,""AF_ami_female"":0.000000000000000e+00,""AF_ami_male"":0.000000000000000e+00,""AF_amr"":7.323859999999999e-05,""AF_amr_female"":0.000000000000000e+00,""AF_amr_male"":1.290990000000000e-04,""AF_asj"":6.927710000000000e-03,""AF_asj_female"":5.688280000000000e-03,""AF_asj_male"":8.322660000000001e-03,""AF_eas"":0.000000000000000e+00,""AF_eas_female"":0.000000000000000e+00,""AF_eas_male"":0.000000000000000e+00,""AF_female"":2.848380000000000e-04,""AF_fin"":0.000000000000000e+00,""AF_fin_female"":0.000000000000000e+00,""AF_fin_male"":0.000000000000000e+00,""AF_male"":4.182650000000000e-04
+
+2025-01-16 08:01:42 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:01:42 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:01:42 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:01:44 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 08:01:44 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:01:44 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session

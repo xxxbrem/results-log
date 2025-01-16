@@ -1,19 +1,26 @@
-WITH region_variants AS (
-  SELECT *
-  FROM GNOMAD.GNOMAD.V3_GENOMES__CHR1
-  WHERE "start_position" BETWEEN 55039447 AND 55064852
+WITH filtered_variants AS (
+    SELECT *
+    FROM GNOMAD.GNOMAD.V3_GENOMES__CHR1
+    WHERE "start_position" >= 55039447 AND "end_position" <= 55064852
+),
+number_of_variants AS (
+    SELECT COUNT(DISTINCT "start_position", "reference_bases", ab.value) AS num_variants
+    FROM filtered_variants
+    , LATERAL FLATTEN(input => "alternate_bases") ab
+),
+allele_counts AS (
+    SELECT
+        "AN",
+        TRY_TO_NUMBER(ab.value:"AC"::STRING) AS AC,
+        vep_entry.value:"SYMBOL"::STRING AS gene_symbol
+    FROM filtered_variants
+    , LATERAL FLATTEN(input => "alternate_bases") ab
+    , LATERAL FLATTEN(input => ab.value:"vep") vep_entry
 )
-
 SELECT
-  (SELECT COUNT(*) FROM region_variants) AS "number_of_variants",
-  (SELECT SUM(CAST(alt.value:"AC" AS INT))
-     FROM region_variants rv1,
-     LATERAL FLATTEN(input => rv1."alternate_bases") alt) AS "total_allele_count",
-  (SELECT SUM(rv2."AN") FROM region_variants rv2) AS "total_number_of_alleles",
-  ROUND((55064852 - 55039447 + 1)::FLOAT / (SELECT COUNT(*) FROM region_variants), 4) AS "density_of_mutations",
-  (SELECT LISTAGG(DISTINCT vep.value:"SYMBOL"::STRING, '; ') FROM
-     region_variants rv3,
-     LATERAL FLATTEN(input => rv3."alternate_bases") alt,
-     LATERAL FLATTEN(input => alt.value:"vep") vep
-   WHERE vep.value:"SYMBOL" IS NOT NULL AND vep.value:"SYMBOL"::STRING != '') AS "distinct_gene_symbols"
-;
+    (SELECT num_variants FROM number_of_variants) AS "Number_of_variants",
+    SUM(allele_counts.AC) AS "Total_allele_count",
+    SUM(allele_counts."AN") AS "Total_number_of_alleles",
+    ROUND(((55064852 - 55039447 + 1)::FLOAT) / (SELECT num_variants FROM number_of_variants), 4) AS "Density_of_mutations",
+    ARRAY_AGG(DISTINCT allele_counts.gene_symbol) AS "Distinct_gene_symbols"
+FROM allele_counts;

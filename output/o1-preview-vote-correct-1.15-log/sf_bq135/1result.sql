@@ -1,12 +1,16 @@
 SELECT
-  TO_DATE(DATEADD('second', FLOOR("block_timestamp" / 1e6), TIMESTAMP '1970-01-01')) AS "date",
-  ROUND(SUM("amount") / 1e12, 4) AS "total_transaction_amount"
+    DATE(TO_TIMESTAMP_LTZ("block_timestamp" / 1000000)) AS "date",
+    ROUND(SUM("amount"), 4) AS "total_transaction_amount"
 FROM
-  "CRYPTO"."CRYPTO_ZILLIQA"."TRANSACTIONS"
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
 WHERE
-  TO_DATE(DATEADD('second', FLOOR("block_timestamp" / 1e6), TIMESTAMP '1970-01-01')) < '2022-01-01'
+    "block_timestamp" < 1640995200000000
+    AND "accepted" = TRUE
+    AND "success" = TRUE
+    AND "amount" IS NOT NULL
+    AND "amount" > 0
 GROUP BY
-  "date"
+    "date"
 ORDER BY
-  "total_transaction_amount" DESC NULLS LAST
+    "total_transaction_amount" DESC NULLS LAST
 LIMIT 1;

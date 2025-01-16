@@ -1,42 +1,36 @@
-WITH
-variants AS (
-    SELECT t.*
-    FROM GNOMAD.GNOMAD.V3_GENOMES__CHR1 t
-    WHERE t."start_position" BETWEEN 55039447 AND 55064852
+WITH variants_in_region AS (
+  SELECT *
+  FROM GNOMAD.GNOMAD.V3_GENOMES__CHR1
+  WHERE "reference_name" = 'chr1'
+    AND "start_position" BETWEEN 55039447 AND 55064852
 ),
-number_of_variants AS (
-    SELECT COUNT(*) AS number_of_variants FROM variants
+variant_counts AS (
+  SELECT
+    COUNT(*) AS num_variants,
+    SUM("AN") AS total_number_of_alleles
+  FROM variants_in_region
 ),
-total_number_of_alleles AS (
-    SELECT SUM("AN") AS total_number_of_alleles FROM variants
+alternate_alleles AS (
+  SELECT
+    t."start_position",
+    ab.value::VARIANT AS alt_allele
+  FROM variants_in_region t,
+       LATERAL FLATTEN(input => t."alternate_bases") ab
 ),
-total_allele_count AS (
-    SELECT SUM(ab.value:"AC"::INT) AS total_allele_count
-    FROM variants v
-    , LATERAL FLATTEN(INPUT => v."alternate_bases") ab
+allele_counts AS (
+  SELECT SUM(alt_allele:"AC"::INT) AS total_allele_count
+  FROM alternate_alleles
 ),
-gene_symbols AS (
-    SELECT DISTINCT vep.value:"SYMBOL"::STRING AS gene_symbol
-    FROM variants v
-    , LATERAL FLATTEN(INPUT => v."alternate_bases") ab
-    , LATERAL FLATTEN(INPUT => ab.value:"vep") vep
-    WHERE vep.value:"SYMBOL" IS NOT NULL
-),
-aggregated_gene_symbols AS (
-    SELECT LISTAGG(gene_symbol, ', ') AS distinct_gene_symbols FROM gene_symbols
-),
-density_of_mutations AS (
-    SELECT ROUND((55064852 - 55039447) / number_of_variants::FLOAT, 4) AS density_of_mutations
-    FROM number_of_variants
+vep_annotations AS (
+  SELECT DISTINCT ve.value:"SYMBOL"::STRING AS gene_symbol
+  FROM alternate_alleles aa,
+       LATERAL FLATTEN(input => aa.alt_allele:"vep") ve
+  WHERE ve.value:"SYMBOL" IS NOT NULL
 )
 SELECT
-    nv.number_of_variants,
-    ta.total_allele_count,
-    tna.total_number_of_alleles,
-    ags.distinct_gene_symbols,
-    dm.density_of_mutations
-FROM number_of_variants nv
-CROSS JOIN total_allele_count ta
-CROSS JOIN total_number_of_alleles tna
-CROSS JOIN aggregated_gene_symbols ags
-CROSS JOIN density_of_mutations dm;
+  (SELECT num_variants FROM variant_counts) AS "number_of_variants",
+  (SELECT total_allele_count FROM allele_counts) AS "total_allele_count",
+  (SELECT total_number_of_alleles FROM variant_counts) AS "total_number_of_alleles",
+  ROUND((55064852 - 55039447 + 1)::FLOAT / (SELECT num_variants FROM variant_counts), 4) AS "density_of_mutations",
+  ARRAY_AGG(DISTINCT gene_symbol) AS "distinct_gene_symbols"
+FROM vep_annotations;

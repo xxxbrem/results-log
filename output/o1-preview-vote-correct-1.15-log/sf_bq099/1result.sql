@@ -1,138 +1,117 @@
-WITH cpc_filtered AS (
+WITH base_data AS (
     SELECT
-        t."publication_number",
-        t."filing_date",
-        t."country_code",
-        t."assignee_harmonized"
+        a.value::VARIANT:"name"::STRING AS "assignee_name",
+        TO_CHAR(TO_DATE(t."filing_date"::VARCHAR, 'YYYYMMDD'), 'YYYY') AS "filing_year",
+        t."application_number" AS "application_number",
+        t."country_code" AS "country_code"
     FROM
-        "PATENTS"."PATENTS"."PUBLICATIONS" t,
-        LATERAL FLATTEN(input => t."cpc") f
+        PATENTS.PATENTS.PUBLICATIONS t,
+        LATERAL FLATTEN(input => t."cpc") c,
+        LATERAL FLATTEN(input => t."assignee_harmonized") a
     WHERE
-        LEFT(f.value:"code"::STRING, 5) = 'A01B3'
+        SUBSTRING(c.value::VARIANT:"code"::STRING, 1, 5) = 'A01B3'
+        AND TRY_TO_DATE(t."filing_date"::VARCHAR, 'YYYYMMDD') IS NOT NULL
+        AND a.value::VARIANT:"name"::STRING IS NOT NULL
 ),
-assignees AS (
-    SELECT
-        c."publication_number",
-        c."filing_date",
-        c."country_code",
-        h.value:"name"::STRING AS "assignee_name"
-    FROM
-        cpc_filtered c,
-        LATERAL FLATTEN(input => c."assignee_harmonized") h
-),
-top_assignees AS (
+total_apps_per_assignee AS (
     SELECT
         "assignee_name",
-        COUNT(DISTINCT "publication_number") AS "total_applications"
+        COUNT(DISTINCT "application_number") AS "total_number_of_applications"
     FROM
-        assignees
+        base_data
     GROUP BY
         "assignee_name"
-    ORDER BY
-        "total_applications" DESC NULLS LAST
-    LIMIT 3
 ),
-assignee_year_counts AS (
+top_3_assignees AS (
     SELECT
-        a."assignee_name",
-        EXTRACT(year FROM CASE
-            WHEN a."filing_date" >= 1e15 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000000)
-            WHEN a."filing_date" >= 1e12 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000)
-            ELSE TO_TIMESTAMP_NTZ(a."filing_date")
-        END) AS "filing_year",
-        COUNT(DISTINCT a."publication_number") AS "applications_in_that_year"
-    FROM
-        assignees a
+        "assignee_name",
+        "total_number_of_applications"
+    FROM (
+        SELECT
+            "assignee_name",
+            "total_number_of_applications",
+            ROW_NUMBER() OVER (ORDER BY "total_number_of_applications" DESC NULLS LAST) AS rn
+        FROM
+            total_apps_per_assignee
+    )
     WHERE
-        a."assignee_name" IN (SELECT "assignee_name" FROM top_assignees)
-        AND a."filing_date" IS NOT NULL
-        AND a."filing_date" > 0
+        rn <= 3
+),
+apps_per_assignee_year AS (
+    SELECT
+        "assignee_name",
+        "filing_year",
+        COUNT(DISTINCT "application_number") AS "number_of_applications_in_that_year"
+    FROM
+        base_data
+    WHERE
+        "assignee_name" IN (SELECT "assignee_name" FROM top_3_assignees)
     GROUP BY
-        a."assignee_name",
-        EXTRACT(year FROM CASE
-            WHEN a."filing_date" >= 1e15 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000000)
-            WHEN a."filing_date" >= 1e12 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000)
-            ELSE TO_TIMESTAMP_NTZ(a."filing_date")
-        END)
+        "assignee_name", "filing_year"
 ),
-assignee_max_year AS (
+top_year_per_assignee AS (
     SELECT
-        ayc."assignee_name",
-        ayc."filing_year",
-        ayc."applications_in_that_year",
-        ROW_NUMBER() OVER (PARTITION BY ayc."assignee_name" ORDER BY ayc."applications_in_that_year" DESC, ayc."filing_year" DESC NULLS LAST) AS rn
-    FROM
-        assignee_year_counts ayc
-),
-assignee_year_country_counts AS (
-    SELECT
-        a."assignee_name",
-        EXTRACT(year FROM CASE
-            WHEN a."filing_date" >= 1e15 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000000)
-            WHEN a."filing_date" >= 1e12 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000)
-            ELSE TO_TIMESTAMP_NTZ(a."filing_date")
-        END) AS "filing_year",
-        a."country_code",
-        COUNT(DISTINCT a."publication_number") AS "applications_in_year_country"
-    FROM
-        assignees a
+        "assignee_name",
+        "filing_year" AS "year_with_most_applications",
+        "number_of_applications_in_that_year"
+    FROM (
+        SELECT
+            "assignee_name",
+            "filing_year",
+            "number_of_applications_in_that_year",
+            ROW_NUMBER() OVER (PARTITION BY "assignee_name" ORDER BY "number_of_applications_in_that_year" DESC NULLS LAST, "filing_year") AS rn
+        FROM
+            apps_per_assignee_year
+    )
     WHERE
-        a."assignee_name" IN (SELECT "assignee_name" FROM top_assignees)
-        AND a."filing_date" IS NOT NULL
-        AND a."filing_date" > 0
-        AND a."country_code" IS NOT NULL
-        AND a."country_code" != ''
+        rn = 1
+),
+data_for_top_years AS (
+    SELECT
+        bd."assignee_name",
+        bd."filing_year",
+        bd."country_code",
+        bd."application_number"
+    FROM
+        base_data bd
+        INNER JOIN top_year_per_assignee ty
+            ON bd."assignee_name" = ty."assignee_name"
+            AND bd."filing_year" = ty."year_with_most_applications"
+),
+apps_per_country_code AS (
+    SELECT
+        "assignee_name",
+        "country_code",
+        COUNT(DISTINCT "application_number") AS "applications_in_country"
+    FROM
+        data_for_top_years
     GROUP BY
-        a."assignee_name",
-        EXTRACT(year FROM CASE
-            WHEN a."filing_date" >= 1e15 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000000)
-            WHEN a."filing_date" >= 1e12 THEN TO_TIMESTAMP_NTZ(a."filing_date" / 1000)
-            ELSE TO_TIMESTAMP_NTZ(a."filing_date")
-        END),
-        a."country_code"
+        "assignee_name", "country_code"
 ),
-assignee_top_country AS (
+top_country_per_assignee AS (
     SELECT
-        aycc."assignee_name",
-        aycc."filing_year",
-        aycc."country_code" AS "top_country_code",
-        aycc."applications_in_year_country",
-        ROW_NUMBER() OVER (PARTITION BY aycc."assignee_name", aycc."filing_year" ORDER BY aycc."applications_in_year_country" DESC NULLS LAST) AS rn
-    FROM
-        assignee_year_country_counts aycc
-),
-assignee_final AS (
-    SELECT
-        am."assignee_name",
-        am."filing_year",
-        am."applications_in_that_year",
-        atc."top_country_code"
-    FROM
-        assignee_max_year am
-    JOIN
-        assignee_top_country atc ON am."assignee_name" = atc."assignee_name" AND am."filing_year" = atc."filing_year" AND atc.rn = 1
+        "assignee_name",
+        "country_code" AS "country_code_with_most_applications_in_that_year"
+    FROM (
+        SELECT
+            "assignee_name",
+            "country_code",
+            ROW_NUMBER() OVER (PARTITION BY "assignee_name" ORDER BY "applications_in_country" DESC NULLS LAST) AS rn
+        FROM
+            apps_per_country_code
+    )
     WHERE
-        am.rn = 1
-),
-final_result AS (
-    SELECT
-        ta."assignee_name",
-        ta."total_applications",
-        af."filing_year" AS "year_with_most_applications",
-        af."applications_in_that_year",
-        af."top_country_code"
-    FROM
-        top_assignees ta
-    JOIN
-        assignee_final af ON ta."assignee_name" = af."assignee_name"
-    ORDER BY
-        ta."total_applications" DESC NULLS LAST
+        rn = 1
 )
 SELECT
-    "assignee_name",
-    "total_applications",
-    "year_with_most_applications",
-    "applications_in_that_year",
-    "top_country_code"
+    t3a."assignee_name",
+    t3a."total_number_of_applications",
+    typa."year_with_most_applications",
+    typa."number_of_applications_in_that_year",
+    tcpa."country_code_with_most_applications_in_that_year"
 FROM
-    final_result;
+    top_3_assignees t3a
+    INNER JOIN top_year_per_assignee typa ON t3a."assignee_name" = typa."assignee_name"
+    INNER JOIN top_country_per_assignee tcpa ON t3a."assignee_name" = tcpa."assignee_name"
+ORDER BY
+    t3a."total_number_of_applications" DESC NULLS LAST;

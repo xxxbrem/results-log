@@ -1,104 +1,112 @@
-WITH base_data AS (
+WITH cpc_assignee_data AS (
     SELECT
         t."publication_number",
-        t."publication_date",
+        CASE 
+            WHEN LENGTH(t."publication_date"::VARCHAR) >= 8 THEN
+                TO_NUMBER(SUBSTR(t."publication_date"::VARCHAR, 1, 4)) 
+            ELSE NULL 
+        END AS "pub_year",
         t."country_code",
-        f_assignee.value:"name"::STRING AS "assignee_name",
-        f_cpc.value:"code"::STRING AS "cpc_code"
-    FROM
-        PATENTS.PATENTS.PUBLICATIONS t,
-        LATERAL FLATTEN(input => t."assignee_harmonized") f_assignee,
-        LATERAL FLATTEN(input => t."cpc") f_cpc
-    WHERE
+        f_cpc.value:"code"::STRING AS "cpc_code",
+        CASE 
+            WHEN TYPEOF(f_assignee.value) = 'OBJECT' THEN f_assignee.value:"name"::STRING
+            ELSE f_assignee.value::STRING
+        END AS "assignee_name"
+    FROM 
+        "PATENTS"."PATENTS"."PUBLICATIONS" t,
+        LATERAL FLATTEN(input => t."cpc") AS f_cpc,
+        LATERAL FLATTEN(input => t."assignee") AS f_assignee
+    WHERE 
         f_cpc.value:"code"::STRING LIKE 'A01B3%'
-        AND f_assignee.value:"name"::STRING IS NOT NULL
-),
-assignee_total AS (
-    SELECT
-        "assignee_name",
-        COUNT(DISTINCT "publication_number") AS "total_applications"
-    FROM
-        base_data
-    GROUP BY
-        "assignee_name"
+        AND (
+            CASE 
+                WHEN TYPEOF(f_assignee.value) = 'OBJECT' THEN f_assignee.value:"name"::STRING
+                ELSE f_assignee.value::STRING
+            END
+        ) IS NOT NULL
+        AND t."publication_date" IS NOT NULL
 ),
 top_assignees AS (
     SELECT
         "assignee_name",
-        "total_applications"
+        COUNT(DISTINCT "publication_number") AS "total_applications"
     FROM
-        assignee_total
+        cpc_assignee_data
+    GROUP BY
+        "assignee_name"
     ORDER BY
         "total_applications" DESC NULLS LAST
     LIMIT 3
 ),
-assignee_yearly AS (
+assignee_peak_years AS (
     SELECT
         "assignee_name",
-        EXTRACT(year FROM 
-            CASE 
-                WHEN "publication_date" >= 1e15 THEN TO_TIMESTAMP_NTZ("publication_date"/1000000)
-                WHEN "publication_date" >= 1e12 THEN TO_TIMESTAMP_NTZ("publication_date"/1000)
-                ELSE TO_TIMESTAMP_NTZ("publication_date")
-            END
-        ) AS "year",
-        COUNT(DISTINCT "publication_number") AS "applications_in_year"
+        "pub_year",
+        COUNT(DISTINCT "publication_number") AS "applications_in_year",
+        ROW_NUMBER() OVER (
+            PARTITION BY "assignee_name" 
+            ORDER BY COUNT(DISTINCT "publication_number") DESC NULLS LAST, "pub_year" ASC
+        ) AS rn
     FROM
-        base_data
+        cpc_assignee_data
     WHERE
         "assignee_name" IN (SELECT "assignee_name" FROM top_assignees)
+        AND "pub_year" IS NOT NULL
     GROUP BY
-        "assignee_name", "year"
+        "assignee_name", "pub_year"
 ),
 assignee_peak_year AS (
     SELECT
         "assignee_name",
-        "year" AS "year_with_most_applications",
-        "applications_in_year",
-        ROW_NUMBER() OVER (PARTITION BY "assignee_name" ORDER BY "applications_in_year" DESC, "year" ASC) AS rn
+        "pub_year" AS "peak_year",
+        "applications_in_year"
     FROM
-        assignee_yearly
+        assignee_peak_years
     WHERE
-        "year" IS NOT NULL
+        rn = 1
 ),
-assignee_country_in_peak_year AS (
+assignee_top_country AS (
     SELECT
-        bd."assignee_name",
-        bd."country_code",
-        COUNT(DISTINCT bd."publication_number") AS "country_applications"
+        apy."assignee_name",
+        apy."peak_year",
+        cd."country_code",
+        COUNT(DISTINCT cd."publication_number") AS "applications_in_country",
+        ROW_NUMBER() OVER (
+            PARTITION BY apy."assignee_name", apy."peak_year" 
+            ORDER BY COUNT(DISTINCT cd."publication_number") DESC NULLS LAST
+        ) AS rn
     FROM
-        base_data bd
-    JOIN assignee_peak_year py ON bd."assignee_name" = py."assignee_name" AND py.rn = 1
+        cpc_assignee_data cd
+        INNER JOIN assignee_peak_year apy 
+            ON cd."assignee_name" = apy."assignee_name" 
+            AND cd."pub_year" = apy."peak_year"
     WHERE
-        EXTRACT(year FROM 
-            CASE 
-                WHEN bd."publication_date" >= 1e15 THEN TO_TIMESTAMP_NTZ(bd."publication_date"/1000000)
-                WHEN bd."publication_date" >= 1e12 THEN TO_TIMESTAMP_NTZ(bd."publication_date"/1000)
-                ELSE TO_TIMESTAMP_NTZ(bd."publication_date")
-            END
-        ) = py."year_with_most_applications"
+        cd."country_code" IS NOT NULL
     GROUP BY
-        bd."assignee_name", bd."country_code"
+        apy."assignee_name", apy."peak_year", cd."country_code"
 ),
-assignee_peak_country AS (
+assignee_top_country_code AS (
     SELECT
         "assignee_name",
-        "country_code",
-        ROW_NUMBER() OVER (PARTITION BY "assignee_name" ORDER BY "country_applications" DESC NULLS LAST) AS rn
+        "peak_year",
+        "country_code" AS "top_country_code"
     FROM
-        assignee_country_in_peak_year
+        assignee_top_country
+    WHERE 
+        rn = 1
 )
 SELECT
     ta."assignee_name",
     ta."total_applications",
-    py."year_with_most_applications",
-    py."applications_in_year",
-    pc."country_code"
+    apy."peak_year",
+    apy."applications_in_year" AS "applications_in_peak_year",
+    atc."top_country_code"
 FROM
     top_assignees ta
-JOIN
-    assignee_peak_year py ON ta."assignee_name" = py."assignee_name" AND py.rn = 1
-JOIN
-    assignee_peak_country pc ON ta."assignee_name" = pc."assignee_name" AND pc.rn = 1
+    INNER JOIN assignee_peak_year apy 
+        ON ta."assignee_name" = apy."assignee_name"
+    INNER JOIN assignee_top_country_code atc 
+        ON ta."assignee_name" = atc."assignee_name" 
+        AND apy."peak_year" = atc."peak_year"
 ORDER BY
     ta."total_applications" DESC NULLS LAST;
