@@ -1,0 +1,83 @@
+Both SQL queries aim to calculate the number of distinct active and closed bike share stations for the years 2013 and 2014 by joining the trips and stations tables.
+
+**Comparison of the SQL Queries:**
+
+---
+
+**1result.sql**:
+
+```sql
+SELECT
+    EXTRACT(YEAR FROM TO_TIMESTAMP_NTZ(t."start_time" / 1e6)) AS "year",
+    COUNT(DISTINCT CASE WHEN s."status" = 'active' THEN t."start_station_id" END) AS "number_active",
+    COUNT(DISTINCT CASE WHEN s."status" = 'closed' THEN t."start_station_id" END) AS "number_closed"
+FROM
+    AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_TRIPS t
+JOIN
+    AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_STATIONS s
+    ON t."start_station_id" = s."station_id"
+WHERE
+    EXTRACT(YEAR FROM TO_TIMESTAMP_NTZ(t."start_time" / 1e6)) IN (2013, 2014)
+GROUP BY
+    "year"
+ORDER BY
+    "year";
+```
+
+- **Approach**: Directly joins the `BIKESHARE_TRIPS` and `BIKESHARE_STATIONS` tables.
+- **Counts**: Uses `COUNT(DISTINCT ...)` on `t."start_station_id"` based on the station's status.
+- **Result**:
+
+  ```
+  year,number_active,number_closed
+  2013,10,1
+  2014,38,9
+  ```
+
+---
+
+**2result.sql**:
+
+```sql
+SELECT
+    year,
+    COUNT(DISTINCT CASE WHEN s."status" = 'active' THEN s."station_id" END) AS number_active,
+    COUNT(DISTINCT CASE WHEN s."status" = 'closed' THEN s."station_id" END) AS number_closed
+FROM (
+    SELECT
+        EXTRACT(YEAR FROM TO_TIMESTAMP_NTZ(t."start_time" / 1e6)) AS year,
+        t."start_station_id" AS station_id
+    FROM AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_TRIPS t
+    WHERE EXTRACT(YEAR FROM TO_TIMESTAMP_NTZ(t."start_time" / 1e6)) IN (2013, 2014)
+) AS trips_by_year
+JOIN AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_STATIONS s
+    ON trips_by_year.station_id = s."station_id"
+GROUP BY year
+ORDER BY year;
+```
+
+- **Approach**: Creates a subquery (`trips_by_year`) to extract the year and station ID before joining.
+- **Counts**: Uses `COUNT(DISTINCT ...)` on `s."station_id"` based on the station's status.
+- **Result**:
+
+  ```
+  year,number_active,number_closed
+  2013,10,1
+  2014,38,9
+  ```
+
+---
+
+**Reason for Choosing the Correct SQL:**
+
+Both SQL queries produce the same correct results. However, **`1result.sql`** is the preferred choice because:
+
+- **Simplicity**: It directly joins the trips and stations tables without unnecessary subqueries, making it more straightforward and easier to understand.
+- **Efficiency**: Eliminating the subquery can lead to better query performance due to reduced complexity.
+- **Clarity**: Counting directly on `t."start_station_id"` aligns with the goal of finding the number of stations based on trip data.
+
+**Output:**
+
+```plain
+1result.sql
+```
