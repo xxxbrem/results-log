@@ -1,55 +1,67 @@
-WITH expr AS (
-  SELECT "sample_barcode", LOG(10, "normalized_count") AS log_expression
-  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
-  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
-),
-mut AS (
-  SELECT DISTINCT "sample_barcode_tumor" AS "sample_barcode", "Variant_Classification"
-  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_MC3"
-  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
-),
-expr_mut AS (
-  SELECT e."sample_barcode", e.log_expression,
-    COALESCE(m."Variant_Classification", 'No Mutation') AS "Mutation_Type"
-  FROM expr e
-  LEFT JOIN mut m ON e."sample_barcode" = m."sample_barcode"
+WITH expression_data AS (
+  SELECT 
+    expr."sample_barcode",
+    LOG(10, expr."normalized_count") AS "log_expression",
+    COALESCE(sm."mutation_type", 'Wildtype') AS "mutation_type"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM" AS expr
+  LEFT JOIN (
+    SELECT 
+      "sample_barcode_tumor",
+      CASE 
+        WHEN MIN(CASE WHEN "Variant_Classification" = 'Missense_Mutation' THEN 1 ELSE 2 END) = 1 THEN 'Missense_Mutation'
+        ELSE 'Other_Mutation'
+      END AS "mutation_type"
+    FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_MC3"
+    WHERE
+      "project_short_name" = 'TCGA-BRCA' AND 
+      "Hugo_Symbol" = 'TP53'
+    GROUP BY "sample_barcode_tumor"
+  ) AS sm ON expr."sample_barcode" = sm."sample_barcode_tumor"
+  WHERE
+    expr."project_short_name" = 'TCGA-BRCA' AND 
+    expr."HGNC_gene_symbol" = 'TP53' AND 
+    expr."normalized_count" > 0
 ),
 grand_mean AS (
-  SELECT AVG(log_expression) AS X_bar, COUNT(*) AS N
-  FROM expr_mut
+  SELECT AVG("log_expression") AS "grand_mean" FROM expression_data
 ),
-group_stats AS (
-  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG(log_expression) AS mean_j
-  FROM expr_mut
-  GROUP BY "Mutation_Type"
+group_means AS (
+  SELECT "mutation_type", AVG("log_expression") AS "group_mean", COUNT(*) AS "n_j"
+  FROM expression_data
+  GROUP BY "mutation_type"
 ),
-SSB AS (
-  SELECT SUM(gs.n_j * POWER(gs.mean_j - gm.X_bar,2)) AS SSB_total
-  FROM group_stats gs, grand_mean gm
+ssb AS (
+  SELECT SUM(group_means."n_j" * POWER(group_means."group_mean" - grand_mean."grand_mean", 2)) AS "ssb"
+  FROM group_means, grand_mean
 ),
-SSW AS (
-  SELECT SUM(POWER(em.log_expression - gs.mean_j,2)) AS SSW_total
-  FROM expr_mut em
-  JOIN group_stats gs ON em."Mutation_Type" = gs."Mutation_Type"
+ssw AS (
+  SELECT SUM(POWER(expression_data."log_expression" - group_means."group_mean", 2)) AS "ssw"
+  FROM expression_data
+  JOIN group_means ON expression_data."mutation_type" = group_means."mutation_type"
 ),
-df AS (
+degrees_of_freedom AS (
   SELECT 
-    (SELECT COUNT(*) FROM group_stats) - 1 AS df_between,
-    (SELECT N FROM grand_mean) - (SELECT COUNT(*) FROM group_stats) AS df_within
+    (SELECT COUNT(DISTINCT "mutation_type") FROM expression_data) - 1 AS "df_between",
+    (SELECT COUNT(*) FROM expression_data) - (SELECT COUNT(DISTINCT "mutation_type") FROM expression_data) AS "df_within"
 ),
-MS AS (
-  SELECT 
-    (SELECT SSB_total FROM SSB) / df.df_between AS MSB_value,
-    (SELECT SSW_total FROM SSW) / df.df_within AS MSW_value
-  FROM df
+mean_squares AS (
+  SELECT
+    ssb."ssb" / degrees_of_freedom."df_between" AS "mean_square_between_groups",
+    ssw."ssw" / degrees_of_freedom."df_within" AS "mean_square_within_groups"
+  FROM ssb, ssw, degrees_of_freedom
 ),
 F_statistic AS (
-  SELECT MSB_value / MSW_value AS F_value
-  FROM MS
+  SELECT "mean_square_between_groups" / "mean_square_within_groups" AS "F_statistic"
+  FROM mean_squares
+),
+final AS (
+  SELECT
+    (SELECT COUNT(*) FROM expression_data) AS "total_number_of_samples",
+    (SELECT COUNT(DISTINCT "mutation_type") FROM expression_data) AS "number_of_mutation_types",
+    ROUND(mean_squares."mean_square_between_groups", 4) AS "mean_square_between_groups",
+    ROUND(mean_squares."mean_square_within_groups", 4) AS "mean_square_within_groups",
+    ROUND(F_statistic."F_statistic", 4) AS "F_statistic"
+  FROM mean_squares, F_statistic
 )
-SELECT
-  (SELECT N FROM grand_mean) AS total_samples,
-  (SELECT COUNT(*) FROM group_stats) AS number_of_mutation_types,
-  ROUND((SELECT MSB_value FROM MS), 4) AS mean_square_between_groups,
-  ROUND((SELECT MSW_value FROM MS), 4) AS mean_square_within_groups,
-  ROUND((SELECT F_value FROM F_statistic), 4) AS F_statistic;
+
+SELECT * FROM final;

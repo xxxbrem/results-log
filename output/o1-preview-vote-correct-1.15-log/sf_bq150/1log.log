@@ -1079,3 +1079,3064 @@ TCGA-A7-A0CE-01A,Missense_Mutation,17,7578467,7578467
 2025-01-16 08:01:29 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
 2025-01-16 08:01:30 - snowflake.connector.connection - INFO - closed
 2025-01-16 08:01:30 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:02:02 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:02:02 - root - INFO - **Explanation:**
+
+The error in your SQL query is due to a mismatched quotation mark at the end of your `WHERE` clause. Specifically, there's an extra double quote (`"`) after `'TP53'`, which is causing the SQL parser to throw a syntax error.
+
+Here's the problematic part of your query:
+
+```sql
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53";
+```
+
+Notice that the string literal `'TP53'` starts with a single quote but is followed by a double quote at the end (`'TP53";`). This results in an unmatched quotation mark.
+
+**Correction:**
+
+To fix the syntax error, remove the extra double quote at the end of the string literal `'TP53'`. The corrected SQL query should be:
+
+```sql
+SELECT MIN("normalized_count") AS "min_expression",
+       MAX("normalized_count") AS "max_expression",
+       AVG("normalized_count") AS "avg_expression"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53';
+```
+
+**Note:** Ensure that all string literals are properly enclosed with single quotes (`'`), and all column and table names are enclosed with double quotes (`"`), if necessary.
+
+---
+
+**Next Steps:**
+
+With the corrected query, you should be able to retrieve the minimum, maximum, and average normalized counts for TP53 expression in TCGA-BRCA samples.
+
+**Example Result Format:**
+
+```csv
+min_expression,max_expression,avg_expression
+min_value:float > 0,max_value:float > 0,avg_value:float > 0
+```
+
+Since we don't have the actual data, the values are represented as placeholders indicating their type and that they are greater than zero.
+
+---
+
+**Proceeding with ANOVA Calculation:**
+
+Now that you have the range and average of the TP53 expression levels, you can proceed to calculate:
+
+1. **Total Number of Samples (`total_samples`)**:
+   - Count the number of unique samples with TP53 expression data in TCGA-BRCA.
+   - SQL Query:
+     ```sql
+     SELECT COUNT(DISTINCT "sample_barcode") AS "total_samples"
+     FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+     WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53';
+     ```
+   
+2. **Number of Mutation Types (`number_of_mutation_types`)**:
+   - Retrieve the number of distinct mutation types for TP53 in TCGA-BRCA samples.
+   - SQL Query:
+     ```sql
+     SELECT COUNT(DISTINCT "Variant_Classification") AS "number_of_mutation_types"
+     FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+     WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53';
+     ```
+   
+3. **Prepare Data for ANOVA**:
+   - Merge expression data with mutation types based on sample barcodes.
+   - Ensure each sample is uniquely assigned to a mutation type.
+
+4. **Calculate Mean Square Between Groups (`mean_square_between_groups`)**:
+   - Compute the variance of the group means from the overall mean, weighted by group sizes.
+   - Apply the ANOVA formulas as outlined in the detailed explanation.
+
+5. **Calculate Mean Square Within Groups (`mean_square_within_groups`)**:
+   - Compute the variance within each mutation type group.
+   - Sum the squared deviations of each sample from its group mean.
+
+6. **Calculate F-Statistic (`F_statistic`)**:
+   - Compute the F-statistic by dividing the mean square between groups by the mean square within groups.
+
+**Final Result Format:**
+
+```csv
+total_samples,number_of_mutation_types,mean_square_between_groups,mean_square_within_groups,F_statistic
+num_samples:int > 0,num_mutation_types:int > 0,msb:float ≥ 0,msw:float > 0,F_value:float ≥ 0
+```
+
+---
+
+**Summary:**
+
+By correcting the SQL syntax error and executing the queries, you'll obtain the necessary data to perform the ANOVA. This will allow you to assess whether different genetic variants affect the log₁₀-transformed TP53 expression levels in TCGA-BRCA samples.
+
+**Important Notes:**
+
+- Ensure that all data manipulations and calculations are performed carefully to maintain data integrity.
+- Check the assumptions of ANOVA (normality, independence, and homogeneity of variances) before interpreting the results.
+- Since exact numerical values cannot be provided without executing the queries on the actual database, placeholders are used to represent the expected types and conditions of the results.
+2025-01-16 08:02:02 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:02:02 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:02:02 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:02:04 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 08:02:04 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:02:04 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:02:04 - root - INFO - SQL:
+SELECT MIN("normalized_count") AS "min_expression",
+       MAX("normalized_count") AS "max_expression",
+       AVG("normalized_count") AS "avg_expression"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53';
+Results:
+min_expression,max_expression,avg_expression
+263.0962,4564.0903,1713.457719130435
+
+2025-01-16 08:02:04 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:02:04 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:02:04 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:02:06 - snowflake.connector.cursor - INFO - Number of results in first chunk: 115
+2025-01-16 08:02:06 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:02:06 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:02:06 - root - INFO - SQL:
+-- 8. List samples with positive TP53 expression levels.
+SELECT "sample_barcode", "normalized_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+LIMIT 1000;
+Results:
+sample_barcode,normalized_count
+TCGA-AQ-A54O-01A,2003.3278
+TCGA-A2-A0EU-01A,2222.2774
+TCGA-AC-A3QP-01A,1739.0141
+TCGA-BH-A18L-01A,792.4855
+TCGA-E2-A14W-01A,1472.9276
+TCGA-GI-A2C8-11A,329.3692
+TCGA-A7-A13G-11A,688.4913
+TCGA-A2-A0EQ-01A,2882.487
+TCGA-AO-A1KR-01A,3628.0936
+TCGA-E9-A1R0-01A,1223.3268
+TCGA-B6-A0WT-01A,1804.2262
+TCGA-BH-A0BG-01A,552.1771
+TCGA-EW-A1IW-01A,1299.5354
+TCGA-5L-AAT1-01A,1928.2804
+TCGA-AR-A24K-01A,338.0364
+TCGA-E2-A14Y-01A,1743.2504
+TCGA-E2-A14T-01A,1469.2433
+TCGA-A2-A0CS-01A,2787.725
+TCGA-AN-A04D-01A,1977.829
+TCGA-AO-A1KQ-01A,1553.848
+TCGA-D8-A1JK-01A,529.8392
+TCGA-A2-A0ET-01A,2358.6132
+TCGA-AR-A254-01A,556.2741
+TCGA-AR-A2LK-01A,2031.8008
+TCGA-OL-A5RU-01A,1374.514
+TCGA-A7-A13E-01A,1764.9194
+TCGA-BH-A1FU-11A,1787.6245
+TCGA-D8-A1XL-01A,2236.8523
+TCGA-AO-A03T-01A,1083.944
+TCGA-BH-A0BF-01A,2239.0446
+TCGA-BH-A0HQ-01A,2681.6954
+TCGA-A2-A04T-01A,4180.8224
+TCGA-AC-A3YI-01A,1801.7592
+TCGA-BH-A0HK-01A,1342.9926
+TCGA-BH-A1FG-11B,1618.3494
+TCGA-E2-A15C-01A,1850.0
+TCGA-E2-A1IK-01A,1590.0
+TCGA-BH-A0DS-01A,1157.9453
+TCGA-BH-A0BS-11A,2154.1492
+TCGA-BH-A0DQ-01A,1890.0695
+TCGA-OL-A66N-01A,1402.5825
+TCGA-BH-A18S-01A,636.8501
+TCGA-BH-A1F2-01A,2234.806
+TCGA-C8-A12L-01A,2922.4377
+TCGA-EW-A1OX-01A,1274.1592
+TCGA-BH-A5IZ-01A,2080.354
+TCGA-A8-A08C-01A,2960.0406
+TCGA-AQ-A0Y5-01A,1051.2753
+TCGA-BH-A0DL-01A,1879.8641
+TCGA-A2-A3KD-01A,956.1363
+TCGA-BH-A0DV-01A,1632.6166
+TCGA-BH-A1F5-01A,2109.0641
+TCGA-AC-A6IX-01A,1177.6502
+TCGA-BH-A1EY-01A,1489.1332
+TCGA-D8-A1X5-01A,1535.0715
+TCGA-A7-A0CE-01A,2880.2441
+TCGA-A8-A08S-01A,1662.2581
+TCGA-AC-A8OQ-01A,719.1437
+TCGA-AO-A0JI-01A,1476.3347
+TCGA-BH-A18G-01A,3366.25
+TCGA-BH-A1EO-01A,1638.8541
+TCGA-C8-A12K-01A,2466.6872
+TCGA-E2-A150-01A,374.7471
+TCGA-E2-A1LS-11A,650.7584
+TCGA-LL-A50Y-01A,1236.3452
+TCGA-OL-A66O-01A,1459.2976
+TCGA-AC-A2FB-11A,1560.8439
+TCGA-D8-A1XV-01A,1595.0541
+TCGA-EW-A424-01A,2572.8643
+TCGA-AC-A3YJ-01A,1711.1991
+TCGA-AR-A251-01A,4564.0903
+TCGA-E9-A1R5-01A,1776.4658
+TCGA-A2-A04P-01A,476.6598
+TCGA-AC-A3W7-01A,1379.982
+TCGA-D8-A1JP-01A,1411.6234
+TCGA-A2-A0EO-01A,1939.7418
+TCGA-AO-A03L-01A,765.6082
+TCGA-D8-A1J9-01A,1280.7431
+TCGA-BH-A0BS-01A,1389.5509
+TCGA-AR-A0TX-01A,1385.4484
+TCGA-A2-A0CV-01A,1587.0753
+TCGA-E2-A105-01A,1510.5769
+TCGA-A7-A26I-01A,2102.3513
+TCGA-OL-A5DA-01A,1061.8991
+TCGA-AO-A03P-01A,3012.9393
+TCGA-AO-A124-01A,273.4235
+TCGA-C8-A1HL-01A,1906.0403
+TCGA-E9-A1RB-11A,1261.8099
+TCGA-D8-A1XZ-01A,432.8567
+TCGA-E2-A10F-01A,1601.3078
+TCGA-A8-A09V-01A,1827.6052
+TCGA-BH-A0EE-01A,263.0962
+TCGA-A2-A0D2-01A,653.114
+TCGA-A2-A0SV-01A,2110.9426
+TCGA-A7-A0DC-01A,2147.6637
+TCGA-JL-A3YX-01A,3657.4791
+TCGA-A2-A3XU-01A,4229.8422
+TCGA-AR-A5QN-01A,858.2248
+TCGA-D8-A1XO-01A,1838.7119
+TCGA-E9-A1NI-01A,2201.2513
+TCGA-EW-A1J3-01A,1314.1029
+TCGA-A2-A0T5-01A,3514.5436
+TCGA-A2-A3XZ-01A,1280.8408
+TCGA-AO-A03N-01B,2850.2754
+TCGA-AQ-A1H3-01A,1273.2084
+TCGA-AR-A0U4-01A,2913.7753
+TCGA-AR-A1AQ-01A,963.3264
+TCGA-C8-A27A-01A,2185.1498
+TCGA-E2-A10A-01A,2695.2387
+TCGA-A2-A0YC-01A,1030.7517
+TCGA-E9-A1RH-01A,873.2059
+TCGA-A2-A25D-01A,1155.3694
+TCGA-A8-A06O-01A,1383.5302
+TCGA-BH-A1FB-01A,1794.2471
+TCGA-E2-A14O-01A,1531.8637
+
+2025-01-16 08:02:06 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:02:06 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:02:06 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:02:07 - snowflake.connector.cursor - INFO - Number of results in first chunk: 5
+2025-01-16 08:02:07 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:02:08 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:02:08 - root - INFO - SQL:
+-- 9. Retrieve mutation types and counts for TP53 in TCGA-BRCA samples.
+SELECT "Variant_Classification", COUNT(*) AS "mutation_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+GROUP BY "Variant_Classification"
+LIMIT 1000;
+Results:
+Variant_Classification,mutation_count
+Splice_Site,5
+Frame_Shift_Ins,1
+Nonsense_Mutation,2
+Missense_Mutation,31
+Frame_Shift_Del,2
+
+2025-01-16 08:02:08 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:02:08 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:02:08 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:02:09 - snowflake.connector.cursor - INFO - Number of results in first chunk: 16
+2025-01-16 08:02:09 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:02:09 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:02:10 - root - INFO - SQL:
+-- 10. List all tumor sample barcodes and associated variant types for TP53 mutations.
+SELECT "sample_barcode_tumor", "Variant_Type"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_MC3"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+Results:
+sample_barcode_tumor,Variant_Type
+TCGA-A2-A0EQ-01A,DEL
+TCGA-E9-A22G-01A,INS
+TCGA-A2-A0D1-01A,SNP
+TCGA-E2-A1B1-01A,SNP
+TCGA-BH-A0DL-01A,SNP
+TCGA-AN-A046-01A,SNP
+TCGA-BH-A0DI-01A,SNP
+TCGA-C8-A27A-01A,SNP
+TCGA-C8-A12P-01A,SNP
+TCGA-BH-A0BC-01A,SNP
+TCGA-LL-A6FR-01A,SNP
+TCGA-BH-A0B3-01A,SNP
+TCGA-BH-A0GY-01A,SNP
+TCGA-E2-A1II-01A,SNP
+TCGA-A7-A26F-01A,SNP
+TCGA-AN-A0FY-01A,SNP
+
+2025-01-16 08:02:10 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:02:10 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:02:10 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:02:11 - snowflake.connector.cursor - INFO - Number of results in first chunk: 15
+2025-01-16 08:02:11 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:02:11 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:02:12 - root - INFO - SQL:
+-- 11. Retrieve distinct chromosome locations of TP53 mutations in TCGA-BRCA samples.
+SELECT DISTINCT "Chromosome", "Start_Position", "End_Position"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_MC3"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+Results:
+Chromosome,Start_Position,End_Position
+17,7576855,7576855
+17,7578253,7578253
+17,7578203,7578203
+17,7578406,7578406
+17,7578556,7578556
+17,7578403,7578403
+17,7577517,7577517
+17,7578443,7578445
+17,7577127,7577128
+17,7579717,7579717
+17,7577081,7577081
+17,7579882,7579882
+17,7577539,7577539
+17,7578413,7578413
+17,7577120,7577120
+
+2025-01-16 08:02:12 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:02:12 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:02:12 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:02:13 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 08:02:13 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:02:13 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:02:13 - root - INFO - SQL:
+-- 12. List sample barcodes and the platform used for expression data.
+SELECT DISTINCT "sample_barcode", "platform"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA'
+LIMIT 1000;
+Results:
+Too long, hard cut:
+sample_barcode,platform
+TCGA-3C-AALK-01A,IlluminaHiSeq
+TCGA-A1-A0SJ-01A,IlluminaHiSeq
+TCGA-A2-A0CU-01A,IlluminaHiSeq
+TCGA-A2-A0T3-01A,IlluminaHiSeq
+TCGA-A2-A0YT-01A,IlluminaHiSeq
+TCGA-A7-A13E-11A,IlluminaHiSeq
+TCGA-A7-A13D-01A,IlluminaHiSeq
+TCGA-A8-A07S-01A,IlluminaHiSeq
+TCGA-A8-A08C-01A,IlluminaHiSeq
+TCGA-A8-A0A6-01A,IlluminaHiSeq
+TCGA-BH-A18I-01A,IlluminaHiSeq
+TCGA-BH-A1EO-01A,IlluminaHiSeq
+TCGA-BH-A1EW-11B,IlluminaHiSeq
+TCGA-C8-A1HM-01A,IlluminaHiSeq
+TCGA-E2-A156-01A,IlluminaHiSeq
+TCGA-E2-A15R-01A,IlluminaHiSeq
+TCGA-BH-A0B9-01A,IlluminaHiSeq
+TCGA-A7-A3IY-01A,IlluminaHiSeq
+TCGA-A7-A13G-11A,IlluminaHiSeq
+TCGA-A8-A09K-01A,IlluminaHiSeq
+TCGA-AC-A2FM-01A,IlluminaHiSeq
+TCGA-AN-A0FL-01A,IlluminaHiSeq
+TCGA-AN-A0XO-01A,IlluminaHiSeq
+TCGA-AO-A12A-01A,IlluminaHiSeq
+TCGA-AN-A0XR-01A,IlluminaHiSeq
+TCGA-BH-A0DD-01A,IlluminaHiSeq
+TCGA-BH-A0DV-01A,IlluminaHiSeq
+TCGA-BH-A1FL-01A,IlluminaHiSeq
+TCGA-BH-A1FM-01A,IlluminaHiSeq
+TCGA-C8-A12N-01A,IlluminaHiSeq
+TCGA-C8-A1HF-01A,IlluminaHiSeq
+TCGA-D8-A1XL-01A,IlluminaHiSeq
+TCGA-D8-A27H-01A,IlluminaHiSeq
+TCGA-E2-A107-01A,IlluminaHiSeq
+TCGA-E2-A155-01A,IlluminaHiSeq
+TCGA-E2-A1IE-01A,IlluminaHiSeq
+TCGA-E9-A1NG-11A,IlluminaHiSeq
+TCGA-E9-A1NH-01A,IlluminaHiSeq
+TCGA-BH-A1FD-11B,IlluminaHiSeq
+TCGA-E2-A15J-01A,IlluminaHiSeq
+TCGA-E9-A295-01A,IlluminaHiSeq
+TCGA-A2-A0CZ-01A,IlluminaHiSeq
+TCGA-A2-A3XT-01A,IlluminaHiSeq
+TCGA-A8-A08A-01A,IlluminaHiSeq
+TCGA-A8-A08T-01A,IlluminaHiSeq
+TCGA-A8-A090-01A,IlluminaHiSeq
+TCGA-AC-A2B8-01A,IlluminaHiSeq
+TCGA-AC-A2FK-01A,IlluminaHiSeq
+TCGA-AO-A1KT-01A,IlluminaHiSeq
+TCGA-AR-A0U4-01A,IlluminaHiSeq
+TCGA-AR-A1AP-01A,IlluminaHiSeq
+TCGA-AR-A1AV-01A,IlluminaHiSeq
+TCGA-AR-A2LH-01A,IlluminaHiSeq
+TCGA-B6-A0X1-01A,IlluminaHiSeq
+TCGA-BH-A1FR-11B,IlluminaHiSeq
+TCGA-BH-A204-01A,IlluminaHiSeq
+TCGA-BH-A6R8-01A,IlluminaHiSeq
+TCGA-C8-A12K-01A,IlluminaHiSeq
+TCGA-C8-A12L-01A,IlluminaHiSeq
+TCGA-D8-A13Y-01A,IlluminaHiSeq
+TCGA-D8-A1JM-01A,IlluminaHiSeq
+TCGA-D8-A1X5-01A,IlluminaHiSeq
+TCGA-E2-A1AZ-01A,IlluminaHiSeq
+TCGA-E2-A1IN-01A,IlluminaHiSeq
+TCGA-BH-A0DK-11A,IlluminaHiSeq
+TCGA-BH-A0HX-01A,IlluminaHiSeq
+TCGA-E2-A14O-01A,IlluminaHiSeq
+TCGA-E9-A3QA-01A,IlluminaHiSeq
+TCGA-3C-AAAU-01A,IlluminaHiSeq
+TCGA-A7-A0DC-01A,IlluminaHiSeq
+TCGA-A7-A26E-01A,IlluminaHiSeq
+TCGA-AC-A3OD-01A,IlluminaHiSeq
+TCGA-AC-A2FE-01A,IlluminaHiSeq
+TCGA-AO-A0JB-01A,IlluminaHiSeq
+TCGA-AR-A1AQ-01A,IlluminaHiSeq
+TCGA-BH-A0BQ-11A,IlluminaHiSeq
+TCGA-D8-A141-01A,IlluminaHiSeq
+TCGA-D8-A1XG-01A,IlluminaHiSeq
+TCGA-E2-A153-01A,IlluminaHiSeq
+TCGA-E2-A1IK-01A,IlluminaHiSeq
+TCGA-E9-A1N9-11A,IlluminaHiSeq
+TCGA-E2-A15G-01A,IlluminaHiSeq
+TCGA-4H-AAAK-01A,IlluminaHiSeq
+TCGA-A2-A0T1-01A,IlluminaHiSeq
+TCGA-A8-A07U-01A,IlluminaHiSeq
+TCGA-A8-A086-01A,IlluminaHiSeq
+TCGA-AC-A4ZE-01A,IlluminaHiSeq
+TCGA-AN-A0XL-01A,IlluminaHiSeq
+TCGA-AR-A0TT-01A,IlluminaHiSeq
+TCGA-C8-A12U-01A,IlluminaHiSeq
+TCGA-D8-A143-01A,IlluminaHiSeq
+TCGA-D8-A1JU-01A,IlluminaHiSeq
+TCGA-D8-A1X7-01A,IlluminaHiSeq
+TCGA-D8-A27M-01A,IlluminaHiSeq
+TCGA-E2-A1IU-01A,IlluminaHiSeq
+TCGA-E2-A1LG-01A,IlluminaHiSeq
+TCGA-E9-A1R5-01A,IlluminaHiSeq
+TCGA-A8-A085-01A,IlluminaHiSeq
+TCGA-BH-A0HA-11A,IlluminaHiSeq
+TCGA-E2-A9RU-01A,IlluminaHiSeq
+TCGA-AC-A2QJ-01A,IlluminaHiSeq
+TCGA-AN-A0XW-01A,IlluminaHiSeq
+TCGA-AR-A0TX-01A,IlluminaHiSeq
+TCGA-AR-A24R-01A,IlluminaHiSeq
+TCGA-B6-A0IQ-01A,IlluminaHiSeq
+TCGA-B6-A0WZ-01A,IlluminaHiSeq
+TCGA-E2-A570-01A,IlluminaHiSeq
+TCGA-E9-A1R7-01A,IlluminaHiSeq
+TCGA-BH-A0DL-11A,IlluminaHiSeq
+TCGA-BH-A208-11A,IlluminaHiSeq
+TCGA-E9-A22H-01A,IlluminaHiSeq
+TCGA-A1-A0SO-01A,IlluminaHiSeq
+TCGA-A2-A1FZ-01A,IlluminaHiSeq
+TCGA-A2-A1G6-01A,IlluminaHiSeq
+TCGA-A7-A56D-01A,IlluminaHiSeq
+TCGA-A7-A26J-01A,IlluminaHiSeq
+TCGA-A8-A083-01A,IlluminaHiSeq
+TCGA-AC-A6NO-01A,IlluminaHiSeq
+TCGA-AO-A0JG-01A,IlluminaHiSeq
+TCGA-AO-A129-01A,IlluminaHiSeq
+TCGA-AO-A1KS-01A,IlluminaHiSeq
+TCGA-AN-A0FF-01A,IlluminaHiSeq
+TCGA-AR-A0TU-01A,IlluminaHiSeq
+TCGA-AR-A0TW-01A,IlluminaHiSeq
+TCGA-AR-A24V-01A,IlluminaHiSeq
+TCGA-BH-A0BF-01A,IlluminaHiSeq
+TCGA-D8-A3Z6-01A,IlluminaHiSeq
+TCGA-E2-A14Y-01A,IlluminaHiSeq
+TCGA-E2-A1BC-01A,IlluminaHiSeq
+TCGA-E2-A1LL-01A,IlluminaHiSeq
+TCGA-AC-A2FB-11A,IlluminaHiSeq
+TCGA-AN-A0AJ-01A,IlluminaHiSeq
+TCGA-BH-A0C0-01A,IlluminaHiSeq
+TCGA-BH-A1FR-01A,IlluminaHiSeq
+TCGA-E9-A1QZ-01A,IlluminaHiSeq
+TCGA-A2-A0T7-01A,IlluminaHiSeq
+TCGA-AC-A62X-01A,IlluminaHiSeq
+TCGA-AO-A03O-01A,IlluminaHiSeq
+TCGA-AR-A1AU-01A,IlluminaHiSeq
+TCGA-AR-A24H-01A,IlluminaHiSeq
+TCGA-AR-A24Z-01A,IlluminaHiSeq
+TCGA-BH-A0BW-11A,IlluminaHiSeq
+TCGA-BH-A18L-01A,IlluminaHiSeq
+TCGA-C8-A12Z-01A,IlluminaHiSeq
+TCGA-C8-A27B-01A,IlluminaHiSeq
+TCGA-E2-A14U-01A,IlluminaHiSeq
+TCGA-E9-A1ND-01A,IlluminaHiSeq
+TCGA-E9-A1R4-01A,IlluminaHiSeq
+TCGA-BH-A1F5-01A,IlluminaHiSeq
+TCGA-E9-A1R6-01A,IlluminaHiSeq
+TCGA-A2-A0T2-01A,IlluminaHiSeq
+TCGA-A2-A0YC-01A,IlluminaHiSeq
+TCGA-A7-A0CH-01A,IlluminaHiSeq
+TCGA-A7-A2KD-01A,IlluminaHiSeq
+TCGA-A8-A07J-01A,IlluminaHiSeq
+TCGA-B6-A0I9-01A,IlluminaHiSeq
+TCGA-BH-A0BT-11A,IlluminaHiSeq
+TCGA-BH-A0DG-01A,IlluminaHiSeq
+TCGA-BH-A0H5-01A,IlluminaHiSeq
+TCGA-BH-A0HN-01A,IlluminaHiSeq
+TCGA-BH-A1ET-11B
+
+2025-01-16 08:02:13 - root - INFO - itercount: 0
+2025-01-16 08:02:13 - root - INFO - Database Name: TCGA_HG19_DATA_V0
+Schema Name: TCGA_HG19_DATA_V0
+DDL describes table information.
+,0
+table_name,DNA_METHYLATION
+description,
+DDL,"create or replace TABLE DNA_METHYLATION (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""probe_id"" VARCHAR(16777216),
+	""beta_value"" FLOAT,
+	""platform"" VARCHAR(16777216)
+);"
+
+,1
+table_name,DNA_METHYLATION_CHR16
+description,
+DDL,"create or replace TABLE DNA_METHYLATION_CHR16 (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""probe_id"" VARCHAR(16777216),
+	""beta_value"" FLOAT,
+	""platform"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['DNA_METHYLATION_CHR16', 'DNA_METHYLATION_CHR17', 'DNA_METHYLATION_CHR18', 'DNA_METHYLATION_CHR20', 'DNA_METHYLATION_CHR21', 'DNA_METHYLATION_CHR10', 'DNA_METHYLATION_CHR13', 'DNA_METHYLATION_CHR15', 'DNA_METHYLATION_CHR19', 'DNA_METHYLATION_CHR4', 'DNA_METHYLATION_CHR6', 'DNA_METHYLATION_CHR8', 'DNA_METHYLATION_CHR11', 'DNA_METHYLATION_CHR12', 'DNA_METHYLATION_CHR22', 'DNA_METHYLATION_CHR14', 'DNA_METHYLATION_CHR5', 'DNA_METHYLATION_CHR7', 'DNA_METHYLATION_CHR1', 'DNA_METHYLATION_CHR3', 'DNA_METHYLATION_CHR9', 'DNA_METHYLATION_CHR2']
+,2
+table_name,DNA_METHYLATION_CHRY
+description,
+DDL,"create or replace TABLE DNA_METHYLATION_CHRY (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""probe_id"" VARCHAR(16777216),
+	""beta_value"" FLOAT,
+	""platform"" VARCHAR(16777216)
+);"
+
+,3
+table_name,MIRNASEQ_EXPRESSION
+description,
+DDL,"create or replace TABLE MIRNASEQ_EXPRESSION (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""mirna_id"" VARCHAR(16777216),
+	""read_count"" NUMBER(38,0),
+	""reads_per_million_miRNA_mapped"" FLOAT,
+	""cross_mapped"" VARCHAR(16777216),
+	""file_gdc_id"" VARCHAR(16777216),
+	""case_gdc_id"" VARCHAR(16777216),
+	""sample_gdc_id"" VARCHAR(16777216),
+	""aliquot_gdc_id"" VARCHAR(16777216)
+);"
+
+,4
+table_name,DNA_METHYLATION_CHRX
+description,
+DDL,"create or replace TABLE DNA_METHYLATION_CHRX (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""probe_id"" VARCHAR(16777216),
+	""beta_value"" FLOAT,
+	""platform"" VARCHAR(16777216)
+);"
+
+,5
+table_name,RNASEQ_GENE_EXPRESSION_UNC_RSEM
+description,
+DDL,"create or replace TABLE RNASEQ_GENE_EXPRESSION_UNC_RSEM (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""HGNC_gene_symbol"" VARCHAR(16777216),
+	""gene_id"" NUMBER(38,0),
+	""normalized_count"" FLOAT,
+	""original_gene_symbol"" VARCHAR(16777216),
+	""platform"" VARCHAR(16777216)
+);"
+
+,6
+table_name,MIRNASEQ_ISOFORM_EXPRESSION
+description,
+DDL,"create or replace TABLE MIRNASEQ_ISOFORM_EXPRESSION (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""mirna_id"" VARCHAR(16777216),
+	""mirna_accession"" VARCHAR(16777216),
+	""mirna_transcript"" VARCHAR(16777216),
+	""chromosome"" VARCHAR(16777216),
+	""start_pos"" NUMBER(38,0),
+	""end_pos"" NUMBER(38,0),
+	""strand"" VARCHAR(16777216),
+	""read_count"" NUMBER(38,0),
+	""reads_per_million_miRNA_mapped"" FLOAT,
+	""cross_mapped"" VARCHAR(16777216),
+	""file_gdc_id"" VARCHAR(16777216),
+	""case_gdc_id"" VARCHAR(16777216),
+	""sample_gdc_id"" VARCHAR(16777216),
+	""aliquot_gdc_id"" VARCHAR(16777216)
+);"
+
+,7
+table_name,SOMATIC_MUTATION_DCC
+description,
+DDL,"create or replace TABLE SOMATIC_MUTATION_DCC (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode_tumor"" VARCHAR(16777216),
+	""sample_barcode_normal"" VARCHAR(16777216),
+	""aliquot_barcode_tumor"" VARCHAR(16777216),
+	""aliquot_barcode_normal"" VARCHAR(16777216),
+	""NCBI_Build"" VARCHAR(16777216),
+	""HGNC_UniProt_ID_Supplied_By_UniProt"" VARCHAR(16777216),
+	""Entrez_Gene_Id"" NUMBER(38,0),
+	""Variant_Classification"" VARCHAR(16777216),
+	""Variant_Type"" VARCHAR(16777216),
+	""Chromosome"" VARCHAR(16777216),
+	""Start_Position"" NUMBER(38,0),
+	""End_Position"" NUMBER(38,0),
+	""Mutation_Status"" VARCHAR(16777216),
+	""Genome_Change"" VARCHAR(16777216),
+	""cDNA_Change"" VARCHAR(16777216),
+	""Protein_Change"" VARCHAR(16777216),
+	""Annotation_Transcript"" VARCHAR(16777216),
+	""CCLE_ONCOMAP_Total_Mutations_In_Gene"" NUMBER(38,0),
+	""Center"" VARCHAR(16777216),
+	""COSMIC_Total_Alterations_In_Gene"" NUMBER(38,0),
+	""DbSNP_RS"" VARCHAR(16777216),
+	""DbSNP_Val_Status"" VARCHAR(16777216),
+	""DNARepairGenes_Role"" VARCHAR(16777216),
+	""DrugBank"" VARCHAR(16777216),
+	""GC_Content"" FLOAT,
+	""GENCODE_Transcript_Name"" VARCHAR(16777216),
+	""GENCODE_Transcript_Status"" VARCHAR(16777216),
+	""GENCODE_Transcript_Type"" VARCHAR(16777216),
+	""Gene_Type"" VARCHAR(16777216),
+	""GO_Biological_Process"" VARCHAR(16777216),
+	""GO_Cellular_Component"" VARCHAR(16777216),
+	""GO_Molecular_Function"" VARCHAR(16777216),
+	""HGNC_Accession_Numbers"" VARCHAR(16777216),
+	""HGNC_CCDS_IDs"" VARCHAR(16777216),
+	""HGNC_Ensembl_ID_Supplied_By_Ensembl"" VARCHAR(16777216),
+	HGNC_HGNC_ID NUMBER(38,0),
+	""HGNC_Locus_Group"" VARCHAR(16777216),
+	""HGNC_Locus_Type"" VARCHAR(16777216),
+	""HGNC_OMIM_ID_Supplied_By_NCBI"" VARCHAR(16777216),
+	""HGNC_RefSeq_Supplied_By_NCBI"" VARCHAR(16777216),
+	""HGNC_UCSC_ID_Supplied_By_UCSC"" VARCHAR(16777216),
+	""Hugo_Symbol"" VARCHAR(16777216),
+	""Normal_Seq_Allele1"" VARCHAR(16777216),
+	""Normal_Seq_Allele2"" VARCHAR(16777216),
+	""Normal_Validation_Allele1"" VARCHAR(16777216),
+	""Normal_Validation_Allele2"" VARCHAR(16777216),
+	OREGANNO_ID VARCHAR(16777216),
+	""Ref_Context"" VARCHAR(16777216),
+	""Reference_Allele"" VARCHAR(16777216),
+	""Refseq_Prot_Id"" VARCHAR(16777216),
+	""Secondary_Variant_Classification"" VARCHAR(16777216),
+	""Sequencer"" VARCHAR(16777216),
+	""Sequence_Source"" VARCHAR(16777216),
+	""SwissProt_Acc_Id"" VARCHAR(16777216),
+	""SwissProt_Entry_Id"" VARCHAR(16777216),
+	""Transcript_Exon"" NUMBER(38,0),
+	""Transcript_Position"" VARCHAR(16777216),
+	""Transcript_Strand"" VARCHAR(16777216),
+	""Tumor_Seq_Allele1"" VARCHAR(16777216),
+	""Tumor_Seq_Allele2"" VARCHAR(16777216),
+	""Tumor_Validation_Allele1"" VARCHAR(16777216),
+	""Tumor_Validation_Allele2"" VARCHAR(16777216),
+	""UniProt_AApos"" NUMBER(38,0),
+	""UniProt_Region"" VARCHAR(16777216),
+	""Validation_Method"" VARCHAR(16777216)
+);"
+
+,8
+table_name,SOMATIC_MUTATION_MC3
+description,
+DDL,"create or replace TABLE SOMATIC_MUTATION_MC3 (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode_tumor"" VARCHAR(16777216),
+	""sample_barcode_normal"" VARCHAR(16777216),
+	""aliquot_barcode_tumor"" VARCHAR(16777216),
+	""aliquot_barcode_normal"" VARCHAR(16777216),
+	""Hugo_Symbol"" VARCHAR(16777216),
+	""NCBI_Build"" VARCHAR(16777216),
+	""Chromosome"" VARCHAR(16777216),
+	""Start_Position"" NUMBER(38,0),
+	""End_Position"" NUMBER(38,0),
+	""Variant_Classification"" VARCHAR(16777216),
+	""Variant_Type"" VARCHAR(16777216),
+	""Reference_Allele"" VARCHAR(16777216),
+	""Tumor_Seq_Allele1"" VARCHAR(16777216),
+	""Tumor_Seq_Allele2"" VARCHAR(16777216),
+	""dbSNP_RS"" VARCHAR(16777216),
+	""HGVSc"" VARCHAR(16777216),
+	""HGVSp"" VARCHAR(16777216),
+	""HGVSp_Short"" VARCHAR(16777216),
+	""Transcript_ID"" VARCHAR(16777216),
+	""Exon_Number"" VARCHAR(16777216),
+	""t_depth"" NUMBER(38,0),
+	""t_ref_count"" NUMBER(38,0),
+	""t_alt_count"" NUMBER(38,0),
+	""n_depth"" NUMBER(38,0),
+	""n_ref_count"" NUMBER(38,0),
+	""n_alt_count"" NUMBER(38,0),
+	""all_effects"" VARCHAR(16777216),
+	""Gene"" VARCHAR(16777216),
+	""Feature"" VARCHAR(16777216),
+	""Feature_type"" VARCHAR(16777216),
+	""Consequence"" VARCHAR(16777216),
+	""cDNA_position"" VARCHAR(16777216),
+	""CDS_position"" VARCHAR(16777216),
+	""Protein_position"" VARCHAR(16777216),
+	""Amino_acids"" VARCHAR(16777216),
+	""Codons"" VARCHAR(16777216),
+	""Existing_variation"" VARCHAR(16777216),
+	DISTANCE NUMBER(38,0),
+	STRAND NUMBER(38,0),
+	SYMBOL VARCHAR(16777216),
+	SYMBOL_SOURCE VARCHAR(16777216),
+	HGNC_ID NUMBER(38,0),
+	BIOTYPE VARCHAR(16777216),
+	CANONICAL VARCHAR(16777216),
+	CCDS VARCHAR(16777216),
+	ENSP VARCHAR(16777216),
+	SWISSPROT VARCHAR(16777216),
+	TREMBL VARCHAR(16777216),
+	UNIPARC VARCHAR(16777216),
+	SIFT VARCHAR(16777216),
+	""PolyPhen"" VARCHAR(16777216),
+	EXON VARCHAR(16777216),
+	INTRON VARCHAR(16777216),
+	DOMAINS VARCHAR(16777216),
+	GMAF VARCHAR(16777216),
+	AFR_MAF VARCHAR(16777216),
+	AMR_MAF VARCHAR(16777216),
+	ASN_MAF VARCHAR(16777216),
+	EAS_MAF VARCHAR(16777216),
+	EUR_MAF VARCHAR(16777216),
+	SAS_MAF VARCHAR(16777216),
+	AA_MAF VARCHAR(16777216),
+	EA_MAF VARCHAR(16777216),
+	CLIN_SIG VARCHAR(16777216),
+	SOMATIC VARCHAR(16777216),
+	PUBMED VARCHAR(16777216),
+	IMPACT VARCHAR(16777216),
+	VARIANT_CLASS VARCHAR(16777216),
+	HGVS_OFFSET NUMBER(38,0),
+	PHENO VARCHAR(16777216),
+	FILTER VARCHAR(16777216),
+	COSMIC VARCHAR(16777216),
+	CALLERS VARCHAR(16777216),
+	CONTEXT VARCHAR(16777216),
+	DBVS VARCHAR(16777216),
+	NCALLERS NUMBER(38,0)
+);"
+
+,9
+table_name,COPY_NUMBER_SEGMENT_MASKED
+description,
+DDL,"create or replace TABLE COPY_NUMBER_SEGMENT_MASKED (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""chromosome"" VARCHAR(16777216),
+	""start_pos"" NUMBER(38,0),
+	""end_pos"" NUMBER(38,0),
+	""num_probes"" NUMBER(38,0),
+	""segment_mean"" FLOAT,
+	""platform"" VARCHAR(16777216)
+);"
+
+,10
+table_name,PROTEIN_EXPRESSION
+description,
+DDL,"create or replace TABLE PROTEIN_EXPRESSION (
+	""project_short_name"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""aliquot_barcode"" VARCHAR(16777216),
+	""gene_name"" VARCHAR(16777216),
+	""protein_base_name"" VARCHAR(16777216),
+	""phospho"" VARCHAR(16777216),
+	""protein_name"" VARCHAR(16777216),
+	""protein_expression"" FLOAT,
+	""antibody_source"" VARCHAR(16777216),
+	""validation_status"" VARCHAR(16777216)
+);"
+
+,11
+table_name,TCGA_METADATA_DATA_HG19_R14
+description,
+DDL,"create or replace TABLE TCGA_METADATA_DATA_HG19_R14 (
+	""file_gdc_id"" VARCHAR(16777216),
+	""case_gdc_id"" VARCHAR(16777216),
+	""case_barcode"" VARCHAR(16777216),
+	""sample_gdc_id"" VARCHAR(16777216),
+	""sample_barcode"" VARCHAR(16777216),
+	""project_short_name"" VARCHAR(16777216),
+	""disease_code"" VARCHAR(16777216),
+	""program_name"" VARCHAR(16777216),
+	""data_type"" VARCHAR(16777216),
+	""data_category"" VARCHAR(16777216),
+	""experimental_strategy"" VARCHAR(16777216),
+	""type"" VARCHAR(16777216),
+	""file_size"" NUMBER(38,0),
+	""data_format"" VARCHAR(16777216),
+	""platform"" VARCHAR(16777216),
+	""file_name_key"" VARCHAR(16777216),
+	""index_file_id"" VARCHAR(16777216),
+	""index_file_name_key"" VARCHAR(16777216),
+	""index_file_size"" NUMBER(38,0),
+	""access"" VARCHAR(16777216),
+	""acl"" VARCHAR(16777216)
+);"
+
+External knowledge that might be helpful: 
+### **Detailed Explanation of the ANOVA Calculation Process**
+
+This document outlines a comprehensive approach to performing a one-way Analysis of Variance (ANOVA) on gene expression data, specifically examining the TP53 gene across different mutation types in the TCGA-BRCA project. The goal is to test the null hypothesis that **the mean gene expression levels are equal across different mutation types**.
+
+#### **Objective**
+
+- **Null Hypothesis (\( H_0 \))**: All group means are equal (\( \mu_1 = \mu_2 = \dots = \mu_k \)).
+- **Alternative Hypothesis (\( H_A \))**: At least one group mean is different.
+
+#### **Data Preparation**
+
+1. **Select the Cohort**:
+   - **Expression Data**: Extract samples with non-null and positive normalized expression levels of the TP53 gene.
+   - **Mutation Data**: Identify mutation types for the TP53 gene in the same samples.
+   - **Merge Datasets**: Assign each expression sample to its corresponding mutation type.
+
+2. **Handle Missing Data**:
+   - Exclude samples with missing expression or mutation data.
+   - Ensure each sample is uniquely assigned to a mutation type.
+
+#### **Calculation Steps**
+
+1. **Compute Log-Transformed Expression Values**:
+   - Apply a logarithmic transformation to normalize the distribution of expression levels:
+     \[
+     \text{log\_expression}_i = \log_{10}(\text{normalized\_count}_i)
+     \]
+     - Where \( \text{normalized\_count}_i \) is the expression count for sample \( i \).
+
+2. **Calculate the Grand Mean (\( \bar{X} \))**:
+   - Compute the overall mean of the log-transformed expression values across all samples:
+     \[
+     \bar{X} = \frac{1}{N} \sum_{i=1}^{N} X_i
+     \]
+     - \( N \) is the total number of samples.
+     - \( X_i \) is the log-transformed expression value for sample \( i \).
+
+3. **Calculate Group Means (\( \bar{X}_j \))**:
+   - For each mutation type (group \( j \)), calculate the mean expression:
+     \[
+     \bar{X}_j = \frac{1}{n_j} \sum_{i=1}^{n_j} X_{ij}
+     \]
+     - \( n_j \) is the number of samples in group \( j \).
+     - \( X_{ij} \) is the expression value for sample \( i \) in group \( j \).
+
+4. **Compute the Sum of Squares Between Groups (SSB)**:
+   - Measure the variation between group means and the grand mean, weighted by group sizes:
+     \[
+     \text{SSB} = \sum_{j=1}^{k} n_j (\bar{X}_j - \bar{X})^2
+     \]
+     - \( k \) is the total number of groups.
+
+5. **Compute the Sum of Squares Within Groups (SSW)**:
+   - Measure the variation within each group:
+     \[
+     \text{SSW} = \sum_{j=1}^{k} \sum_{i=1}^{n_j} (X_{ij} - \bar{X}_j)^2
+     \]
+
+6. **Calculate Degrees of Freedom**:
+   - Between Groups:
+     \[
+     \text{df}_{\text{Between}} = k - 1
+     \]
+   - Within Groups:
+     \[
+     \text{df}_{\text{Within}} = N - k
+     \]
+
+7. **Compute Mean Squares**:
+   - Mean Square Between Groups (MSB):
+     \[
+     \text{MSB} = \frac{\text{SSB}}{\text{df}_{\text{Between}}}
+     \]
+   - Mean Square Within Groups (MSW):
+     \[
+     \text{MSW} = \frac{\text{SSW}}{\text{df}_{\text{Within}}}
+     \]
+
+8. **Calculate the F-Statistic**:
+   - The F-statistic tests whether the group means are significantly different:
+     \[
+     F = \frac{\text{MSB}}{\text{MSW}}
+     \]
+
+9. **Interpret the Results**:
+   - Compare the calculated F-statistic to the critical value from the F-distribution with \(\text{df}_{\text{Between}}\) and \(\text{df}_{\text{Within}}\) degrees of freedom.
+   - Determine the p-value associated with the F-statistic.
+   - **If** \( F \) is greater than the critical value **or** the p-value is less than the significance level (e.g., 0.05), **reject** the null hypothesis.
+
+#### **Important Considerations**
+
+- **Weighting by Sample Size**: When calculating SSB, it's crucial to weight the squared differences by the number of samples in each group (\( n_j \)) to account for varying group sizes.
+- **Degrees of Freedom**: Correctly calculating degrees of freedom is essential for accurate MSB, MSW, and F-statistic computations.
+- **Assumptions of ANOVA**:
+  - **Independence**: Samples are independent of each other.
+  - **Normality**: The distribution of residuals is approximately normal.
+  - **Homogeneity of Variances**: The variances within each group are approximately equal.
+
+#### **Mathematical Formulas Summary**
+
+1. **Grand Mean**:
+   \[
+   \bar{X} = \frac{1}{N} \sum_{i=1}^{N} X_i
+   \]
+
+2. **Group Means**:
+   \[
+   \bar{X}_j = \frac{1}{n_j} \sum_{i=1}^{n_j} X_{ij}
+   \]
+
+3. **Sum of Squares Between (SSB)**:
+   \[
+   \text{SSB} = \sum_{j=1}^{k} n_j (\bar{X}_j - \bar{X})^2
+   \]
+
+4. **Sum of Squares Within (SSW)**:
+   \[
+   \text{SSW} = \sum_{j=1}^{k} \sum_{i=1}^{n_j} (X_{ij} - \bar{X}_j)^2
+   \]
+
+5. **Degrees of Freedom**:
+   - Between Groups:
+     \[
+     \text{df}_{\text{Between}} = k - 1
+     \]
+   - Within Groups:
+     \[
+     \text{df}_{\text{Within}} = N - k
+     \]
+
+6. **Mean Squares**:
+   - Between Groups:
+     \[
+     \text{MSB} = \frac{\text{SSB}}{\text{df}_{\text{Between}}}
+     \]
+   - Within Groups:
+     \[
+     \text{MSW} = \frac{\text{SSW}}{\text{df}_{\text{Within}}}
+     \]
+
+7. **F-Statistic**:
+   \[
+   F = \frac{\text{MSB}}{\text{MSW}}
+   \]
+
+#### **Avoiding Common Mistakes**
+
+- **Ignoring Group Sizes**: Do not overlook the importance of \( n_j \) when calculating SSB. Each group's influence on the between-group variability should be proportional to its size.
+- **Incorrect Variance Calculations**: Avoid averaging group variances without considering their degrees of freedom. The SSW should sum all individual squared deviations.
+- **Degrees of Freedom Miscalculations**: Ensure that the degrees of freedom for both between and within groups are accurately computed, as they directly impact the MSB, MSW, and F-statistic.
+- **Data Integrity**:
+  - Verify that each sample is uniquely assigned to one group.
+  - Check for and address any missing or duplicated data.
+
+#### **Interpretation Guidelines**
+
+- **High F-Statistic**: Suggests significant differences between group means.
+- **P-Value**:
+  - **Low p-value** (typically < 0.05): Reject the null hypothesis.
+  - **High p-value**: Fail to reject the null hypothesis.
+- **Post-Hoc Analysis**: If the null hypothesis is rejected, consider conducting post-hoc tests (e.g., Tukey's HSD) to identify which specific groups differ.
+
+#### **Conclusion**
+
+By meticulously following the outlined steps and carefully applying the mathematical formulas, one can accurately perform ANOVA to assess the effect of different mutation types on gene expression levels. This approach ensures the validity of statistical conclusions and prevents errors commonly made in incorrect analyses.
+
+#### **Additional Notes**
+
+- **Data Transformation**: The logarithmic transformation of expression data helps stabilize variance and meet ANOVA assumptions.
+- **Assumption Checks**: Before finalizing results, perform tests for normality (e.g., Shapiro-Wilk test) and homogeneity of variances (e.g., Levene's test).
+The table structure information is ({database name: {schema name: {table name}}}): 
+{'TCGA_HG19_DATA_V0': {'TCGA_HG19_DATA_V0': ['COPY_NUMBER_SEGMENT_MASKED', 'DNA_METHYLATION', 'DNA_METHYLATION_CHR1', 'DNA_METHYLATION_CHR10', 'DNA_METHYLATION_CHR11', 'DNA_METHYLATION_CHR12', 'DNA_METHYLATION_CHR13', 'DNA_METHYLATION_CHR14', 'DNA_METHYLATION_CHR15', 'DNA_METHYLATION_CHR16', 'DNA_METHYLATION_CHR17', 'DNA_METHYLATION_CHR18', 'DNA_METHYLATION_CHR19', 'DNA_METHYLATION_CHR2', 'DNA_METHYLATION_CHR20', 'DNA_METHYLATION_CHR21', 'DNA_METHYLATION_CHR22', 'DNA_METHYLATION_CHR3', 'DNA_METHYLATION_CHR4', 'DNA_METHYLATION_CHR5', 'DNA_METHYLATION_CHR6', 'DNA_METHYLATION_CHR7', 'DNA_METHYLATION_CHR8', 'DNA_METHYLATION_CHR9', 'DNA_METHYLATION_CHRX', 'DNA_METHYLATION_CHRY', 'MIRNASEQ_EXPRESSION', 'MIRNASEQ_ISOFORM_EXPRESSION', 'PROTEIN_EXPRESSION', 'RNASEQ_GENE_EXPRESSION_UNC_RSEM', 'SOMATIC_MUTATION_DCC', 'SOMATIC_MUTATION_MC3', 'TCGA_METADATA_DATA_HG19_R14']}}
+Begin Exploring Related Columns
+**Relevant Tables and Columns:**
+
+1. **Table**: `TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0.RNASEQ_GENE_EXPRESSION_UNC_RSEM`
+   - **Columns**:
+     - `"project_short_name"`: To filter for TCGA-BRCA samples.
+     - `"sample_barcode"`: Unique identifier for each sample.
+     - `"HGNC_gene_symbol"`: To select the TP53 gene.
+     - `"normalized_count"`: Expression level of the TP53 gene.
+   - **Potential Usage**: Retrieve expression levels of TP53 in TCGA-BRCA samples.
+
+2. **Table**: `TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0.SOMATIC_MUTATION_DCC`
+   - **Columns**:
+     - `"project_short_name"`: To filter for TCGA-BRCA samples.
+     - `"sample_barcode_tumor"`: Tumor sample identifier matching expression data.
+     - `"Hugo_Symbol"`: To select mutations in the TP53 gene.
+     - `"Variant_Classification"`: Types of mutations affecting TP53.
+   - **Potential Usage**: Retrieve mutation types of TP53 in TCGA-BRCA samples.
+
+3. **Table**: `TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0.SOMATIC_MUTATION_MC3`
+   - **Columns**:
+     - `"project_short_name"`: To filter for TCGA-BRCA samples.
+     - `"sample_barcode_tumor"`: Tumor sample identifier matching expression data.
+     - `"Hugo_Symbol"`: To select mutations in the TP53 gene.
+     - `"Variant_Classification"`: Types of mutations affecting TP53.
+   - **Potential Usage**: Cross-reference or validate mutation data from SOMATIC_MUTATION_DCC.
+
+**Conditions That May Be Used:**
+
+- Filter samples to only TCGA-BRCA project:
+  - `"project_short_name" = 'TCGA-BRCA'`
+- Select TP53 gene data:
+  - In expression data: `"HGNC_gene_symbol" = 'TP53'`
+  - In mutation data: `"Hugo_Symbol" = 'TP53'`
+- Ensure valid expression levels:
+  - `"normalized_count" IS NOT NULL AND "normalized_count" > 0`
+
+---
+
+**SQL Queries to Understand Values in Related Columns:**
+
+```sql
+-- 1. Retrieve distinct project names from the expression data to confirm available projects.
+SELECT DISTINCT "project_short_name"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+LIMIT 1000;
+```
+
+```sql
+-- 2. List all gene symbols available in the expression data.
+SELECT DISTINCT "HGNC_gene_symbol"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+LIMIT 1000;
+```
+
+```sql
+-- 3. Get TP53 expression data for TCGA-BRCA samples.
+SELECT "sample_barcode", "normalized_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53'
+LIMIT 1000;
+```
+
+```sql
+-- 4. Retrieve distinct mutation types from the mutation data for TP53 in TCGA-BRCA samples.
+SELECT DISTINCT "Variant_Classification"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+```
+
+```sql
+-- 5. List tumor sample barcodes with TP53 mutations in TCGA-BRCA samples.
+SELECT DISTINCT "sample_barcode_tumor"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+```
+
+```sql
+-- 6. Retrieve mutation data for TP53 specifying the mutation types.
+SELECT "sample_barcode_tumor", "Variant_Classification", "Chromosome", "Start_Position", "End_Position"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+```
+
+```sql
+-- 7. Find the range of normalized counts for TP53 expression in TCGA-BRCA samples.
+SELECT MIN("normalized_count") AS "min_expression",
+       MAX("normalized_count") AS "max_expression",
+       AVG("normalized_count") AS "avg_expression"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53";
+```
+
+```sql
+-- 8. List samples with positive TP53 expression levels.
+SELECT "sample_barcode", "normalized_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+LIMIT 1000;
+```
+
+```sql
+-- 9. Retrieve mutation types and counts for TP53 in TCGA-BRCA samples.
+SELECT "Variant_Classification", COUNT(*) AS "mutation_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+GROUP BY "Variant_Classification"
+LIMIT 1000;
+```
+
+```sql
+-- 10. List all tumor sample barcodes and associated variant types for TP53 mutations.
+SELECT "sample_barcode_tumor", "Variant_Type"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_MC3"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+```
+
+```sql
+-- 11. Retrieve distinct chromosome locations of TP53 mutations in TCGA-BRCA samples.
+SELECT DISTINCT "Chromosome", "Start_Position", "End_Position"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_MC3"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+```
+
+```sql
+-- 12. List sample barcodes and the platform used for expression data.
+SELECT DISTINCT "sample_barcode", "platform"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA'
+LIMIT 1000;
+```
+
+**Explanation:**
+
+- **Queries 1 & 2**: Confirm the available projects and gene symbols in the expression data.
+- **Query 3**: Retrieve TP53 expression levels for breast cancer samples.
+- **Queries 4, 5 & 6**: Explore mutation types, sample identifiers, and mutation locations for TP53.
+- **Query 7**: Understand the distribution of TP53 expression levels.
+- **Query 8**: Ensure we have samples with valid (positive) expression data.
+- **Query 9**: Count the occurrences of each mutation type affecting TP53.
+- **Query 10**: Retrieve variant types for TP53 mutations.
+- **Query 11**: Identify the genomic locations of TP53 mutations.
+- **Query 12**: Check the platforms used for sequencing, which might influence expression levels.
+
+These queries help us understand the data structure and the values within the relevant columns, laying the groundwork to assess the impact of different genetic variants on TP53 expression levels in TCGA-BRCA samples.
+
+---
+
+**Note:**
+
+- All column names are enclosed in double quotations as per the database schema.
+- Each query is simple, short, and non-nested, complying with the instructions.
+- The database, schema, and table names match those provided.
+- No external knowledge was used; all information is based on the provided tables.
+- Queries are limited to retrieving up to 1000 records for examination purposes.Query:
+-- 1. Retrieve distinct project names from the expression data to confirm available projects.
+SELECT DISTINCT "project_short_name"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+LIMIT 1000;
+Answer:
+project_short_name
+TCGA-HNSC
+TCGA-CESC
+TCGA-LGG
+TCGA-KIRP
+TCGA-SKCM
+TCGA-MESO
+TCGA-OV
+TCGA-GBM
+TCGA-STAD
+TCGA-THCA
+TCGA-DLBC
+TCGA-KIRC
+TCGA-TGCT
+TCGA-LUSC
+TCGA-PCPG
+TCGA-READ
+TCGA-ESCA
+TCGA-LUAD
+TCGA-COAD
+TCGA-UCS
+TCGA-UVM
+TCGA-BLCA
+TCGA-PAAD
+TCGA-PRAD
+TCGA-THYM
+TCGA-LAML
+TCGA-SARC
+TCGA-LIHC
+TCGA-CHOL
+TCGA-KICH
+TCGA-ACC
+TCGA-UCEC
+TCGA-BRCA
+Query:
+-- 2. List all gene symbols available in the expression data.
+SELECT DISTINCT "HGNC_gene_symbol"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+LIMIT 1000;
+Answer:
+Too long, hard cut:
+HGNC_gene_symbol
+FAM196A
+GRPEL1
+TUFM
+OR2S2
+SDHAF3
+ANKRD55
+HECA
+APH1B
+SLC4A1AP
+CDK5R1
+HS6ST3
+ATP6V0D2
+TRMO
+ZNHIT2
+FAM195B
+SNORD1B
+SPAG9
+C10orf76
+SUV420H2
+CDIP1
+ARAP2
+HAR1A
+CCR1
+ZGRF1
+SLC9B2
+CT47A9
+ALAS2
+ARF5
+XIAP
+CCL2
+POLR2L
+LAMA3
+DLX1
+ATF7IP2
+KPNA3
+SPATA6
+VSIG8
+WDR74
+EEF1E1
+PLS3
+CDK13
+GDF10
+SPCS1
+CFL2
+S100A6
+CCR3
+TTI2
+NUDT17
+SLC25A39
+CLIC6
+CATSPER2
+HNRNPUL1
+UNC80
+SRCAP
+SMAD7
+ZNF566
+SMYD2
+BTAF1
+GPR61
+UBXN11
+RTP5
+KCNQ1
+OCIAD2
+KCNQ2
+KIRREL2
+MED22
+JMJD4
+BAAT
+WISP3
+PALD1
+TCL1A
+RSPO3
+TRIM67
+CDH8
+ZBP1
+CLINT1
+GPR173
+PCDHGA3
+TAF7
+ALG1L2
+KLK1
+MED6
+TTYH3
+OTC
+BMP5
+SPATA31C1
+EXTL3
+STXBP5L
+MPHOSPH9
+GDPD5
+EPS8L3
+PRRT1
+SVOPL
+ZNF641
+SNTG1
+UNC119
+MYLK2
+CYP27A1
+RHOBTB2
+TDP1
+DLX3
+ARMCX2
+CCDC38
+LANCL3
+AWAT2
+PIK3C2A
+AOC3
+HOOK3
+RHOU
+MRPL52
+HTR6
+C7orf61
+CRLF3
+GTF2H2
+SPTBN5
+MRPL11
+OVOL2
+NLRP2
+HHLA3
+RNF44
+EDC3
+STC1
+TSPAN31
+H2AFY2
+HIST1H4C
+ZNF513
+KRT26
+GFI1B
+C11orf54
+P2RX7
+KIF15
+MORC1
+MN1
+DOCK2
+AMELX
+KPNA2
+ADGRG4
+USP53
+IFI27
+TAB1
+MPV17
+HLCS
+TRAF3IP1
+MICB
+OR5AU1
+KIAA1644
+SEC61A1
+PRSS42
+THTPA
+CHPT1
+CDC16
+TMEM126B
+P2RX4
+CHD8
+OR2D2
+PAGR1
+ATP6V1B1
+CLTA
+ANKRD13D
+GDPGP1
+PUM3
+DDB1
+FAM161B
+HSP90AB4P
+SIGLEC17P
+SLC35F2
+DGCR8
+SNAP23
+C12orf29
+SNORA26
+SPATA31A3
+MESP2
+GAB3
+CCDC159
+TMEM155
+PTPRF
+AQP9
+WTAP
+RAP1B
+SRD5A1
+ZNF544
+HAAO
+ZNF833P
+MAMSTR
+KRT84
+ADAMTS14
+ACY1
+TRIQK
+RNF139
+DCTN1
+OR2Z1
+HIST1H2AJ
+RDH12
+PHEX
+LY86
+TJP2
+P2RY1
+SLC7A11
+RASGRF2
+ZNF776
+ABCB6
+GKN1
+MAPRE1
+CECR5-AS1
+CXCL9
+RPLP2
+TLE2
+FBXO31
+DTX2P1-UPK3BP1-PMS2P11
+SPPL2C
+GDF9
+TIMM22
+REC114
+ITGAM
+KIAA2013
+PREPL
+HRC
+RAD21L1
+MPP6
+XAGE1D
+TPM3
+HTN3
+FAM43A
+ADGRG3
+MYO1D
+CDC42EP3
+NCOR1P1
+EIF4G3
+GCLM
+CXCL14
+HUS1
+OR2M1P
+PAK1IP1
+ARHGAP44
+FATE1
+POLR3G
+BMS1P20
+RRH
+DRAM2
+STAU2
+GNG11
+TPGS1
+ZDHHC24
+TMEM260
+SCNN1D
+TSN
+DGCR10
+ARHGEF11
+TOR4A
+ZNF518A
+RAB33B
+C9orf72
+HPRT1
+PEX11B
+ENTPD4
+RNF5P1
+TUBB1
+ARHGEF7
+CCNG2
+UBE2Q2
+EVPLL
+PALM2-AKAP2
+UBE2U
+SELE
+KATNBL1P6
+CD300A
+MYO18B
+AAGAB
+KMT2B
+SBDSP1
+CENPE
+NEU1
+GJA1
+MICAL1
+DAB2IP
+ZNF226
+SNORD114-23
+GATAD2A
+CYP2A6
+RSU1
+CRHR1-IT1
+ZNF480
+DLG2
+DLGAP4
+HORMAD1
+HMGB3
+FAM213B
+RNPEPL1
+TLN2
+POU1F1
+SLC1A2
+UQCR11
+SNORA61
+LIME1
+MAP3K4
+RAB7A
+COX6B1
+PLA2G2A
+TMCO5A
+FAM84B
+EXOC5
+TWF2
+UBE2K
+C7orf34
+LINC00632
+OSBP2
+PLET1
+MPRIP
+SAA1
+CCDC68
+CXorf40A
+TRIM39
+PPP6R1
+LIPT1
+SALL2
+CPSF6
+RND3
+GAGE2D
+ATP5J2
+SNORD109B
+ADAM10
+CDRT1
+YPEL5
+MYLPF
+RAB11FIP1
+ANAPC11
+RIMBP2
+C19orf25
+BAX
+MUC16
+PTPRS
+PCBP2
+IL6ST
+SNORA69
+SGCG
+BCL11A
+WASH3P
+COLEC10
+ETNK1
+CFAP58
+SPRR2A
+ZBTB3
+RPL22
+CAPN7
+SATB2-AS1
+PHF2P1
+E4F1
+YWHAG
+SHFM1
+SCT
+IFNA1
+CYP3A5
+BRMS1
+SNORD114-1
+EPB41L4A-AS2
+LMO3
+NONO
+SEC24B
+CBS
+SPO11
+CDY1B
+ZYG11A
+HSPA1A
+TAS2R13
+ADCY1
+VANGL1
+ELAVL3
+CCNA1
+EAPP
+IGFBP3
+FUNDC2
+SPATA12
+C16orf82
+E2F8
+LCE1C
+CTRB2
+PRR20D
+PRMT6
+ZBTB38
+CYP11A1
+KCNT1
+EIF3E
+SUSD4
+PIK3AP1
+OR5A2
+F13B
+KCNF1
+GUCY2D
+BLZF1
+LRCH4
+ZNF680
+SIL1
+MAPK12
+DHRS4
+ZNF808
+SNORD42A
+CALM2
+SFRP2
+GNRHR
+P2RY6
+MRPL4
+KCNRG
+EAF1
+OR2F1
+METTL8
+RAB34
+NAV3
+MT2A
+C1orf74
+GSTT1
+GPR39
+BMS1
+LINC00922
+FANCA
+MAGEA5
+OPN1SW
+CILP2
+HOXC4
+STX4
+SLC30A4
+PYGL
+CAPN12
+APBA3
+ITGA11
+FTSJ1
+DMTF1
+TEAD4
+SULT1B1
+KISS1R
+PIGM
+AMHR2
+CTAGE4
+FUT8
+TAF9B
+TMEM87A
+ADI1
+ZNF804B
+LSR
+LINC01558
+PLPPR2
+CANX
+ITGAE
+CECR5
+DDRGK1
+DNAH14
+SLC25A32
+VAV2
+TRIM16
+RNF19A
+LHX5
+RCBTB1
+KRTAP6-1
+EVI5
+PRPS1L1
+CRYBB1
+ATP5S
+UCP2
+HDAC1
+SNORA48
+ARHGEF28
+TAS2R50
+FMO5
+FAM47A
+PLEKHF2
+PRDM8
+CIDECP
+MFSD9
+LINC00052
+KAT2B
+MRPS2
+CYTH1
+RPA1
+PTX4
+NBPF10
+SGMS2
+C9orf16
+AANAT
+NDUFA12
+MYOM2
+SNORD116-10
+ACHE
+SYT9
+VPS72
+BECN1
+SNORD114-9
+RBM19
+KCNU1
+ZNF487
+PRPSAP2
+PAF1
+GNB2
+CREBZF
+TGFBI
+TAL2
+MPZL3
+REPIN1
+HOXC5
+C9orf66
+OR1A1
+SOCS6
+ZFY
+CDYL2
+PIK3R4
+RAD9B
+PI4KAP2
+KLHDC8A
+GRIK3
+MATK
+FEZF1
+SLC4A2
+SPINT3
+ZNF596
+TRA2A
+MAP4K1
+DNAJC5B
+GAS8-AS1
+CIDEB
+LBH
+GPR31
+RAB23
+BTF3
+TRIT1
+ABCA6
+AADACP1
+SUMO3
+ERC1
+SOX13
+WDR47
+GATA4
+HFM1
+SLC1A3
+AMY2B
+OSBPL7
+CHMP4A
+SBK2
+TMEM135
+GRIN2B
+MT3
+SNORD115-16
+RTN4
+ZEB1-AS1
+PHLDB2
+PDZD9
+LPIN2
+HOXB4
+AMPD2
+GFRA2
+TMEM52B
+OR10H1
+YIPF6
+ELP3
+IVNS1ABP
+METAP1
+ZFYVE9
+ADAM18
+EPC1
+HEXA-AS1
+RPS10P7
+HNRNPAB
+RPL23
+SLC28A2
+CYP4F2
+INSM1
+RNF31
+SNORA71A
+CAMK1G
+GGT8P
+GP6
+KLHL33
+CLVS2
+PRR23A
+HAND2-AS1
+C10orf107
+FAM182A
+GP9
+DCAF13
+FPGS
+GDNF
+SIRT4
+SLC9C1
+ZNF449
+ERICH4
+CD52
+OR1F1
+KCNK9
+TPMT
+AZIN2
+SBK1
+CAPNS1
+PPP1R11
+RNASE4
+AKIRIN2
+POLR3E
+CATSPER2P1
+PNKD
+GSKIP
+CYLC2
+RNF38
+GRB10
+GPR161
+HPD
+CASD1
+ADCK2
+LINC01205
+TAMM41
+SRP19
+SLC25A13
+HLA-C
+AGO2
+SNORA19
+SMAD4
+EMC3
+NFKBIZ
+HOXB2
+IGSF1
+ITFG2
+IP6K2
+FAM50B
+SEC24C
+STAG3L3
+F3
+LRRC75A-AS1
+CISD2
+NEK7
+TMEM123
+C15orf32
+TSPY2
+DNAJC18
+CHCHD4
+IL7R
+EFNA3
+DYNLT1
+ENC1
+ATF1
+TMEM176B
+GPRIN2
+SCARNA18
+TACSTD2
+TTF1
+GOLM1
+FAHD2B
+PLEKHA2
+KXD1
+SWT1
+KIF19
+OSTM1
+PNMAL2
+DNAJC16
+STON1
+ZNF547
+CHRNB4
+ZNF814
+YAF2
+VMP1
+ANGPTL2
+DOT1L
+CCNB3
+ANP32A-IT1
+TANC1
+MSRA
+DLAT
+LRRC14
+HHEX
+CD82
+ANKRD54
+ZNF619
+IGF2-AS
+IKZF5
+KDM5C
+WDPCP
+ALPI
+RNASEH1
+APLP2
+ULK3
+FAM27L
+ARPP19
+SOWAHC
+RPL5
+ALPK3
+GCK
+KCTD7
+ATP12A
+UMODL1-AS1
+FCHSD1
+WHAMMP3
+SFT2D2
+CD5
+ARSD
+ZNF343
+FXR1
+SFTPD
+SEMG1
+RNF212
+CCDC152
+ZNF117
+TMEM120B
+EXOC3L1
+PAXIP1
+GCOM1
+HIVEP2
+PSMA1
+DPF1
+SERTAD3
+SPINK1
+DNAJC7
+CGB
+SUN2
+EBNA1BP2
+C8orf82
+LYPLA2P1
+LSAMP
+GLB1
+TAAR2
+PTPN6
+SLC10A1
+FLVCR1-AS1
+KBTBD11
+CSRP2
+GDF5
+ENDOV
+SNORA11D
+OR2A12
+MCOLN1
+HBQ1
+GOLGA8F
+OXCT1
+TFR2
+CTSZ
+KRT35
+NHSL1
+SERPIND1
+WDR1
+CTDNEP1
+VPRBP
+GAD2
+CLRN2
+WNT9A
+MYO1G
+LINC01138
+NUDT13
+CENPF
+PEF1
+TAS2R10
+PRSS22
+UBTFL1
+P4HB
+SNORA40
+SLC1A7
+NUDCD1
+BCL3
+LRSAM
+Query:
+-- 3. Get TP53 expression data for TCGA-BRCA samples.
+SELECT "sample_barcode", "normalized_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53'
+LIMIT 1000;
+Answer:
+sample_barcode,normalized_count
+TCGA-A2-A0EO-01A,1939.7418
+TCGA-AO-A03L-01A,765.6082
+TCGA-D8-A1J9-01A,1280.7431
+TCGA-AO-A0JI-01A,1476.3347
+TCGA-BH-A18G-01A,3366.25
+TCGA-A7-A0CE-01A,2880.2441
+TCGA-A8-A08S-01A,1662.2581
+TCGA-AC-A8OQ-01A,719.1437
+TCGA-E2-A150-01A,374.7471
+TCGA-BH-A1EO-01A,1638.8541
+TCGA-C8-A12K-01A,2466.6872
+TCGA-B6-A0WT-01A,1804.2262
+TCGA-BH-A0BG-01A,552.1771
+TCGA-EW-A1IW-01A,1299.5354
+TCGA-A2-A0EQ-01A,2882.487
+TCGA-AO-A1KR-01A,3628.0936
+TCGA-E9-A1R0-01A,1223.3268
+TCGA-E2-A14T-01A,1469.2433
+TCGA-A2-A3XU-01A,4229.8422
+TCGA-AR-A5QN-01A,858.2248
+TCGA-D8-A1XO-01A,1838.7119
+TCGA-E9-A1NI-01A,2201.2513
+TCGA-A8-A09V-01A,1827.6052
+TCGA-BH-A0EE-01A,263.0962
+TCGA-EW-A1J3-01A,1314.1029
+TCGA-A2-A0D2-01A,653.114
+TCGA-A2-A0SV-01A,2110.9426
+TCGA-A7-A0DC-01A,2147.6637
+TCGA-JL-A3YX-01A,3657.4791
+TCGA-A2-A0T5-01A,3514.5436
+TCGA-A2-A3XZ-01A,1280.8408
+TCGA-AO-A03N-01B,2850.2754
+TCGA-AQ-A1H3-01A,1273.2084
+TCGA-AR-A0U4-01A,2913.7753
+TCGA-AR-A1AQ-01A,963.3264
+TCGA-C8-A27A-01A,2185.1498
+TCGA-E2-A10A-01A,2695.2387
+TCGA-A2-A25D-01A,1155.3694
+TCGA-A8-A06O-01A,1383.5302
+TCGA-BH-A1FB-01A,1794.2471
+TCGA-E2-A14O-01A,1531.8637
+TCGA-A2-A0YC-01A,1030.7517
+TCGA-E9-A1RH-01A,873.2059
+TCGA-A8-A08C-01A,2960.0406
+TCGA-AQ-A0Y5-01A,1051.2753
+TCGA-BH-A0DL-01A,1879.8641
+TCGA-AC-A6IX-01A,1177.6502
+TCGA-BH-A1EY-01A,1489.1332
+TCGA-D8-A1X5-01A,1535.0715
+TCGA-BH-A5IZ-01A,2080.354
+TCGA-BH-A0HK-01A,1342.9926
+TCGA-BH-A1FG-11B,1618.3494
+TCGA-E2-A15C-01A,1850.0
+TCGA-E2-A1IK-01A,1590.0
+TCGA-BH-A0BS-11A,2154.1492
+TCGA-BH-A0DQ-01A,1890.0695
+TCGA-OL-A66N-01A,1402.5825
+TCGA-A2-A3KD-01A,956.1363
+TCGA-BH-A18S-01A,636.8501
+TCGA-BH-A1F2-01A,2234.806
+TCGA-C8-A12L-01A,2922.4377
+TCGA-EW-A1OX-01A,1274.1592
+TCGA-A2-A04T-01A,4180.8224
+TCGA-AC-A3YI-01A,1801.7592
+TCGA-AO-A03T-01A,1083.944
+TCGA-BH-A0BF-01A,2239.0446
+TCGA-BH-A0HQ-01A,2681.6954
+TCGA-BH-A0DV-01A,1632.6166
+TCGA-BH-A1F5-01A,2109.0641
+TCGA-BH-A0DS-01A,1157.9453
+TCGA-A2-A0ET-01A,2358.6132
+TCGA-AR-A254-01A,556.2741
+TCGA-AR-A2LK-01A,2031.8008
+TCGA-OL-A5RU-01A,1374.514
+TCGA-A7-A13E-01A,1764.9194
+TCGA-BH-A1FU-11A,1787.6245
+TCGA-D8-A1XL-01A,2236.8523
+TCGA-AC-A2FB-11A,1560.8439
+TCGA-D8-A1XV-01A,1595.0541
+TCGA-EW-A424-01A,2572.8643
+TCGA-AC-A3W7-01A,1379.982
+TCGA-D8-A1JP-01A,1411.6234
+TCGA-AC-A3YJ-01A,1711.1991
+TCGA-AR-A251-01A,4564.0903
+TCGA-E9-A1R5-01A,1776.4658
+TCGA-A2-A04P-01A,476.6598
+TCGA-LL-A50Y-01A,1236.3452
+TCGA-OL-A66O-01A,1459.2976
+TCGA-E2-A1LS-11A,650.7584
+TCGA-5L-AAT1-01A,1928.2804
+TCGA-AR-A24K-01A,338.0364
+TCGA-E2-A14Y-01A,1743.2504
+TCGA-A7-A13G-11A,688.4913
+TCGA-AQ-A54O-01A,2003.3278
+TCGA-A2-A0EU-01A,2222.2774
+TCGA-AC-A3QP-01A,1739.0141
+TCGA-BH-A18L-01A,792.4855
+TCGA-E2-A14W-01A,1472.9276
+TCGA-GI-A2C8-11A,329.3692
+TCGA-A2-A0CS-01A,2787.725
+TCGA-AN-A04D-01A,1977.829
+TCGA-AO-A1KQ-01A,1553.848
+TCGA-D8-A1JK-01A,529.8392
+TCGA-AR-A0TX-01A,1385.4484
+TCGA-A7-A26I-01A,2102.3513
+TCGA-OL-A5DA-01A,1061.8991
+TCGA-AO-A03P-01A,3012.9393
+TCGA-AO-A124-01A,273.4235
+TCGA-C8-A1HL-01A,1906.0403
+TCGA-E9-A1RB-11A,1261.8099
+TCGA-D8-A1XZ-01A,432.8567
+TCGA-E2-A10F-01A,1601.3078
+TCGA-BH-A0BS-01A,1389.5509
+TCGA-A2-A0CV-01A,1587.0753
+TCGA-E2-A105-01A,1510.5769
+Query:
+-- 4. Retrieve distinct mutation types from the mutation data for TP53 in TCGA-BRCA samples.
+SELECT DISTINCT "Variant_Classification"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+Answer:
+Variant_Classification
+Splice_Site
+Frame_Shift_Ins
+Nonsense_Mutation
+Missense_Mutation
+Frame_Shift_Del
+Query:
+-- 5. List tumor sample barcodes with TP53 mutations in TCGA-BRCA samples.
+SELECT DISTINCT "sample_barcode_tumor"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+Answer:
+sample_barcode_tumor
+TCGA-S3-AA10-01A
+TCGA-AR-A1AX-01A
+TCGA-AN-A0FT-01A
+TCGA-E2-A158-01A
+TCGA-GM-A2DI-01A
+TCGA-BH-A0BF-01A
+TCGA-A8-A06O-01A
+TCGA-EW-A1P1-01A
+TCGA-A2-A04W-01A
+TCGA-AR-A1AW-01A
+TCGA-C8-A278-01A
+TCGA-E2-A108-01A
+TCGA-BH-A0B0-01A
+TCGA-E2-A155-01A
+TCGA-A2-A0CL-01A
+TCGA-A7-A26I-01A
+TCGA-BH-A1EV-01A
+TCGA-E9-A22E-01A
+TCGA-AN-A0FX-01A
+TCGA-AN-A0XT-01A
+TCGA-LL-A73Y-01A
+TCGA-BH-A0EE-01A
+TCGA-A1-A0SK-01A
+TCGA-OL-A5D6-01A
+TCGA-C8-A26W-01A
+TCGA-C8-A131-01A
+TCGA-E9-A1NF-01A
+TCGA-D8-A1XW-01A
+TCGA-A7-A26F-01B
+TCGA-A7-A0CE-01A
+TCGA-C8-A12L-01A
+TCGA-AQ-A04H-01B
+TCGA-A8-A07U-01A
+TCGA-B6-A0IK-01A
+TCGA-E2-A152-01A
+TCGA-C8-A1HK-01A
+TCGA-EW-A1P4-01A
+TCGA-B6-A0WX-01A
+TCGA-E2-A1AZ-01A
+TCGA-A7-A3RF-01A
+Query:
+-- 6. Retrieve mutation data for TP53 specifying the mutation types.
+SELECT "sample_barcode_tumor", "Variant_Classification", "Chromosome", "Start_Position", "End_Position"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+Answer:
+sample_barcode_tumor,Variant_Classification,Chromosome,Start_Position,End_Position
+TCGA-C8-A12L-01A,Missense_Mutation,17,7577568,7577568
+TCGA-E2-A155-01A,Splice_Site,17,7579591,7579591
+TCGA-AQ-A04H-01B,Missense_Mutation,17,7578259,7578259
+TCGA-A8-A07U-01A,Frame_Shift_Del,17,7576863,7576863
+TCGA-B6-A0IK-01A,Missense_Mutation,17,7578268,7578268
+TCGA-BH-A0EE-01A,Frame_Shift_Del,17,7578397,7578397
+TCGA-A1-A0SK-01A,Missense_Mutation,17,7578532,7578532
+TCGA-E2-A152-01A,Missense_Mutation,17,7578536,7578536
+TCGA-A2-A0CL-01A,Missense_Mutation,17,7577120,7577120
+TCGA-S3-AA10-01A,Frame_Shift_Ins,17,7579335,7579336
+TCGA-A7-A26I-01A,Missense_Mutation,17,7577141,7577141
+TCGA-E9-A22E-01A,Missense_Mutation,17,7577548,7577548
+TCGA-BH-A1EV-01A,Missense_Mutation,17,7578204,7578204
+TCGA-AR-A1AX-01A,Missense_Mutation,17,7579355,7579355
+TCGA-C8-A1HK-01A,Nonsense_Mutation,17,7577100,7577100
+TCGA-AN-A0FT-01A,Missense_Mutation,17,7578271,7578271
+TCGA-C8-A26W-01A,Missense_Mutation,17,7577120,7577120
+TCGA-E2-A158-01A,Missense_Mutation,17,7578265,7578265
+TCGA-EW-A1P4-01A,Missense_Mutation,17,7578394,7578394
+TCGA-OL-A5D6-01A,Missense_Mutation,17,7577557,7577557
+TCGA-GM-A2DI-01A,Splice_Site,17,7577500,7577501
+TCGA-BH-A0BF-01A,Missense_Mutation,17,7577548,7577548
+TCGA-B6-A0WX-01A,Nonsense_Mutation,17,7579346,7579346
+TCGA-A8-A06O-01A,Missense_Mutation,17,7577102,7577102
+TCGA-E2-A1AZ-01A,Missense_Mutation,17,7577099,7577099
+TCGA-E2-A1AZ-01A,Missense_Mutation,17,7577077,7577077
+TCGA-A7-A3RF-01A,Missense_Mutation,17,7577120,7577120
+TCGA-A7-A26F-01B,Missense_Mutation,17,7578403,7578403
+TCGA-EW-A1P1-01A,Missense_Mutation,17,7577120,7577120
+TCGA-C8-A131-01A,Missense_Mutation,17,7578406,7578406
+TCGA-A2-A04W-01A,Missense_Mutation,17,7577124,7577124
+TCGA-AN-A0FX-01A,Missense_Mutation,17,7577539,7577539
+TCGA-AN-A0XT-01A,Splice_Site,17,7578555,7578555
+TCGA-E9-A1NF-01A,Missense_Mutation,17,7579349,7579349
+TCGA-AR-A1AW-01A,Missense_Mutation,17,7577121,7577121
+TCGA-C8-A278-01A,Missense_Mutation,17,7578427,7578427
+TCGA-LL-A73Y-01A,Splice_Site,17,7577610,7577610
+TCGA-D8-A1XW-01A,Splice_Site,17,7578554,7578554
+TCGA-E2-A108-01A,Missense_Mutation,17,7577120,7577120
+TCGA-BH-A0B0-01A,Missense_Mutation,17,7578406,7578406
+TCGA-A7-A0CE-01A,Missense_Mutation,17,7578467,7578467
+Query:
+SELECT MIN("normalized_count") AS "min_expression",
+       MAX("normalized_count") AS "max_expression",
+       AVG("normalized_count") AS "avg_expression"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53';
+Answer:
+min_expression,max_expression,avg_expression
+263.0962,4564.0903,1713.457719130435
+Query:
+-- 8. List samples with positive TP53 expression levels.
+SELECT "sample_barcode", "normalized_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+LIMIT 1000;
+Answer:
+sample_barcode,normalized_count
+TCGA-AQ-A54O-01A,2003.3278
+TCGA-A2-A0EU-01A,2222.2774
+TCGA-AC-A3QP-01A,1739.0141
+TCGA-BH-A18L-01A,792.4855
+TCGA-E2-A14W-01A,1472.9276
+TCGA-GI-A2C8-11A,329.3692
+TCGA-A7-A13G-11A,688.4913
+TCGA-A2-A0EQ-01A,2882.487
+TCGA-AO-A1KR-01A,3628.0936
+TCGA-E9-A1R0-01A,1223.3268
+TCGA-B6-A0WT-01A,1804.2262
+TCGA-BH-A0BG-01A,552.1771
+TCGA-EW-A1IW-01A,1299.5354
+TCGA-5L-AAT1-01A,1928.2804
+TCGA-AR-A24K-01A,338.0364
+TCGA-E2-A14Y-01A,1743.2504
+TCGA-E2-A14T-01A,1469.2433
+TCGA-A2-A0CS-01A,2787.725
+TCGA-AN-A04D-01A,1977.829
+TCGA-AO-A1KQ-01A,1553.848
+TCGA-D8-A1JK-01A,529.8392
+TCGA-A2-A0ET-01A,2358.6132
+TCGA-AR-A254-01A,556.2741
+TCGA-AR-A2LK-01A,2031.8008
+TCGA-OL-A5RU-01A,1374.514
+TCGA-A7-A13E-01A,1764.9194
+TCGA-BH-A1FU-11A,1787.6245
+TCGA-D8-A1XL-01A,2236.8523
+TCGA-AO-A03T-01A,1083.944
+TCGA-BH-A0BF-01A,2239.0446
+TCGA-BH-A0HQ-01A,2681.6954
+TCGA-A2-A04T-01A,4180.8224
+TCGA-AC-A3YI-01A,1801.7592
+TCGA-BH-A0HK-01A,1342.9926
+TCGA-BH-A1FG-11B,1618.3494
+TCGA-E2-A15C-01A,1850.0
+TCGA-E2-A1IK-01A,1590.0
+TCGA-BH-A0DS-01A,1157.9453
+TCGA-BH-A0BS-11A,2154.1492
+TCGA-BH-A0DQ-01A,1890.0695
+TCGA-OL-A66N-01A,1402.5825
+TCGA-BH-A18S-01A,636.8501
+TCGA-BH-A1F2-01A,2234.806
+TCGA-C8-A12L-01A,2922.4377
+TCGA-EW-A1OX-01A,1274.1592
+TCGA-BH-A5IZ-01A,2080.354
+TCGA-A8-A08C-01A,2960.0406
+TCGA-AQ-A0Y5-01A,1051.2753
+TCGA-BH-A0DL-01A,1879.8641
+TCGA-A2-A3KD-01A,956.1363
+TCGA-BH-A0DV-01A,1632.6166
+TCGA-BH-A1F5-01A,2109.0641
+TCGA-AC-A6IX-01A,1177.6502
+TCGA-BH-A1EY-01A,1489.1332
+TCGA-D8-A1X5-01A,1535.0715
+TCGA-A7-A0CE-01A,2880.2441
+TCGA-A8-A08S-01A,1662.2581
+TCGA-AC-A8OQ-01A,719.1437
+TCGA-AO-A0JI-01A,1476.3347
+TCGA-BH-A18G-01A,3366.25
+TCGA-BH-A1EO-01A,1638.8541
+TCGA-C8-A12K-01A,2466.6872
+TCGA-E2-A150-01A,374.7471
+TCGA-E2-A1LS-11A,650.7584
+TCGA-LL-A50Y-01A,1236.3452
+TCGA-OL-A66O-01A,1459.2976
+TCGA-AC-A2FB-11A,1560.8439
+TCGA-D8-A1XV-01A,1595.0541
+TCGA-EW-A424-01A,2572.8643
+TCGA-AC-A3YJ-01A,1711.1991
+TCGA-AR-A251-01A,4564.0903
+TCGA-E9-A1R5-01A,1776.4658
+TCGA-A2-A04P-01A,476.6598
+TCGA-AC-A3W7-01A,1379.982
+TCGA-D8-A1JP-01A,1411.6234
+TCGA-A2-A0EO-01A,1939.7418
+TCGA-AO-A03L-01A,765.6082
+TCGA-D8-A1J9-01A,1280.7431
+TCGA-BH-A0BS-01A,1389.5509
+TCGA-AR-A0TX-01A,1385.4484
+TCGA-A2-A0CV-01A,1587.0753
+TCGA-E2-A105-01A,1510.5769
+TCGA-A7-A26I-01A,2102.3513
+TCGA-OL-A5DA-01A,1061.8991
+TCGA-AO-A03P-01A,3012.9393
+TCGA-AO-A124-01A,273.4235
+TCGA-C8-A1HL-01A,1906.0403
+TCGA-E9-A1RB-11A,1261.8099
+TCGA-D8-A1XZ-01A,432.8567
+TCGA-E2-A10F-01A,1601.3078
+TCGA-A8-A09V-01A,1827.6052
+TCGA-BH-A0EE-01A,263.0962
+TCGA-A2-A0D2-01A,653.114
+TCGA-A2-A0SV-01A,2110.9426
+TCGA-A7-A0DC-01A,2147.6637
+TCGA-JL-A3YX-01A,3657.4791
+TCGA-A2-A3XU-01A,4229.8422
+TCGA-AR-A5QN-01A,858.2248
+TCGA-D8-A1XO-01A,1838.7119
+TCGA-E9-A1NI-01A,2201.2513
+TCGA-EW-A1J3-01A,1314.1029
+TCGA-A2-A0T5-01A,3514.5436
+TCGA-A2-A3XZ-01A,1280.8408
+TCGA-AO-A03N-01B,2850.2754
+TCGA-AQ-A1H3-01A,1273.2084
+TCGA-AR-A0U4-01A,2913.7753
+TCGA-AR-A1AQ-01A,963.3264
+TCGA-C8-A27A-01A,2185.1498
+TCGA-E2-A10A-01A,2695.2387
+TCGA-A2-A0YC-01A,1030.7517
+TCGA-E9-A1RH-01A,873.2059
+TCGA-A2-A25D-01A,1155.3694
+TCGA-A8-A06O-01A,1383.5302
+TCGA-BH-A1FB-01A,1794.2471
+TCGA-E2-A14O-01A,1531.8637
+Query:
+-- 9. Retrieve mutation types and counts for TP53 in TCGA-BRCA samples.
+SELECT "Variant_Classification", COUNT(*) AS "mutation_count"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_DCC"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+GROUP BY "Variant_Classification"
+LIMIT 1000;
+Answer:
+Variant_Classification,mutation_count
+Splice_Site,5
+Frame_Shift_Ins,1
+Nonsense_Mutation,2
+Missense_Mutation,31
+Frame_Shift_Del,2
+Query:
+-- 10. List all tumor sample barcodes and associated variant types for TP53 mutations.
+SELECT "sample_barcode_tumor", "Variant_Type"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_MC3"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+Answer:
+sample_barcode_tumor,Variant_Type
+TCGA-A2-A0EQ-01A,DEL
+TCGA-E9-A22G-01A,INS
+TCGA-A2-A0D1-01A,SNP
+TCGA-E2-A1B1-01A,SNP
+TCGA-BH-A0DL-01A,SNP
+TCGA-AN-A046-01A,SNP
+TCGA-BH-A0DI-01A,SNP
+TCGA-C8-A27A-01A,SNP
+TCGA-C8-A12P-01A,SNP
+TCGA-BH-A0BC-01A,SNP
+TCGA-LL-A6FR-01A,SNP
+TCGA-BH-A0B3-01A,SNP
+TCGA-BH-A0GY-01A,SNP
+TCGA-E2-A1II-01A,SNP
+TCGA-A7-A26F-01A,SNP
+TCGA-AN-A0FY-01A,SNP
+Query:
+-- 11. Retrieve distinct chromosome locations of TP53 mutations in TCGA-BRCA samples.
+SELECT DISTINCT "Chromosome", "Start_Position", "End_Position"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."SOMATIC_MUTATION_MC3"
+WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+LIMIT 1000;
+Answer:
+Chromosome,Start_Position,End_Position
+17,7576855,7576855
+17,7578253,7578253
+17,7578203,7578203
+17,7578406,7578406
+17,7578556,7578556
+17,7578403,7578403
+17,7577517,7577517
+17,7578443,7578445
+17,7577127,7577128
+17,7579717,7579717
+17,7577081,7577081
+17,7579882,7579882
+17,7577539,7577539
+17,7578413,7578413
+17,7577120,7577120
+Query:
+-- 12. List sample barcodes and the platform used for expression data.
+SELECT DISTINCT "sample_barcode", "platform"
+FROM TCGA_HG19_DATA_V0.TCGA_HG19_DATA_V0."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+WHERE "project_short_name" = 'TCGA-BRCA'
+LIMIT 1000;
+Answer:
+Too long, hard cut:
+sample_barcode,platform
+TCGA-3C-AALK-01A,IlluminaHiSeq
+TCGA-A1-A0SJ-01A,IlluminaHiSeq
+TCGA-A2-A0CU-01A,IlluminaHiSeq
+TCGA-A2-A0T3-01A,IlluminaHiSeq
+TCGA-A2-A0YT-01A,IlluminaHiSeq
+TCGA-A7-A13E-11A,IlluminaHiSeq
+TCGA-A7-A13D-01A,IlluminaHiSeq
+TCGA-A8-A07S-01A,IlluminaHiSeq
+TCGA-A8-A08C-01A,IlluminaHiSeq
+TCGA-A8-A0A6-01A,IlluminaHiSeq
+TCGA-BH-A18I-01A,IlluminaHiSeq
+TCGA-BH-A1EO-01A,IlluminaHiSeq
+TCGA-BH-A1EW-11B,IlluminaHiSeq
+TCGA-C8-A1HM-01A,IlluminaHiSeq
+TCGA-E2-A156-01A,IlluminaHiSeq
+TCGA-E2-A15R-01A,IlluminaHiSeq
+TCGA-BH-A0B9-01A,IlluminaHiSeq
+TCGA-A7-A3IY-01A,IlluminaHiSeq
+TCGA-A7-A13G-11A,IlluminaHiSeq
+TCGA-A8-A09K-01A,IlluminaHiSeq
+TCGA-AC-A2FM-01A,IlluminaHiSeq
+TCGA-AN-A0FL-01A,IlluminaHiSeq
+TCGA-AN-A0XO-01A,IlluminaHiSeq
+TCGA-AO-A12A-01A,IlluminaHiSeq
+TCGA-AN-A0XR-01A,IlluminaHiSeq
+TCGA-BH-A0DD-01A,IlluminaHiSeq
+TCGA-BH-A0DV-01A,IlluminaHiSeq
+TCGA-BH-A1FL-01A,IlluminaHiSeq
+TCGA-BH-A1FM-01A,IlluminaHiSeq
+TCGA-C8-A12N-01A,IlluminaHiSeq
+TCGA-C8-A1HF-01A,IlluminaHiSeq
+TCGA-D8-A1XL-01A,IlluminaHiSeq
+TCGA-D8-A27H-01A,IlluminaHiSeq
+TCGA-E2-A107-01A,IlluminaHiSeq
+TCGA-E2-A155-01A,IlluminaHiSeq
+TCGA-E2-A1IE-01A,IlluminaHiSeq
+TCGA-E9-A1NG-11A,IlluminaHiSeq
+TCGA-E9-A1NH-01A,IlluminaHiSeq
+TCGA-BH-A1FD-11B,IlluminaHiSeq
+TCGA-E2-A15J-01A,IlluminaHiSeq
+TCGA-E9-A295-01A,IlluminaHiSeq
+TCGA-A2-A0CZ-01A,IlluminaHiSeq
+TCGA-A2-A3XT-01A,IlluminaHiSeq
+TCGA-A8-A08A-01A,IlluminaHiSeq
+TCGA-A8-A08T-01A,IlluminaHiSeq
+TCGA-A8-A090-01A,IlluminaHiSeq
+TCGA-AC-A2B8-01A,IlluminaHiSeq
+TCGA-AC-A2FK-01A,IlluminaHiSeq
+TCGA-AO-A1KT-01A,IlluminaHiSeq
+TCGA-AR-A0U4-01A,IlluminaHiSeq
+TCGA-AR-A1AP-01A,IlluminaHiSeq
+TCGA-AR-A1AV-01A,IlluminaHiSeq
+TCGA-AR-A2LH-01A,IlluminaHiSeq
+TCGA-B6-A0X1-01A,IlluminaHiSeq
+TCGA-BH-A1FR-11B,IlluminaHiSeq
+TCGA-BH-A204-01A,IlluminaHiSeq
+TCGA-BH-A6R8-01A,IlluminaHiSeq
+TCGA-C8-A12K-01A,IlluminaHiSeq
+TCGA-C8-A12L-01A,IlluminaHiSeq
+TCGA-D8-A13Y-01A,IlluminaHiSeq
+TCGA-D8-A1JM-01A,IlluminaHiSeq
+TCGA-D8-A1X5-01A,IlluminaHiSeq
+TCGA-E2-A1AZ-01A,IlluminaHiSeq
+TCGA-E2-A1IN-01A,IlluminaHiSeq
+TCGA-BH-A0DK-11A,IlluminaHiSeq
+TCGA-BH-A0HX-01A,IlluminaHiSeq
+TCGA-E2-A14O-01A,IlluminaHiSeq
+TCGA-E9-A3QA-01A,IlluminaHiSeq
+TCGA-3C-AAAU-01A,IlluminaHiSeq
+TCGA-A7-A0DC-01A,IlluminaHiSeq
+TCGA-A7-A26E-01A,IlluminaHiSeq
+TCGA-AC-A3OD-01A,IlluminaHiSeq
+TCGA-AC-A2FE-01A,IlluminaHiSeq
+TCGA-AO-A0JB-01A,IlluminaHiSeq
+TCGA-AR-A1AQ-01A,IlluminaHiSeq
+TCGA-BH-A0BQ-11A,IlluminaHiSeq
+TCGA-D8-A141-01A,IlluminaHiSeq
+TCGA-D8-A1XG-01A,IlluminaHiSeq
+TCGA-E2-A153-01A,IlluminaHiSeq
+TCGA-E2-A1IK-01A,IlluminaHiSeq
+TCGA-E9-A1N9-11A,IlluminaHiSeq
+TCGA-E2-A15G-01A,IlluminaHiSeq
+TCGA-4H-AAAK-01A,IlluminaHiSeq
+TCGA-A2-A0T1-01A,IlluminaHiSeq
+TCGA-A8-A07U-01A,IlluminaHiSeq
+TCGA-A8-A086-01A,IlluminaHiSeq
+TCGA-AC-A4ZE-01A,IlluminaHiSeq
+TCGA-AN-A0XL-01A,IlluminaHiSeq
+TCGA-AR-A0TT-01A,IlluminaHiSeq
+TCGA-C8-A12U-01A,IlluminaHiSeq
+TCGA-D8-A143-01A,IlluminaHiSeq
+TCGA-D8-A1JU-01A,IlluminaHiSeq
+TCGA-D8-A1X7-01A,IlluminaHiSeq
+TCGA-D8-A27M-01A,IlluminaHiSeq
+TCGA-E2-A1IU-01A,IlluminaHiSeq
+TCGA-E2-A1LG-01A,IlluminaHiSeq
+TCGA-E9-A1R5-01A,IlluminaHiSeq
+TCGA-A8-A085-01A,IlluminaHiSeq
+TCGA-BH-A0HA-11A,IlluminaHiSeq
+TCGA-E2-A9RU-01A,IlluminaHiSeq
+TCGA-AC-A2QJ-01A,IlluminaHiSeq
+TCGA-AN-A0XW-01A,IlluminaHiSeq
+TCGA-AR-A0TX-01A,IlluminaHiSeq
+TCGA-AR-A24R-01A,IlluminaHiSeq
+TCGA-B6-A0IQ-01A,IlluminaHiSeq
+TCGA-B6-A0WZ-01A,IlluminaHiSeq
+TCGA-E2-A570-01A,IlluminaHiSeq
+TCGA-E9-A1R7-01A,IlluminaHiSeq
+TCGA-BH-A0DL-11A,IlluminaHiSeq
+TCGA-BH-A208-11A,IlluminaHiSeq
+TCGA-E9-A22H-01A,IlluminaHiSeq
+TCGA-A1-A0SO-01A,IlluminaHiSeq
+TCGA-A2-A1FZ-01A,IlluminaHiSeq
+TCGA-A2-A1G6-01A,IlluminaHiSeq
+TCGA-A7-A56D-01A,IlluminaHiSeq
+TCGA-A7-A26J-01A,IlluminaHiSeq
+TCGA-A8-A083-01A,IlluminaHiSeq
+TCGA-AC-A6NO-01A,IlluminaHiSeq
+TCGA-AO-A0JG-01A,IlluminaHiSeq
+TCGA-AO-A129-01A,IlluminaHiSeq
+TCGA-AO-A1KS-01A,IlluminaHiSeq
+TCGA-AN-A0FF-01A,IlluminaHiSeq
+TCGA-AR-A0TU-01A,IlluminaHiSeq
+TCGA-AR-A0TW-01A,IlluminaHiSeq
+TCGA-AR-A24V-01A,IlluminaHiSeq
+TCGA-BH-A0BF-01A,IlluminaHiSeq
+TCGA-D8-A3Z6-01A,IlluminaHiSeq
+TCGA-E2-A14Y-01A,IlluminaHiSeq
+TCGA-E2-A1BC-01A,IlluminaHiSeq
+TCGA-E2-A1LL-01A,IlluminaHiSeq
+TCGA-AC-A2FB-11A,IlluminaHiSeq
+TCGA-AN-A0AJ-01A,IlluminaHiSeq
+TCGA-BH-A0C0-01A,IlluminaHiSeq
+TCGA-BH-A1FR-01A,IlluminaHiSeq
+TCGA-E9-A1QZ-01A,IlluminaHiSeq
+TCGA-A2-A0T7-01A,IlluminaHiSeq
+TCGA-AC-A62X-01A,IlluminaHiSeq
+TCGA-AO-A03O-01A,IlluminaHiSeq
+TCGA-AR-A1AU-01A,IlluminaHiSeq
+TCGA-AR-A24H-01A,IlluminaHiSeq
+TCGA-AR-A24Z-01A,IlluminaHiSeq
+TCGA-BH-A0BW-11A,IlluminaHiSeq
+TCGA-BH-A18L-01A,IlluminaHiSeq
+TCGA-C8-A12Z-01A,IlluminaHiSeq
+TCGA-C8-A27B-01A,IlluminaHiSeq
+TCGA-E2-A14U-01A,IlluminaHiSeq
+TCGA-E9-A1ND-01A,IlluminaHiSeq
+TCGA-E9-A1R4-01A,IlluminaHiSeq
+TCGA-BH-A1F5-01A,IlluminaHiSeq
+TCGA-E9-A1R6-01A,IlluminaHiSeq
+TCGA-A2-A0T2-01A,IlluminaHiSeq
+TCGA-A2-A0YC-01A,IlluminaHiSeq
+TCGA-A7-A0CH-01A,IlluminaHiSeq
+TCGA-A7-A2KD-01A,IlluminaHiSeq
+TCGA-A8-A07J-01A,IlluminaHiSeq
+TCGA-B6-A0I9-01A,IlluminaHiSeq
+TCGA-BH-A0BT-11A,IlluminaHiSeq
+TCGA-BH-A0DG-01A,IlluminaHiSeq
+TCGA-BH-A0H5-01A,IlluminaHiSeq
+TCGA-BH-A0HN-01A,IlluminaHiSeq
+TCGA-BH-A1ET-11B
+End Exploring Related Columns
+Task: Assess whether different genetic variants affect the log10-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data. Provide the total number of samples, the number of mutation types, the mean square between groups, the mean square within groups, and the F-statistic.
+
+Please answer only one complete SQL in snowflake dialect in ```sql``` format.
+Usage example: SELECT S."Column_Name" FROM {Database Name}.{Schema Name}.{Table_name} (ensure all column names are enclosed in double quotations)
+Follow the answer format like: ```csv
+total_samples,number_of_mutation_types,mean_square_between_groups,mean_square_within_groups,F_statistic
+num_samples:int > 0,num_mutation_types:int > 0,msb:float ≥ 0,msw:float > 0,F_value:float ≥ 0
+```
+
+**Explanation:**
+
+We assessed the effect of different genetic variants on the log₁₀-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data. The total number of samples (`total_samples`) represents all the TCGA-BRCA samples analyzed with available TP53 expression and mutation data. The `number_of_mutation_types` corresponds to the distinct mutation categories identified for the TP53 gene.
+
+The **mean square between groups (MSB)** quantifies the variance of the group means from the overall mean and reflects differences between mutation types. The **mean square within groups (MSW)** measures the variance within each mutation type group. The **F-statistic** is calculated by dividing the MSB by the MSW and is used to determine if there are statistically significant differences between the group means. Since specific numerical values cannot be inferred without actual data, they are represented by variables indicating their types and conditions..
+Here are some useful tips for answering:
+When calculating distances between two geometries, use `ST_MakePoint(x, y)` to make a point and `ST_Distance(geometry1 GEOMETRY, geometry2 GEOMETRY)` to compute. No need to convert from meters to miles unless requested. Don't use Haversine like 2 * 6371000 * ASIN(...), use ST_DISTANCE for more precise results.
+Please refrain from adding any conditions that are not explicitly specified in the task.
+When performing a UNION operation on many tables, ensure that all table names are explicitly listed. Union first and then add condition and selection. e.g. SELECT "col1", "col2" FROM (TABLE1 UNION ALL TABLE2) WHERE ...; Don't write sqls as (SELECT col1, col2 FROM TABLE1 WHERE ...) UNION ALL (SELECT col1, col2 FROM TABLE2 WHERE ...); Don't use ['-- Include all', '-- Omit', '-- Continue', '-- Union all', '-- ...', '-- List all', '-- Replace this', '-- Each table', '-- Add other'] to omit any table. Table names here: ({database name: {schema name: {table name}}}): 
+{'TCGA_HG19_DATA_V0': {'TCGA_HG19_DATA_V0': ['COPY_NUMBER_SEGMENT_MASKED', 'DNA_METHYLATION', 'DNA_METHYLATION_CHR1', 'DNA_METHYLATION_CHR10', 'DNA_METHYLATION_CHR11', 'DNA_METHYLATION_CHR12', 'DNA_METHYLATION_CHR13', 'DNA_METHYLATION_CHR14', 'DNA_METHYLATION_CHR15', 'DNA_METHYLATION_CHR16', 'DNA_METHYLATION_CHR17', 'DNA_METHYLATION_CHR18', 'DNA_METHYLATION_CHR19', 'DNA_METHYLATION_CHR2', 'DNA_METHYLATION_CHR20', 'DNA_METHYLATION_CHR21', 'DNA_METHYLATION_CHR22', 'DNA_METHYLATION_CHR3', 'DNA_METHYLATION_CHR4', 'DNA_METHYLATION_CHR5', 'DNA_METHYLATION_CHR6', 'DNA_METHYLATION_CHR7', 'DNA_METHYLATION_CHR8', 'DNA_METHYLATION_CHR9', 'DNA_METHYLATION_CHRX', 'DNA_METHYLATION_CHRY', 'MIRNASEQ_EXPRESSION', 'MIRNASEQ_ISOFORM_EXPRESSION', 'PROTEIN_EXPRESSION', 'RNASEQ_GENE_EXPRESSION_UNC_RSEM', 'SOMATIC_MUTATION_DCC', 'SOMATIC_MUTATION_MC3', 'TCGA_METADATA_DATA_HG19_R14']}}
+
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+Be careful one country may have different names in different columns in a database.
+When handling TO_TIMESTAMP_NTZ conversions, use query like: SELECT CASE WHEN "date" >= 1e15 THEN TO_TIMESTAMP_NTZ("date" / 1000000) WHEN "date" >= 1e12 THEN TO_TIMESTAMP_NTZ("date" / 1000) ELSE TO_TIMESTAMP_NTZ("date") END AS parsed_timestamp FROM my_table;
+Be careful of information in nested JSON columns. e.g.1. When it comes to active users, it refers to has engagement_time_msec parameter rather than directly counting users. So the right query is: SELECT DISTINCT USER_PSEUDO_ID FROM all_user_activity, LATERAL FLATTEN(input => event_params) AS flattened_params WHERE flattened_params.value:key = 'engagement_time_msec'
+e.g. When it comes to top-selling product, you should pay attention to hits2.value:"eCommerceAction":"action_type"::INTEGER = 6 where 6 means sold product.
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+When counting for rows of a column, ensure they are distinct: SELECT COUNT(DISTINCT col_name) FROM table;
+Keep all decimals to four decimal places.
+You need to follow the format's positive and negative signs.
+
+2025-01-16 08:03:23 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:03:23 - root - INFO - ```sql
+WITH expr AS (
+  SELECT "sample_barcode", LOG10("normalized_count") AS "log_expression"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+),
+mutations AS (
+  SELECT "sample_barcode_tumor", MIN("Variant_Classification") AS "Variant_Classification"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_DCC"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+  GROUP BY "sample_barcode_tumor"
+),
+data AS (
+  SELECT expr."sample_barcode", expr."log_expression", COALESCE(mutations."Variant_Classification", 'No_Mutation') AS "Mutation_Type"
+  FROM expr
+  LEFT JOIN mutations ON expr."sample_barcode" = mutations."sample_barcode_tumor"
+),
+grand_mean AS (
+  SELECT AVG("log_expression") AS "grand_mean", COUNT(*) AS N
+  FROM data
+),
+group_means AS (
+  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG("log_expression") AS mean_j
+  FROM data
+  GROUP BY "Mutation_Type"
+),
+SSB AS (
+  SELECT SUM(group_means.n_j * POWER(group_means.mean_j - grand_mean."grand_mean", 2)) AS SSB
+  FROM group_means, grand_mean
+),
+SSW AS (
+  SELECT SUM(POWER(data."log_expression" - group_means.mean_j, 2)) AS SSW
+  FROM data
+  JOIN group_means ON data."Mutation_Type" = group_means."Mutation_Type"
+),
+Degrees AS (
+  SELECT (SELECT COUNT(*) FROM group_means) - 1 AS df_between,
+         grand_mean.N - (SELECT COUNT(*) FROM group_means) AS df_within
+  FROM grand_mean
+),
+MS AS (
+  SELECT SSB.SSB / Degrees.df_between AS MSB, SSW.SSW / Degrees.df_within AS MSW
+  FROM SSB, SSW, Degrees
+),
+F_statistic AS (
+  SELECT MS.MSB / MS.MSW AS F_value
+  FROM MS
+)
+SELECT grand_mean.N AS total_samples,
+       (SELECT COUNT(*) FROM group_means) AS number_of_mutation_types,
+       MS.MSB AS mean_square_between_groups,
+       MS.MSW AS mean_square_within_groups,
+       F_statistic.F_value AS F_statistic
+FROM grand_mean, MS, F_statistic;
+```
+2025-01-16 08:03:23 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:03:23 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:03:23 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:03:25 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:03:25 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:03:25 - root - INFO - itercount: 1
+2025-01-16 08:03:25 - root - INFO - 002140 (42601): 01b9bee3-0004-7b0e-0001-11c300ca1216: SQL compilation error:
+Unknown function LOG10
+2025-01-16 08:03:25 - root - INFO - Input sql:
+WITH expr AS (
+  SELECT "sample_barcode", LOG10("normalized_count") AS "log_expression"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+),
+mutations AS (
+  SELECT "sample_barcode_tumor", MIN("Variant_Classification") AS "Variant_Classification"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_DCC"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+  GROUP BY "sample_barcode_tumor"
+),
+data AS (
+  SELECT expr."sample_barcode", expr."log_expression", COALESCE(mutations."Variant_Classification", 'No_Mutation') AS "Mutation_Type"
+  FROM expr
+  LEFT JOIN mutations ON expr."sample_barcode" = mutations."sample_barcode_tumor"
+),
+grand_mean AS (
+  SELECT AVG("log_expression") AS "grand_mean", COUNT(*) AS N
+  FROM data
+),
+group_means AS (
+  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG("log_expression") AS mean_j
+  FROM data
+  GROUP BY "Mutation_Type"
+),
+SSB AS (
+  SELECT SUM(group_means.n_j * POWER(group_means.mean_j - grand_mean."grand_mean", 2)) AS SSB
+  FROM group_means, grand_mean
+),
+SSW AS (
+  SELECT SUM(POWER(data."log_expression" - group_means.mean_j, 2)) AS SSW
+  FROM data
+  JOIN group_means ON data."Mutation_Type" = group_means."Mutation_Type"
+),
+Degrees AS (
+  SELECT (SELECT COUNT(*) FROM group_means) - 1 AS df_between,
+         grand_mean.N - (SELECT COUNT(*) FROM group_means) AS df_within
+  FROM grand_mean
+),
+MS AS (
+  SELECT SSB.SSB / Degrees.df_between AS MSB, SSW.SSW / Degrees.df_within AS MSW
+  FROM SSB, SSW, Degrees
+),
+F_statistic AS (
+  SELECT MS.MSB / MS.MSW AS F_value
+  FROM MS
+)
+SELECT grand_mean.N AS total_samples,
+       (SELECT COUNT(*) FROM group_means) AS number_of_mutation_types,
+       MS.MSB AS mean_square_between_groups,
+       MS.MSW AS mean_square_within_groups,
+       F_statistic.F_value AS F_statistic
+FROM grand_mean, MS, F_statistic;
+The error information is:
+002140 (42601): 01b9bee3-0004-7b0e-0001-11c300ca1216: SQL compilation error:
+Unknown function LOG10
+Please correct it and output only 1 complete SQL query.Be careful of using JOIN and LEFT JOIN. JOIN: The length of the result corresponds to the intersection of the two tables based on the ON condition. LEFT JOIN: The result will include all rows from the left table.
+e.g. 1 Assess whether different genetic variants affect the log10-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data: SELECT COUNT(*) FROM (SELECT * FROM expression_data e JOIN mutation_data m ON e."case_barcode" = m."case_barcode"); In this case we just need their intersection to count specific samples, so we shouldn't use LEFT JOIN.e.g. 2 List each musical style with the number of times it appears as a preference. You should write a query like: SELECT * FROM "MUSICAL_STYLES" s JOIN "MUSICAL_PREFERENCES" p ON s."StyleID" = p."StyleID", for the task is to get the intersection of style and preference.
+
+2025-01-16 08:03:53 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:03:53 - root - INFO - ```sql
+WITH expr AS (
+  SELECT "sample_barcode", LOG(10, "normalized_count") AS "log_expression"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+),
+mutations AS (
+  SELECT "sample_barcode_tumor", MIN("Variant_Classification") AS "Variant_Classification"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_DCC"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+  GROUP BY "sample_barcode_tumor"
+),
+data AS (
+  SELECT expr."sample_barcode", expr."log_expression", COALESCE(mutations."Variant_Classification", 'No_Mutation') AS "Mutation_Type"
+  FROM expr
+  LEFT JOIN mutations ON expr."sample_barcode" = mutations."sample_barcode_tumor"
+),
+grand_mean AS (
+  SELECT AVG("log_expression") AS "grand_mean", COUNT(*) AS N
+  FROM data
+),
+group_means AS (
+  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG("log_expression") AS mean_j
+  FROM data
+  GROUP BY "Mutation_Type"
+),
+SSB AS (
+  SELECT SUM(group_means.n_j * POWER(group_means.mean_j - grand_mean."grand_mean", 2)) AS SSB
+  FROM group_means, grand_mean
+),
+SSW AS (
+  SELECT SUM(POWER(data."log_expression" - group_means.mean_j, 2)) AS SSW
+  FROM data
+  JOIN group_means ON data."Mutation_Type" = group_means."Mutation_Type"
+),
+Degrees AS (
+  SELECT (SELECT COUNT(*) FROM group_means) - 1 AS df_between,
+         grand_mean.N - (SELECT COUNT(*) FROM group_means) AS df_within
+  FROM grand_mean
+),
+MS AS (
+  SELECT SSB.SSB / Degrees.df_between AS MSB, SSW.SSW / Degrees.df_within AS MSW
+  FROM SSB, SSW, Degrees
+),
+F_statistic AS (
+  SELECT MS.MSB / MS.MSW AS F_value
+  FROM MS
+)
+SELECT grand_mean.N AS total_samples,
+       (SELECT COUNT(*) FROM group_means) AS number_of_mutation_types,
+       MS.MSB AS mean_square_between_groups,
+       MS.MSW AS mean_square_within_groups,
+       F_statistic.F_value AS F_statistic
+FROM grand_mean, MS, F_statistic;
+```
+2025-01-16 08:03:53 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:03:53 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:03:53 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:03:55 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 08:03:55 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:03:56 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:03:56 - root - INFO - itercount: 2
+2025-01-16 08:03:56 - root - INFO - 0
+2025-01-16 08:03:56 - root - INFO - results: 
+TOTAL_SAMPLES,NUMBER_OF_MUTATION_TYPES,MEAN_SQUARE_BETWEEN_GROUPS,MEAN_SQUARE_WITHIN_GROUPS,F_STATISTIC
+115,3,0.3600184002532047,0.057953987601803404,6.212141996627713
+
+
+2025-01-16 08:03:56 - root - INFO - Please check the answer again by reviewing Assess whether different genetic variants affect the log10-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data. Provide the total number of samples, the number of mutation types, the mean square between groups, the mean square within groups, and the F-statistic., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+total_samples,number_of_mutation_types,mean_square_between_groups,mean_square_within_groups,F_statistic
+num_samples:int > 0,num_mutation_types:int > 0,msb:float ≥ 0,msw:float > 0,F_value:float ≥ 0
+```
+
+**Explanation:**
+
+We assessed the effect of different genetic variants on the log₁₀-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data. The total number of samples (`total_samples`) represents all the TCGA-BRCA samples analyzed with available TP53 expression and mutation data. The `number_of_mutation_types` corresponds to the distinct mutation categories identified for the TP53 gene.
+
+The **mean square between groups (MSB)** quantifies the variance of the group means from the overall mean and reflects differences between mutation types. The **mean square within groups (MSW)** measures the variance within each mutation type group. The **F-statistic** is calculated by dividing the MSB by the MSW and is used to determine if there are statistically significant differences between the group means. Since specific numerical values cannot be inferred without actual data, they are represented by variables indicating their types and conditions. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+TOTAL_SAMPLES,NUMBER_OF_MUTATION_TYPES,MEAN_SQUARE_BETWEEN_GROUPS,MEAN_SQUARE_WITHIN_GROUPS,F_STATISTIC
+115,3,0.3600184002532047,0.057953987601803404,6.212141996627713
+Current sql:
+WITH expr AS (
+  SELECT "sample_barcode", LOG(10, "normalized_count") AS "log_expression"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+),
+mutations AS (
+  SELECT "sample_barcode_tumor", MIN("Variant_Classification") AS "Variant_Classification"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_DCC"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+  GROUP BY "sample_barcode_tumor"
+),
+data AS (
+  SELECT expr."sample_barcode", expr."log_expression", COALESCE(mutations."Variant_Classification", 'No_Mutation') AS "Mutation_Type"
+  FROM expr
+  LEFT JOIN mutations ON expr."sample_barcode" = mutations."sample_barcode_tumor"
+),
+grand_mean AS (
+  SELECT AVG("log_expression") AS "grand_mean", COUNT(*) AS N
+  FROM data
+),
+group_means AS (
+  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG("log_expression") AS mean_j
+  FROM data
+  GROUP BY "Mutation_Type"
+),
+SSB AS (
+  SELECT SUM(group_means.n_j * POWER(group_means.mean_j - grand_mean."grand_mean", 2)) AS SSB
+  FROM group_means, grand_mean
+),
+SSW AS (
+  SELECT SUM(POWER(data."log_expression" - group_means.mean_j, 2)) AS SSW
+  FROM data
+  JOIN group_means ON data."Mutation_Type" = group_means."Mutation_Type"
+),
+Degrees AS (
+  SELECT (SELECT COUNT(*) FROM group_means) - 1 AS df_between,
+         grand_mean.N - (SELECT COUNT(*) FROM group_means) AS df_within
+  FROM grand_mean
+),
+MS AS (
+  SELECT SSB.SSB / Degrees.df_between AS MSB, SSW.SSW / Degrees.df_within AS MSW
+  FROM SSB, SSW, Degrees
+),
+F_statistic AS (
+  SELECT MS.MSB / MS.MSW AS F_value
+  FROM MS
+)
+SELECT grand_mean.N AS total_samples,
+       (SELECT COUNT(*) FROM group_means) AS number_of_mutation_types,
+       MS.MSB AS mean_square_between_groups,
+       MS.MSW AS mean_square_within_groups,
+       F_statistic.F_value AS F_statistic
+FROM grand_mean, MS, F_statistic;Be careful of using JOIN and LEFT JOIN. JOIN: The length of the result corresponds to the intersection of the two tables based on the ON condition. LEFT JOIN: The result will include all rows from the left table.
+e.g. 1 Assess whether different genetic variants affect the log10-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data: SELECT COUNT(*) FROM (SELECT * FROM expression_data e JOIN mutation_data m ON e."case_barcode" = m."case_barcode"); In this case we just need their intersection to count specific samples, so we shouldn't use LEFT JOIN.e.g. 2 List each musical style with the number of times it appears as a preference. You should write a query like: SELECT * FROM "MUSICAL_STYLES" s JOIN "MUSICAL_PREFERENCES" p ON s."StyleID" = p."StyleID", for the task is to get the intersection of style and preference.
+
+2025-01-16 08:04:30 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:04:30 - root - INFO - ```sql
+WITH expr AS (
+  SELECT "sample_barcode", LOG(10, "normalized_count") AS "log_expression"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+),
+mutations AS (
+  SELECT "sample_barcode_tumor", MIN("Variant_Classification") AS "Variant_Classification"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_DCC"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+  GROUP BY "sample_barcode_tumor"
+),
+data AS (
+  SELECT expr."sample_barcode", expr."log_expression", mutations."Variant_Classification" AS "Mutation_Type"
+  FROM expr
+  JOIN mutations ON expr."sample_barcode" = mutations."sample_barcode_tumor"
+),
+grand_mean AS (
+  SELECT AVG("log_expression") AS "grand_mean", COUNT(*) AS N
+  FROM data
+),
+group_means AS (
+  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG("log_expression") AS mean_j
+  FROM data
+  GROUP BY "Mutation_Type"
+),
+SSB AS (
+  SELECT SUM(group_means.n_j * POWER(group_means.mean_j - grand_mean."grand_mean", 2)) AS SSB
+  FROM group_means, grand_mean
+),
+SSW AS (
+  SELECT SUM(POWER(data."log_expression" - group_means.mean_j, 2)) AS SSW
+  FROM data
+  JOIN group_means ON data."Mutation_Type" = group_means."Mutation_Type"
+),
+Degrees AS (
+  SELECT (SELECT COUNT(*) FROM group_means) - 1 AS df_between,
+         grand_mean.N - (SELECT COUNT(*) FROM group_means) AS df_within
+  FROM grand_mean
+),
+MS AS (
+  SELECT SSB.SSB / Degrees.df_between AS MSB, SSW.SSW / Degrees.df_within AS MSW
+  FROM SSB, SSW, Degrees
+),
+F_statistic AS (
+  SELECT MS.MSB / MS.MSW AS F_value
+  FROM MS
+)
+SELECT grand_mean.N AS total_samples,
+       (SELECT COUNT(*) FROM group_means) AS number_of_mutation_types,
+       ROUND(MS.MSB, 4) AS mean_square_between_groups,
+       ROUND(MS.MSW, 4) AS mean_square_within_groups,
+       ROUND(F_statistic.F_value, 4) AS F_statistic
+FROM grand_mean, MS, F_statistic;
+```
+2025-01-16 08:04:30 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:04:30 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:04:30 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:04:32 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 08:04:32 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:04:33 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:04:33 - root - INFO - itercount: 3
+2025-01-16 08:04:33 - root - INFO - 0
+2025-01-16 08:04:33 - root - INFO - results: 
+TOTAL_SAMPLES,NUMBER_OF_MUTATION_TYPES,MEAN_SQUARE_BETWEEN_GROUPS,MEAN_SQUARE_WITHIN_GROUPS,F_STATISTIC
+6,2,0.7171,0.0174,41.1101
+
+
+2025-01-16 08:04:33 - root - INFO - Please check the answer again by reviewing Assess whether different genetic variants affect the log10-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data. Provide the total number of samples, the number of mutation types, the mean square between groups, the mean square within groups, and the F-statistic., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+total_samples,number_of_mutation_types,mean_square_between_groups,mean_square_within_groups,F_statistic
+num_samples:int > 0,num_mutation_types:int > 0,msb:float ≥ 0,msw:float > 0,F_value:float ≥ 0
+```
+
+**Explanation:**
+
+We assessed the effect of different genetic variants on the log₁₀-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data. The total number of samples (`total_samples`) represents all the TCGA-BRCA samples analyzed with available TP53 expression and mutation data. The `number_of_mutation_types` corresponds to the distinct mutation categories identified for the TP53 gene.
+
+The **mean square between groups (MSB)** quantifies the variance of the group means from the overall mean and reflects differences between mutation types. The **mean square within groups (MSW)** measures the variance within each mutation type group. The **F-statistic** is calculated by dividing the MSB by the MSW and is used to determine if there are statistically significant differences between the group means. Since specific numerical values cannot be inferred without actual data, they are represented by variables indicating their types and conditions. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+TOTAL_SAMPLES,NUMBER_OF_MUTATION_TYPES,MEAN_SQUARE_BETWEEN_GROUPS,MEAN_SQUARE_WITHIN_GROUPS,F_STATISTIC
+6,2,0.7171,0.0174,41.1101
+Current sql:
+WITH expr AS (
+  SELECT "sample_barcode", LOG(10, "normalized_count") AS "log_expression"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+),
+mutations AS (
+  SELECT "sample_barcode_tumor", MIN("Variant_Classification") AS "Variant_Classification"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_DCC"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+  GROUP BY "sample_barcode_tumor"
+),
+data AS (
+  SELECT expr."sample_barcode", expr."log_expression", mutations."Variant_Classification" AS "Mutation_Type"
+  FROM expr
+  JOIN mutations ON expr."sample_barcode" = mutations."sample_barcode_tumor"
+),
+grand_mean AS (
+  SELECT AVG("log_expression") AS "grand_mean", COUNT(*) AS N
+  FROM data
+),
+group_means AS (
+  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG("log_expression") AS mean_j
+  FROM data
+  GROUP BY "Mutation_Type"
+),
+SSB AS (
+  SELECT SUM(group_means.n_j * POWER(group_means.mean_j - grand_mean."grand_mean", 2)) AS SSB
+  FROM group_means, grand_mean
+),
+SSW AS (
+  SELECT SUM(POWER(data."log_expression" - group_means.mean_j, 2)) AS SSW
+  FROM data
+  JOIN group_means ON data."Mutation_Type" = group_means."Mutation_Type"
+),
+Degrees AS (
+  SELECT (SELECT COUNT(*) FROM group_means) - 1 AS df_between,
+         grand_mean.N - (SELECT COUNT(*) FROM group_means) AS df_within
+  FROM grand_mean
+),
+MS AS (
+  SELECT SSB.SSB / Degrees.df_between AS MSB, SSW.SSW / Degrees.df_within AS MSW
+  FROM SSB, SSW, Degrees
+),
+F_statistic AS (
+  SELECT MS.MSB / MS.MSW AS F_value
+  FROM MS
+)
+SELECT grand_mean.N AS total_samples,
+       (SELECT COUNT(*) FROM group_means) AS number_of_mutation_types,
+       ROUND(MS.MSB, 4) AS mean_square_between_groups,
+       ROUND(MS.MSW, 4) AS mean_square_within_groups,
+       ROUND(F_statistic.F_value, 4) AS F_statistic
+FROM grand_mean, MS, F_statistic;
+2025-01-16 08:05:05 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 08:05:05 - root - INFO - ```sql
+WITH expr AS (
+  SELECT "sample_barcode", LOG(10, "normalized_count") AS "log_expression"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."RNASEQ_GENE_EXPRESSION_UNC_RSEM"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "HGNC_gene_symbol" = 'TP53' AND "normalized_count" > 0
+),
+mutations AS (
+  SELECT "sample_barcode_tumor", MIN("Variant_Classification") AS "Variant_Classification"
+  FROM "TCGA_HG19_DATA_V0"."TCGA_HG19_DATA_V0"."SOMATIC_MUTATION_DCC"
+  WHERE "project_short_name" = 'TCGA-BRCA' AND "Hugo_Symbol" = 'TP53'
+  GROUP BY "sample_barcode_tumor"
+),
+data AS (
+  SELECT expr."sample_barcode", expr."log_expression", mutations."Variant_Classification" AS "Mutation_Type"
+  FROM expr
+  JOIN mutations ON expr."sample_barcode" = mutations."sample_barcode_tumor"
+),
+grand_mean AS (
+  SELECT AVG("log_expression") AS "grand_mean", COUNT(*) AS N
+  FROM data
+),
+group_means AS (
+  SELECT "Mutation_Type", COUNT(*) AS n_j, AVG("log_expression") AS mean_j
+  FROM data
+  GROUP BY "Mutation_Type"
+),
+SSB AS (
+  SELECT SUM(group_means.n_j * POWER(group_means.mean_j - grand_mean."grand_mean", 2)) AS SSB
+  FROM group_means, grand_mean
+),
+SSW AS (
+  SELECT SUM(POWER(data."log_expression" - group_means.mean_j, 2)) AS SSW
+  FROM data
+  JOIN group_means ON data."Mutation_Type" = group_means."Mutation_Type"
+),
+Degrees AS (
+  SELECT (SELECT COUNT(*) FROM group_means) - 1 AS df_between,
+         grand_mean.N - (SELECT COUNT(*) FROM group_means) AS df_within
+  FROM grand_mean
+),
+MS AS (
+  SELECT SSB.SSB / Degrees.df_between AS MSB, SSW.SSW / Degrees.df_within AS MSW
+  FROM SSB, SSW, Degrees
+),
+F_statistic AS (
+  SELECT MS.MSB / MS.MSW AS F_value
+  FROM MS
+)
+SELECT grand_mean.N AS total_samples,
+       (SELECT COUNT(*) FROM group_means) AS number_of_mutation_types,
+       ROUND(MS.MSB, 4) AS mean_square_between_groups,
+       ROUND(MS.MSW, 4) AS mean_square_within_groups,
+       ROUND(F_statistic.F_value, 4) AS F_statistic
+FROM grand_mean, MS, F_statistic;
+```
+2025-01-16 08:05:05 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 08:05:05 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 08:05:05 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 08:05:06 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 08:05:06 - snowflake.connector.connection - INFO - closed
+2025-01-16 08:05:07 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 08:05:07 - root - INFO - itercount: 4
+2025-01-16 08:05:07 - root - INFO - 0
+2025-01-16 08:05:07 - root - INFO - Total iteration counts: 4
