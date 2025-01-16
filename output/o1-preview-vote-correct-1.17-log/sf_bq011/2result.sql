@@ -1,0 +1,30 @@
+WITH active_users AS (
+    SELECT DISTINCT t."USER_PSEUDO_ID"
+    FROM (
+        SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20210101"
+        UNION ALL
+        SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20210102"
+        UNION ALL
+        SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20210103"
+        UNION ALL
+        SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20210104"
+        UNION ALL
+        SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20210105"
+    ) t,
+    LATERAL FLATTEN(input => t."EVENT_PARAMS") AS flattened_params
+    WHERE flattened_params.value:"key"::STRING = 'engagement_time_msec'
+),
+inactive_users AS (
+    SELECT DISTINCT t."USER_PSEUDO_ID"
+    FROM (
+        SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20210106"
+        UNION ALL
+        SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20210107"
+    ) t,
+    LATERAL FLATTEN(input => t."EVENT_PARAMS") AS flattened_params
+    WHERE flattened_params.value:"key"::STRING = 'engagement_time_msec'
+)
+SELECT COUNT(*) AS pseudo_user_count
+FROM active_users
+WHERE "USER_PSEUDO_ID" NOT IN (SELECT "USER_PSEUDO_ID" FROM inactive_users)
+;
