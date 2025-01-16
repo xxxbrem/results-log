@@ -1,33 +1,37 @@
-After comparing the SQL queries and their results, **`0result.sql`** is the correct answer.
+```plain
+1result.sql
+```
 
 **Reasoning:**
 
-- **Objective:** Find the **top-selling product** among customers who purchased **'YouTube Men’s Vintage Henley'** in **July 2017**, excluding the product itself.
-  
-- **Definition of Top-Selling:** In e-commerce, "top-selling" typically refers to products generating the highest **total revenue**, not just the highest quantity sold. Revenue accounts for both the price and quantity of products sold, giving a complete picture of sales performance.
+After analyzing the three SQL queries (`0result.sql`, `1result.sql`, and `2result.sql`) and their corresponding results, the most accurate and appropriate query for the task is **`1result.sql`**.
 
-- **Analysis of SQL Queries:**
+**Here's why `1result.sql` is the correct choice:**
 
-  - **`0result.sql`:**
-    - **Metric Used:** Calculates total sales based on **`SUM(productRevenue)`**.
-    - **Approach:**
-      - Identifies customers who purchased 'YouTube Men’s Vintage Henley'.
-      - Aggregates revenue from other products these customers bought.
-    - **Result:** Finds **'YouTube Men's Fleece Hoodie Black'** as the top-selling product with a total revenue of **95.2322** (after dividing by 1,000,000 to adjust for currency units).
+1. **Accurate Identification of Customers:**
+   - All three queries correctly identify customers who purchased **'YouTube Men's Vintage Henley'** in **July 2017** by checking the `"v2ProductName"` and filtering on `"eCommerceAction"."action_type" = 6` (which represents a purchase transaction).
 
-  - **`1result.sql` and `2result.sql`:**
-    - **Metric Used:** Calculate total sales based on **`SUM(productQuantity)`**.
-    - **Issues:**
-      - **Inconsistent Results:** `1result.sql` reports 20 units sold, while `2result.sql` reports 24 units sold for 'Google Sunglasses'.
-      - **Metric Limitation:** Quantity sold doesn't account for product price differences. A low-priced item sold in high quantities might not generate as much revenue as a high-priced item sold less frequently.
+2. **Comprehensive Data Aggregation:**
+   - `1result.sql` aggregates data from all sessions in **July 2017** by unifying all daily tables from `GA_SESSIONS_20170701` to `GA_SESSIONS_20170731` into the `july_sessions` CTE, ensuring the analysis covers the entire month.
 
-- **Conclusion:**
+3. **Correct Handling of Product Quantities:**
+   - The query sums the `"productQuantity"` for each product purchased by the identified customers.
+   - It uses `SUM(COALESCE(f2.value:"productQuantity"::INTEGER, 1))` to handle cases where `"productQuantity"` might be `NULL`. This approach assumes that if the quantity is not specified, at least one unit was purchased, which is a reasonable assumption for transactional data.
 
-  - **`0result.sql`** correctly identifies the top-selling product by total revenue, which is the standard metric for sales performance.
-  - The calculation considers both the price and quantity, providing a more accurate depiction of the product's sales impact.
+4. **Exclusion of the Specified Product:**
+   - It excludes **'YouTube Men's Vintage Henley'** from the results to find other products purchased by these customers.
 
-**Output:**
+5. **Accurate Aggregation and Ordering:**
+   - The query correctly groups the data by `"product_name"` and orders the results by `"total_quantity_sold"` in descending order to find the top-selling product.
 
-```plain
-0result.sql
-```
+6. **Consistent and Logical Results:**
+   - The result identifies **'Google Sunglasses'** as the top-selling product among these customers, with a total quantity sold of **24**. This result is consistent with the other query (`2result.sql`), which also identifies **'Google Sunglasses'** but with a slightly different quantity due to differences in handling `NULL` values.
+
+7. **Better Handling of NULL Values:**
+   - Compared to `2result.sql`, which uses `TRY_TO_NUMBER` and might exclude `NULL` quantities from the sum (resulting in a total of **20**), `1result.sql` ensures that all transactions contribute to the total quantity by treating `NULL` quantities as 1.
+
+**Conclusion:**
+
+`1result.sql` provides a comprehensive and accurate solution to the task. It correctly identifies the top-selling product (**'Google Sunglasses'**) among customers who purchased **'YouTube Men's Vintage Henley'** in **July 2017**, excluding the product itself. The approach accounts for potential data anomalies (like missing quantities) and ensures that all relevant transactions are included in the analysis.
+
+**Note:** When dealing with transactional data, it's essential to handle `NULL` quantities appropriately to avoid underestimating sales. By treating `NULL` quantities as 1, `1result.sql` provides a more reliable result.
