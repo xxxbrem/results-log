@@ -4245,3 +4245,231 @@ When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY x
 For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
 However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
 
+2025-01-16 03:00:10 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 03:00:10 - root - INFO - ```sql
+WITH top_assignee AS (
+    SELECT
+        assignee.value:"name"::STRING AS "Assignee_Name",
+        COUNT(DISTINCT t."publication_number") AS "Total_Applications"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS t,
+        LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+        LATERAL FLATTEN(input => t."cpc") cpc
+    WHERE
+        assignee.value:"name"::STRING IS NOT NULL
+        AND cpc.value:"symbol"::STRING IS NOT NULL
+        AND cpc.value:"symbol"::STRING LIKE 'A61%'
+    GROUP BY
+        "Assignee_Name"
+    ORDER BY
+        "Total_Applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    top_assignee."Assignee_Name",
+    SUBSTRING(TO_VARCHAR(t."filing_date"), 1, 4) AS "Year",
+    COUNT(DISTINCT t."publication_number") AS "Number_of_Applications"
+FROM
+    PATENTS.PATENTS.PUBLICATIONS t,
+    LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+    LATERAL FLATTEN(input => t."cpc") cpc,
+    top_assignee
+WHERE
+    assignee.value:"name"::STRING = top_assignee."Assignee_Name"
+    AND cpc.value:"symbol"::STRING LIKE 'A61%'
+    AND t."filing_date" IS NOT NULL
+GROUP BY
+    top_assignee."Assignee_Name", "Year"
+ORDER BY
+    "Number_of_Applications" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 03:00:10 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 03:00:10 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 03:00:10 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:00:11 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 03:00:11 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:00:12 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:00:12 - root - INFO - itercount: 2
+2025-01-16 03:00:12 - root - INFO - No data found for the specified query.
+
+2025-01-16 03:00:12 - root - INFO - Input sql:
+WITH top_assignee AS (
+    SELECT
+        assignee.value:"name"::STRING AS "Assignee_Name",
+        COUNT(DISTINCT t."publication_number") AS "Total_Applications"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS t,
+        LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+        LATERAL FLATTEN(input => t."cpc") cpc
+    WHERE
+        assignee.value:"name"::STRING IS NOT NULL
+        AND cpc.value:"symbol"::STRING IS NOT NULL
+        AND cpc.value:"symbol"::STRING LIKE 'A61%'
+    GROUP BY
+        "Assignee_Name"
+    ORDER BY
+        "Total_Applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    top_assignee."Assignee_Name",
+    SUBSTRING(TO_VARCHAR(t."filing_date"), 1, 4) AS "Year",
+    COUNT(DISTINCT t."publication_number") AS "Number_of_Applications"
+FROM
+    PATENTS.PATENTS.PUBLICATIONS t,
+    LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+    LATERAL FLATTEN(input => t."cpc") cpc,
+    top_assignee
+WHERE
+    assignee.value:"name"::STRING = top_assignee."Assignee_Name"
+    AND cpc.value:"symbol"::STRING LIKE 'A61%'
+    AND t."filing_date" IS NOT NULL
+GROUP BY
+    top_assignee."Assignee_Name", "Year"
+ORDER BY
+    "Number_of_Applications" DESC NULLS LAST
+LIMIT 1;
+The error information is:
+ No data found for the specified query.
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+
+2025-01-16 03:00:57 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 03:00:57 - root - INFO - ```sql
+WITH top_assignee AS (
+    SELECT
+        assignee.value:"name"::STRING AS "Assignee_Name",
+        COUNT(DISTINCT t."publication_number") AS "Total_Applications"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS t,
+        LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+        LATERAL FLATTEN(input => t."cpc") cpc
+    WHERE
+        assignee.value:"name"::STRING IS NOT NULL
+        AND cpc.value:"symbol"::STRING IS NOT NULL
+        AND SUBSTRING(cpc.value:"symbol"::STRING, 1, 3) = 'A61'
+    GROUP BY
+        "Assignee_Name"
+    ORDER BY
+        "Total_Applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    top_assignee."Assignee_Name",
+    SUBSTRING(TO_VARCHAR(t."filing_date"), 1, 4) AS "Year",
+    COUNT(DISTINCT t."publication_number") AS "Number_of_Applications"
+FROM
+    PATENTS.PATENTS.PUBLICATIONS t,
+    LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+    LATERAL FLATTEN(input => t."cpc") cpc,
+    top_assignee
+WHERE
+    assignee.value:"name"::STRING = top_assignee."Assignee_Name"
+    AND SUBSTRING(cpc.value:"symbol"::STRING, 1, 3) = 'A61'
+    AND t."filing_date" IS NOT NULL
+GROUP BY
+    top_assignee."Assignee_Name", "Year"
+ORDER BY
+    "Number_of_Applications" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 03:00:57 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 03:00:57 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 03:00:57 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:00:58 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 03:00:58 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:00:58 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:00:59 - root - INFO - itercount: 3
+2025-01-16 03:00:59 - root - INFO - No data found for the specified query.
+
+2025-01-16 03:00:59 - root - INFO - Input sql:
+WITH top_assignee AS (
+    SELECT
+        assignee.value:"name"::STRING AS "Assignee_Name",
+        COUNT(DISTINCT t."publication_number") AS "Total_Applications"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS t,
+        LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+        LATERAL FLATTEN(input => t."cpc") cpc
+    WHERE
+        assignee.value:"name"::STRING IS NOT NULL
+        AND cpc.value:"symbol"::STRING IS NOT NULL
+        AND SUBSTRING(cpc.value:"symbol"::STRING, 1, 3) = 'A61'
+    GROUP BY
+        "Assignee_Name"
+    ORDER BY
+        "Total_Applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    top_assignee."Assignee_Name",
+    SUBSTRING(TO_VARCHAR(t."filing_date"), 1, 4) AS "Year",
+    COUNT(DISTINCT t."publication_number") AS "Number_of_Applications"
+FROM
+    PATENTS.PATENTS.PUBLICATIONS t,
+    LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+    LATERAL FLATTEN(input => t."cpc") cpc,
+    top_assignee
+WHERE
+    assignee.value:"name"::STRING = top_assignee."Assignee_Name"
+    AND SUBSTRING(cpc.value:"symbol"::STRING, 1, 3) = 'A61'
+    AND t."filing_date" IS NOT NULL
+GROUP BY
+    top_assignee."Assignee_Name", "Year"
+ORDER BY
+    "Number_of_Applications" DESC NULLS LAST
+LIMIT 1;
+The error information is:
+ No data found for the specified query.
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 03:02:06 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 03:02:06 - root - INFO - ```sql
+WITH top_assignee AS (
+    SELECT
+        assignee.value:"name"::STRING AS "Assignee_Name",
+        COUNT(DISTINCT t."publication_number") AS "Total_Applications"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS t,
+        LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+        LATERAL FLATTEN(input => t."cpc") cpc
+    WHERE
+        cpc.value:"section"::STRING = 'A'
+        AND cpc.value:"class"::STRING = '61'
+    GROUP BY
+        "Assignee_Name"
+    ORDER BY
+        "Total_Applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    top_assignee."Assignee_Name",
+    SUBSTRING(TO_VARCHAR(t."filing_date"), 1, 4) AS "Year",
+    COUNT(DISTINCT t."publication_number") AS "Number_of_Applications"
+FROM
+    PATENTS.PATENTS.PUBLICATIONS t,
+    LATERAL FLATTEN(input => t."assignee_harmonized") assignee,
+    LATERAL FLATTEN(input => t."cpc") cpc,
+    top_assignee
+WHERE
+    assignee.value:"name"::STRING = top_assignee."Assignee_Name"
+    AND cpc.value:"section"::STRING = 'A'
+    AND cpc.value:"class"::STRING = '61'
+    AND t."filing_date" IS NOT NULL
+GROUP BY
+    top_assignee."Assignee_Name", "Year"
+ORDER BY
+    "Number_of_Applications" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 03:02:06 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 03:02:06 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 03:02:06 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:02:07 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 03:02:07 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:02:07 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:02:08 - root - INFO - No data found for the specified query, remove file.
+
+2025-01-16 03:02:08 - root - INFO - Total iteration counts: 4

@@ -4777,3 +4777,459 @@ Please correct it and output only 1 complete SQL query.When using ORDER BY xxx D
 For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
 However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
 
+2025-01-16 02:59:59 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 02:59:59 - root - INFO - ```sql
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS assignee_name,
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS filing_year,
+        p."application_number" AS application_number
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p
+        LEFT JOIN LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee ON TRUE
+        LEFT JOIN LATERAL FLATTEN(INPUT => p."cpc") f_cpc ON TRUE
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%'
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        assignee_name,
+        COUNT(DISTINCT application_number) AS total_applications
+    FROM
+        cte
+    GROUP BY
+        assignee_name
+    ORDER BY
+        total_applications DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte.assignee_name,
+    cte.filing_year,
+    COUNT(DISTINCT cte.application_number) AS application_count
+FROM
+    cte
+    JOIN top_assignee ON cte.assignee_name = top_assignee.assignee_name
+GROUP BY
+    cte.assignee_name, cte.filing_year
+ORDER BY
+    application_count DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 02:59:59 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 02:59:59 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 02:59:59 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:00:01 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:00:01 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:00:01 - root - INFO - itercount: 2
+2025-01-16 03:00:01 - root - INFO - 000002 (0A000): 01b9bdb4-0004-7b0f-0001-11c300c9d346: Unsupported feature 'lateral table function called with OUTER JOIN syntax or a join predicate (ON clause)'.
+2025-01-16 03:00:01 - root - INFO - Input sql:
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS assignee_name,
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS filing_year,
+        p."application_number" AS application_number
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p
+        LEFT JOIN LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee ON TRUE
+        LEFT JOIN LATERAL FLATTEN(INPUT => p."cpc") f_cpc ON TRUE
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%'
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        assignee_name,
+        COUNT(DISTINCT application_number) AS total_applications
+    FROM
+        cte
+    GROUP BY
+        assignee_name
+    ORDER BY
+        total_applications DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte.assignee_name,
+    cte.filing_year,
+    COUNT(DISTINCT cte.application_number) AS application_count
+FROM
+    cte
+    JOIN top_assignee ON cte.assignee_name = top_assignee.assignee_name
+GROUP BY
+    cte.assignee_name, cte.filing_year
+ORDER BY
+    application_count DESC NULLS LAST
+LIMIT 1;
+The error information is:
+000002 (0A000): 01b9bdb4-0004-7b0f-0001-11c300c9d346: Unsupported feature 'lateral table function called with OUTER JOIN syntax or a join predicate (ON clause)'.
+Please correct it and output only 1 complete SQL query.Be careful of using JOIN and LEFT JOIN. JOIN: The length of the result corresponds to the intersection of the two tables based on the ON condition. LEFT JOIN: The result will include all rows from the left table.
+e.g. 1 Assess whether different genetic variants affect the log10-transformed TP53 expression levels in TCGA-BRCA samples using sequencing and mutation data: SELECT COUNT(*) FROM (SELECT * FROM expression_data e JOIN mutation_data m ON e."case_barcode" = m."case_barcode"); In this case we just need their intersection to count specific samples, so we shouldn't use LEFT JOIN.e.g. 2 List each musical style with the number of times it appears as a preference. You should write a query like: SELECT * FROM "MUSICAL_STYLES" s JOIN "MUSICAL_PREFERENCES" p ON s."StyleID" = p."StyleID", for the task is to get the intersection of style and preference.
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+
+2025-01-16 03:00:35 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 03:00:35 - root - INFO - ```sql
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS "assignee_name",
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS "filing_year",
+        p."application_number" AS "application_number"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p,
+        LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee,
+        LATERAL FLATTEN(INPUT => p."cpc") f_cpc
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%' ESCAPE ''
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        "assignee_name",
+        COUNT(DISTINCT "application_number") AS "total_applications"
+    FROM
+        cte
+    GROUP BY
+        "assignee_name"
+    ORDER BY
+        "total_applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte."assignee_name",
+    cte."filing_year",
+    COUNT(DISTINCT cte."application_number") AS "application_count"
+FROM
+    cte
+    JOIN top_assignee ON cte."assignee_name" = top_assignee."assignee_name"
+GROUP BY
+    cte."assignee_name", cte."filing_year"
+ORDER BY
+    "application_count" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 03:00:35 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 03:00:35 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 03:00:35 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:00:36 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:00:37 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:00:37 - root - INFO - itercount: 3
+2025-01-16 03:00:37 - root - INFO - 001008 (22023): 01b9bdb4-0004-7b0e-0001-11c300c9e0c6: SQL compilation error:
+invalid value [''] for parameter 'escape'
+2025-01-16 03:00:37 - root - INFO - Input sql:
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS "assignee_name",
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS "filing_year",
+        p."application_number" AS "application_number"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p,
+        LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee,
+        LATERAL FLATTEN(INPUT => p."cpc") f_cpc
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%' ESCAPE ''
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        "assignee_name",
+        COUNT(DISTINCT "application_number") AS "total_applications"
+    FROM
+        cte
+    GROUP BY
+        "assignee_name"
+    ORDER BY
+        "total_applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte."assignee_name",
+    cte."filing_year",
+    COUNT(DISTINCT cte."application_number") AS "application_count"
+FROM
+    cte
+    JOIN top_assignee ON cte."assignee_name" = top_assignee."assignee_name"
+GROUP BY
+    cte."assignee_name", cte."filing_year"
+ORDER BY
+    "application_count" DESC NULLS LAST
+LIMIT 1;
+The error information is:
+001008 (22023): 01b9bdb4-0004-7b0e-0001-11c300c9e0c6: SQL compilation error:
+invalid value [''] for parameter 'escape'
+Please correct it and output only 1 complete SQL query.When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+
+2025-01-16 03:01:16 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 03:01:16 - root - INFO - ```sql
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS "assignee_name",
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS "filing_year",
+        p."application_number" AS "application_number"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p,
+        LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee,
+        LATERAL FLATTEN(INPUT => p."cpc") f_cpc
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%'
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        "assignee_name",
+        COUNT(DISTINCT "application_number") AS "total_applications"
+    FROM
+        cte
+    GROUP BY
+        "assignee_name"
+    ORDER BY
+        "total_applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte."assignee_name",
+    cte."filing_year",
+    COUNT(DISTINCT cte."application_number") AS "application_count"
+FROM
+    cte
+    JOIN top_assignee ON cte."assignee_name" = top_assignee."assignee_name"
+    AND cte."assignee_name" IS NOT NULL
+GROUP BY
+    cte."assignee_name", cte."filing_year"
+ORDER BY
+    "application_count" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 03:01:16 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 03:01:16 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 03:01:16 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:01:17 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 03:01:17 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:01:18 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:01:18 - root - INFO - itercount: 4
+2025-01-16 03:01:18 - root - INFO - 0
+2025-01-16 03:01:18 - root - INFO - results: 
+assignee_name,filing_year,application_count
+PROCTER & GAMBLE,1997,15
+
+
+2025-01-16 03:01:18 - root - INFO - Please check the answer again by reviewing In which year did the assignee with the most applications in the patent category 'A61' file the most?, reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: To determine the year in which the assignee with the most applications in the patent category 'A61' filed the most, we first identify the assignee with the highest number of patent applications in category 'A61'. Then, we find the year when this assignee filed the highest number of applications.
+
+```csv
+assignee_name,year,application_count
+TopAssignee,year:int,count:int
+``` The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+assignee_name,filing_year,application_count
+PROCTER & GAMBLE,1997,15
+Current sql:
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS "assignee_name",
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS "filing_year",
+        p."application_number" AS "application_number"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p,
+        LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee,
+        LATERAL FLATTEN(INPUT => p."cpc") f_cpc
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%'
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        "assignee_name",
+        COUNT(DISTINCT "application_number") AS "total_applications"
+    FROM
+        cte
+    GROUP BY
+        "assignee_name"
+    ORDER BY
+        "total_applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte."assignee_name",
+    cte."filing_year",
+    COUNT(DISTINCT cte."application_number") AS "application_count"
+FROM
+    cte
+    JOIN top_assignee ON cte."assignee_name" = top_assignee."assignee_name"
+    AND cte."assignee_name" IS NOT NULL
+GROUP BY
+    cte."assignee_name", cte."filing_year"
+ORDER BY
+    "application_count" DESC NULLS LAST
+LIMIT 1;When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+
+2025-01-16 03:01:57 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 03:01:57 - root - INFO - ```sql
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS "assignee_name",
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS "filing_year",
+        p."application_number" AS "application_number"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p,
+        LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee,
+        LATERAL FLATTEN(INPUT => p."cpc") f_cpc
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%'
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        "assignee_name",
+        COUNT(DISTINCT "application_number") AS "total_applications"
+    FROM
+        cte
+    GROUP BY
+        "assignee_name"
+    ORDER BY
+        "total_applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte."assignee_name" AS "assignee_name",
+    cte."filing_year" AS "year",
+    COUNT(DISTINCT cte."application_number") AS "application_count"
+FROM
+    cte
+    JOIN top_assignee ON cte."assignee_name" = top_assignee."assignee_name"
+GROUP BY
+    cte."assignee_name", cte."filing_year"
+ORDER BY
+    "application_count" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 03:01:57 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 03:01:57 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 03:01:57 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:01:59 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 03:01:59 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:01:59 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:01:59 - root - INFO - itercount: 5
+2025-01-16 03:01:59 - root - INFO - 0
+2025-01-16 03:01:59 - root - INFO - results: 
+assignee_name,year,application_count
+PROCTER & GAMBLE,1997,15
+
+
+2025-01-16 03:01:59 - root - INFO - Please check the answer again by reviewing In which year did the assignee with the most applications in the patent category 'A61' file the most?, reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: To determine the year in which the assignee with the most applications in the patent category 'A61' filed the most, we first identify the assignee with the highest number of patent applications in category 'A61'. Then, we find the year when this assignee filed the highest number of applications.
+
+```csv
+assignee_name,year,application_count
+TopAssignee,year:int,count:int
+``` The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+assignee_name,year,application_count
+PROCTER & GAMBLE,1997,15
+Current sql:
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS "assignee_name",
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS "filing_year",
+        p."application_number" AS "application_number"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p,
+        LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee,
+        LATERAL FLATTEN(INPUT => p."cpc") f_cpc
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%'
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        "assignee_name",
+        COUNT(DISTINCT "application_number") AS "total_applications"
+    FROM
+        cte
+    GROUP BY
+        "assignee_name"
+    ORDER BY
+        "total_applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte."assignee_name" AS "assignee_name",
+    cte."filing_year" AS "year",
+    COUNT(DISTINCT cte."application_number") AS "application_count"
+FROM
+    cte
+    JOIN top_assignee ON cte."assignee_name" = top_assignee."assignee_name"
+GROUP BY
+    cte."assignee_name", cte."filing_year"
+ORDER BY
+    "application_count" DESC NULLS LAST
+LIMIT 1;When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+
+2025-01-16 03:02:31 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 03:02:31 - root - INFO - ```sql
+WITH cte AS (
+    SELECT
+        COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) AS "assignee_name",
+        SUBSTRING(TO_VARCHAR(p."filing_date"), 1, 4) AS "filing_year",
+        p."application_number" AS "application_number"
+    FROM
+        PATENTS.PATENTS.PUBLICATIONS p,
+        LATERAL FLATTEN(INPUT => p."assignee_harmonized") f_assignee,
+        LATERAL FLATTEN(INPUT => p."cpc") f_cpc
+    WHERE
+        f_cpc.value:"code"::STRING LIKE 'A61%'
+        AND COALESCE(f_assignee.value:"name"::STRING, f_assignee.value:"organization"::STRING) IS NOT NULL
+        AND p."filing_date" > 0
+),
+top_assignee AS (
+    SELECT
+        "assignee_name",
+        COUNT(DISTINCT "application_number") AS "total_applications"
+    FROM
+        cte
+    GROUP BY
+        "assignee_name"
+    ORDER BY
+        "total_applications" DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    cte."assignee_name" AS "assignee_name",
+    cte."filing_year" AS "year",
+    COUNT(DISTINCT cte."application_number") AS "application_count"
+FROM
+    cte
+    JOIN top_assignee ON cte."assignee_name" = top_assignee."assignee_name"
+GROUP BY
+    cte."assignee_name", cte."filing_year"
+ORDER BY
+    "application_count" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 03:02:31 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 03:02:31 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 03:02:31 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 03:02:33 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 03:02:33 - snowflake.connector.connection - INFO - closed
+2025-01-16 03:02:33 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 03:02:33 - root - INFO - itercount: 6
+2025-01-16 03:02:33 - root - INFO - 0
+2025-01-16 03:02:33 - root - INFO - Total iteration counts: 6
