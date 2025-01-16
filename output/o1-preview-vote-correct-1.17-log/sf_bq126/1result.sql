@@ -1,0 +1,7 @@
+SELECT O."title", O."artist_display_name" AS "artist_name", O."medium", I."original_image_url"
+FROM THE_MET.THE_MET.OBJECTS O
+JOIN THE_MET.THE_MET.IMAGES I ON O."object_id" = I."object_id"
+WHERE O."department" = 'Photographs'
+  AND O."object_name" LIKE '%Photograph%'
+  AND O."artist_display_name" != 'Unknown'
+  AND O."object_end_date" <= 1839;

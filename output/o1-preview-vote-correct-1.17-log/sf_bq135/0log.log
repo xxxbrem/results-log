@@ -1,0 +1,4585 @@
+2025-01-16 15:38:09 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:39:27 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:39:27 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:39:27 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:39:27 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:39:28 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:39:28 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:40:00 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:40:00 - root - INFO - Thank you for pointing out the error. You are correct—the function `UNIX_TIMESTAMP` is not available in Snowflake. Instead, to handle UNIX epoch timestamps in Snowflake, we can use `TO_TIMESTAMP` and compare it directly with a `TIMESTAMP` literal.
+
+In the previous query, we can adjust it as follows:
+
+```sql
+SELECT DISTINCT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+LIMIT 1000;
+```
+
+**Explanation:**
+
+- **TO_TIMESTAMP("block_timestamp")**: Converts the UNIX epoch timestamp (assuming it's in seconds) in `"block_timestamp"` to a `TIMESTAMP` data type.
+- **TO_DATE(TO_TIMESTAMP("block_timestamp"))**: Extracts the date part from the timestamp.
+- **WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'**: Compares the converted timestamp with the desired cutoff date.
+
+**Note:** If `"block_timestamp"` is in milliseconds, you should divide it by 1000 or use `TO_TIMESTAMP_MS("block_timestamp")` instead.
+
+Here are the corrected versions of the relevant queries:
+
+---
+
+**1. Get distinct dates of transactions before 2022:**
+
+```sql
+SELECT DISTINCT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+LIMIT 1000;
+```
+
+---
+
+**2. Get distinct years from transaction timestamps:**
+
+```sql
+SELECT DISTINCT YEAR(TO_TIMESTAMP("block_timestamp")) AS "year"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**3. Check the range of transaction amounts:**
+
+```sql
+SELECT MIN("amount") AS "min_amount", MAX("amount") AS "max_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**4. Get the number of transactions per date before 2022:**
+
+```sql
+SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", COUNT(*) AS "transaction_count"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+ORDER BY "transaction_count" DESC
+LIMIT 1000;
+```
+
+---
+
+**5. Get total transaction amount per date before 2022:**
+
+```sql
+SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("amount") AS "total_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+ORDER BY "total_amount" DESC
+LIMIT 1000;
+```
+
+---
+
+**6. List all transactions that were not successful:**
+
+```sql
+SELECT "id", "block_timestamp", "amount", "success"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE "success" = FALSE
+LIMIT 1000;
+```
+
+---
+
+**7. Check distinct values of the "success" column:**
+
+```sql
+SELECT DISTINCT "success"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**8. Get total transaction amount per date for successful transactions before 2022:**
+
+```sql
+SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("amount") AS "total_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00' AND "success" = TRUE
+GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+ORDER BY "total_amount" DESC
+LIMIT 1000;
+```
+
+---
+
+**9. Get the earliest and latest transaction dates:**
+
+```sql
+SELECT MIN(TO_DATE(TO_TIMESTAMP("block_timestamp"))) AS "earliest_date",
+       MAX(TO_DATE(TO_TIMESTAMP("block_timestamp"))) AS "latest_date"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**10. Count the total number of transactions before 2022:**
+
+```sql
+SELECT COUNT(*) AS "total_transactions"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+LIMIT 1000;
+```
+
+---
+
+**11. Get distinct "sender" addresses:**
+
+```sql
+SELECT DISTINCT "sender"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**12. Get total transaction amounts by "sender" before 2022:**
+
+```sql
+SELECT "sender", SUM("amount") AS "total_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "sender"
+ORDER BY "total_amount" DESC
+LIMIT 1000;
+```
+
+---
+
+**13. List distinct "code" values in transactions:**
+
+```sql
+SELECT DISTINCT "code"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**14. Get the number of accepted transactions before 2022:**
+
+```sql
+SELECT COUNT(*) AS "accepted_transactions"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00' AND "accepted" = TRUE
+LIMIT 1000;
+```
+
+---
+
+**15. Check distinct values of the "accepted" column:**
+
+```sql
+SELECT DISTINCT "accepted"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**16. Get total transaction amount per date where "accepted" is TRUE before 2022:**
+
+```sql
+SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("amount") AS "total_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00' AND "accepted" = TRUE
+GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+ORDER BY "total_amount" DESC
+LIMIT 1000;
+```
+
+---
+
+**17. List distinct transaction "versions":**
+
+```sql
+SELECT DISTINCT "version"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+LIMIT 1000;
+```
+
+---
+
+**18. Get total gas used per date before 2022:**
+
+```sql
+SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("gas_limit") AS "total_gas_used"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+ORDER BY "total_gas_used" DESC
+LIMIT 1000;
+```
+
+---
+
+**19. Find transactions with the highest "amount" before 2022:**
+
+```sql
+SELECT "id", "block_timestamp", "amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+ORDER BY "amount" DESC
+LIMIT 1000;
+```
+
+---
+
+**20. Get total number of transactions per "to_addr" before 2022:**
+
+```sql
+SELECT "to_addr", COUNT(*) AS "transaction_count"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "to_addr"
+ORDER BY "transaction_count" DESC
+LIMIT 1000;
+```
+
+---
+
+**Note on Timestamp Conversion:**
+
+- If `"block_timestamp"` is in **seconds** since the UNIX epoch (January 1, 1970), then `TO_TIMESTAMP("block_timestamp")` will correctly convert it to a `TIMESTAMP`.
+- If `"block_timestamp"` is in **milliseconds**, you should use `TO_TIMESTAMP("block_timestamp" / 1000)` or `TO_TIMESTAMP_MS("block_timestamp")`.
+
+**Example:**
+
+```sql
+SELECT DISTINCT TO_DATE(TO_TIMESTAMP_MS("block_timestamp")) AS "date"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_MS("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+LIMIT 1000;
+```
+
+Please verify the unit of `"block_timestamp"` in your data to ensure accurate conversions.
+
+---
+
+By correcting these queries, we can now handle the date comparisons properly in Snowflake without encountering the `UNIX_TIMESTAMP` error.
+
+**Conclusion:**
+
+To answer the original task—**Which date before 2022 had the highest total transaction amount in the Zilliqa blockchain data?**—we can use the following SQL query:
+
+```sql
+SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("amount") AS "total_transaction_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00' AND "success" = TRUE
+GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+ORDER BY "total_transaction_amount" DESC
+LIMIT 1;
+```
+
+**Explanation:**
+
+- **TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date"**: Extracts the date from the block timestamp.
+- **SUM("amount") AS "total_transaction_amount"**: Calculates the total transaction amount for each date.
+- **WHERE TO_TIMESTAMP("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'**: Filters transactions before January 1, 2022.
+- **AND "success" = TRUE**: Includes only successful transactions.
+- **GROUP BY date**: Groups the transactions by date.
+- **ORDER BY total_transaction_amount DESC**: Orders the results in descending order of total transaction amount.
+- **LIMIT 1**: Retrieves the date with the highest total transaction amount.
+
+**Final Answer in CSV Format:**
+
+```csv
+date,total_transaction_amount
+date_before_2022,total_amount:float > 0
+```
+
+**Notes:**
+
+- **date**: The specific date before 2022 with the highest total transaction amount.
+- **total_transaction_amount**: The total amount transacted on that date.
+
+Since we cannot infer the exact values from the task description, placeholders have been used to represent the date and the total transaction amount.
+2025-01-16 15:40:00 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:40:00 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:40:00 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:40:01 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 15:40:01 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:40:02 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:40:19 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:40:19 - root - INFO - ```sql
+SELECT TO_DATE(TO_TIMESTAMP_MS("block_timestamp")) AS "date", SUM("amount") AS "total_transaction_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_MS("block_timestamp") < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY TO_DATE(TO_TIMESTAMP_MS("block_timestamp"))
+ORDER BY "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:40:19 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:40:19 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:40:19 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:40:20 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:40:21 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:40:46 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:40:46 - root - INFO - ```sql
+SELECT
+    TO_DATE(DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00') < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    TO_DATE(DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:40:46 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:40:46 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:40:46 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:40:48 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 15:40:48 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:40:48 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:40:48 - root - INFO - SQL:
+SELECT
+    TO_DATE(DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00') < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    TO_DATE(DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Results:
+No data found for the specified query.
+
+2025-01-16 15:40:48 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:40:48 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:40:48 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:40:49 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 15:40:49 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:40:50 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:40:50 - root - INFO - SQL:
+SELECT DISTINCT YEAR(TO_TIMESTAMP("block_timestamp")) AS "year"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+Results:
+Too long, hard cut:
+year
+51473535
+51657349
+51616263
+51473932
+51616267
+51657378
+51454854
+51616269
+51473630
+51657388
+51454817
+51473987
+51454822
+51657406
+51657408
+51474006
+51657420
+51474016
+51454868
+51474018
+51657437
+51454946
+51616276
+51454809
+51473980
+51454812
+51474004
+51616330
+51616332
+51474013
+51657150
+51474036
+51454926
+51474047
+51454934
+51616375
+51655424
+51472718
+51454972
+51657195
+51657492
+51473756
+51474103
+51474113
+51657217
+51616129
+51474118
+51454597
+51453509
+51657255
+51474162
+51473836
+51454661
+51657284
+51472488
+51454697
+51616223
+51616236
+51657314
+51472487
+50852454
+51656801
+49991064
+52609261
+51473964
+51474049
+51473957
+51655338
+51657422
+51454921
+51616359
+51616364
+51474051
+51474054
+51616288
+51454958
+51657183
+51454960
+51454965
+51473744
+51473747
+51657199
+51616404
+51616406
+51474105
+51455007
+51452775
+51616134
+51616145
+51455033
+51616442
+51616152
+51454627
+51616155
+51616159
+51454639
+51616163
+51616176
+51616181
+51616188
+51473863
+51473902
+51616240
+51323675
+51615616
+51472593
+51474324
+51474005
+51616142
+51616447
+51657257
+51454644
+51455072
+51473844
+51472826
+51616190
+51454682
+51473866
+51454694
+51473874
+51616234
+51473909
+51473913
+51454745
+51323822
+50850670
+51473302
+51657689
+51616227
+52609559
+51615315
+51656891
+51473558
+51656775
+51615768
+51656359
+51454224
+51323176
+50850408
+50851727
+51178522
+50850460
+51656519
+50850580
+50851892
+50851514
+51656377
+51177947
+51454326
+52610791
+51615776
+51616068
+51656691
+51615316
+51615329
+51322790
+51616477
+51615551
+51178218
+51473542
+51323584
+51177053
+51453290
+51474606
+51657078
+51615413
+51474507
+51454222
+51473564
+51323859
+51177719
+51656743
+50851122
+51454409
+52609707
+51616305
+51454588
+51455026
+51657544
+51473822
+51616464
+51616183
+51176925
+51656518
+50852434
+51655982
+52608370
+51616126
+51473827
+51454689
+51616210
+51616221
+51454738
+51454748
+51321611
+51176364
+51616880
+51472300
+52608347
+51454723
+51657329
+51656656
+51472848
+51615345
+51615317
+51323423
+51473481
+51656478
+51323277
+51323294
+51615370
+51176640
+51178040
+51321483
+51454042
+51176693
+51656510
+51656536
+50852309
+51178207
+51473096
+50851970
+51178285
+51177845
+50851573
+51178834
+51656389
+50851613
+50851615
+50852499
+50852069
+51323557
+51472570
+51657663
+51656791
+51615442
+51656846
+51471980
+51473364
+51656571
+52610507
+51616106
+51656609
+51473077
+51616135
+51615843
+51453917
+51454263
+51656128
+51474220
+52610581
+49991145
+52610021
+52609327
+51454200
+51615705
+51178471
+50852141
+51177116
+51323250
+52609004
+50851124
+50851604
+51178879
+51323605
+51615960
+52610135
+51656228
+52608630
+51615163
+51656561
+51616114
+52610238
+51615838
+51616147
+51452907
+51453357
+51473047
+51615755
+51323760
+51323807
+50851988
+51177883
+50851197
+51321775
+51321831
+51323598
+51321418
+51615229
+52610653
+51178540
+51455402
+51472875
+51657061
+51656181
+50851741
+51615190
+52610119
+51472072
+51614382
+51615601
+51616222
+51657637
+51176768
+50850559
+51656411
+51472903
+51616604
+50853012
+51178030
+51178378
+51616561
+51657385
+51455365
+51323120
+52610696
+51323301
+51176639
+51657077
+51657262
+50851290
+51176393
+51178729
+51472266
+51454220
+51323169
+51323700
+50851552
+51454297
+51615355
+51471915
+51321943
+51177747
+51178750
+50852892
+51454023
+52609626
+51455423
+52608976
+51453868
+50850952
+51176342
+51616918
+51453476
+51454322
+51655654
+51178819
+51656567
+51473085
+51453324
+51656047
+51614301
+50850436
+51178579
+51177714
+51177313
+51321665
+51472302
+51473001
+51657958
+51616040
+51474422
+51615362
+52609595
+52608875
+51177831
+51472298
+51455288
+51454466
+51474451
+51455023
+51474461
+51616816
+52609544
+51323413
+51454390
+51655669
+51474444
+51614979
+51472188
+51472899
+52608301
+52610147
+52609046
+51323946
+51473524
+51473610
+51657140
+50850387
+51616009
+51615921
+50851280
+50852134
+50852567
+49698270
+50016028
+50714693
+51322283
+49990748
+50713885
+50852138
+51321861
+51322284
+50017771
+50713886
+50715523
+50715946
+51321862
+51323171
+50016464
+50715524
+51177527
+50850393
+50851705
+49992870
+50016465
+50852575
+50852998
+51321866
+51323175
+49993303
+49698282
+50714701
+51176625
+51177531
+50853000
+51321433
+51322725
+49990757
+50714285
+51177533
+50851291
+50851710
+50852578
+50853001
+51322727
+50713894
+51178000
+50851711
+51322294
+50713895
+50715955
+50851713
+49699892
+50713896
+50715535
+51177089
+50852585
+51323185
+49993312
+50016477
+50715960
+50851299
+49698299
+50015606
+51321441
+50714298
+51321879
+49992037
+49992885
+51322304
+51322738
+51323190
+49993317
+50715541
+50715965
+50714304
+51178016
+50850855
+51321884
+50715128
+51177100
+51178017
+49699911
+50017795
+50713498
+50850423
+50850858
+51323642
+50850859
+50852164
+50852160
+50715132
+50715134
+50715974
+50852600
+51323201
+49992479
+50715553
+50850864
+49699923
+51176655
+50850432
+50850867
+50851319
+50852605
+50853028
+51322320
+50713514
+51176199
+51177564
+50852174
+50852606
+50853029
+51322322
+50714320
+50714731
+50715141
+51176201
+51321899
+51322323
+51176203
+50715983
+51177567
+50016925
+51178033
+50713516
+51322758
+50850438
+50853033
+51322760
+49992489
+51178037
+51178519
+50852179
+50851745
+51321475
+50852620
+50714739
+50851748
+51323663
+49698346
+50713928
+50850881
+50851332
+51615126
+50713889
+50017776
+50715957
+50851297
+51321446
+51176628
+51323191
+51177102
+51321887
+50017792
+50850862
+51178027
+50715977
+51321895
+51176197
+50715559
+50851740
+50713519
+51177119
+
+
+2025-01-16 15:40:50 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:40:50 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:40:50 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:40:51 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:40:51 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:40:51 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:41:39 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:41:39 - root - INFO - ```sql
+SELECT
+    TO_DATE(DATEADD('second', "block_timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    DATEADD('second', "block_timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00') < TIMESTAMP '2022-01-01 00:00:00'
+    AND "amount" IS NOT NULL
+GROUP BY
+    TO_DATE(DATEADD('second', "block_timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:41:39 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:41:39 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:41:39 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:41:40 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 15:41:40 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:41:40 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:42:45 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:42:45 - root - INFO - ```sql
+SELECT
+    TO_DATE(DATEADD('second', txb."timestamp", TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+    JOIN CRYPTO.CRYPTO_ZILLIQA.TX_BLOCKS txb
+        ON t."block_number" = txb."number"
+GROUP BY
+    TO_DATE(DATEADD('second', txb."timestamp", TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:42:45 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:42:45 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:42:45 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:42:46 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 15:42:46 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:42:46 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:43:57 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:43:57 - root - INFO - ```sql
+SELECT
+    TO_DATE(DATEADD('second', txb."timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+    JOIN CRYPTO.CRYPTO_ZILLIQA.TX_BLOCKS txb
+        ON t."block_number" = txb."number"
+GROUP BY
+    TO_DATE(DATEADD('second', txb."timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:43:57 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:43:57 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:43:57 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:43:58 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 15:43:58 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:43:58 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:43:59 - root - INFO - SQL:
+SELECT
+    TO_DATE(DATEADD('second', txb."timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+    JOIN CRYPTO.CRYPTO_ZILLIQA.TX_BLOCKS txb
+        ON t."block_number" = txb."number"
+GROUP BY
+    TO_DATE(DATEADD('second', txb."timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Results:
+No data found for the specified query.
+
+2025-01-16 15:43:59 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:43:59 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:43:59 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:44:00 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:44:00 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:44:13 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:44:13 - root - INFO - ```sql
+SELECT
+    TO_DATE(TO_TIMESTAMP("block_timestamp" / 1000)) AS "date",
+    COUNT(*) AS "transaction_count"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_TIMESTAMP("block_timestamp" / 1000) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    TO_DATE(TO_TIMESTAMP("block_timestamp" / 1000))
+ORDER BY
+    "transaction_count" DESC
+LIMIT 1000;
+```
+2025-01-16 15:44:13 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:44:13 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:44:13 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:44:15 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 15:44:15 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:44:15 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:46:00 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:46:00 - root - INFO - ```sql
+SELECT
+    t."block_number" AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+GROUP BY
+    t."block_number"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:46:00 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:46:00 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:46:00 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:46:02 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:46:02 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:46:02 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:46:02 - root - INFO - SQL:
+SELECT
+    t."block_number" AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+GROUP BY
+    t."block_number"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Results:
+date,total_transaction_amount
+1131984,41906846639921119456.000000000
+
+2025-01-16 15:46:02 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:46:02 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:46:02 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:46:04 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:46:04 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:47:16 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:47:16 - root - INFO - ```sql
+SELECT
+    t."block_number" AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+GROUP BY
+    t."block_number"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:47:16 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:47:16 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:47:16 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:47:17 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:47:17 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:47:17 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:47:18 - root - INFO - SQL:
+SELECT
+    t."block_number" AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+GROUP BY
+    t."block_number"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Results:
+date,total_transaction_amount
+1131984,41906846639921119456.000000000
+
+2025-01-16 15:47:18 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:47:18 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:47:18 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:47:19 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 15:47:19 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:47:20 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:47:20 - root - INFO - SQL:
+SELECT "id", "block_timestamp", "amount", "success"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   WHERE "success" = FALSE
+   LIMIT 1000;
+Results:
+Too long, hard cut:
+id,block_timestamp,amount,success
+64f1943d1f0e33d910a1a105d2d9d59937e4b110f88595a0583bf3457197503f,1619491474000000,3349537853336088.000000000,False
+914ac2869b60aca1f9356704013abe04fa83ef87f99259988ff2b4668fd78578,1614907691000000,3113772954701504.000000000,False
+4ace24581709bb24fd082bb8755786dee27c94c972ca8a4531dca1d4b5fb5906,1619488450000000,4500466099816486.000000000,False
+c75853b3e9ad941f4197f92ea91e87fbf509f1c841d7905ff083d236e2db9671,1619544038000000,69612378625506312.000000000,False
+81c0b6cc23be805d92d286bf0f5158033123712489a432462ebd5f95e77f217b,1619544567000000,69604995032230656.000000000,False
+6f0ad3dba6dbd24a4824931a13076d2fda4313e3d8dcb9cf899926547c98a665,1619527505000000,6639361407913916.000000000,False
+8a896d4f75449bef2096f1ea100f093ee89562f97589455e70eaff98e20fd2fc,1624248323000000,0E-9,False
+2bb7dbe69628e2c37a86a6d4122c0b28e027e468f7b4684c9cedd64d59e03071,1624263762000000,0E-9,False
+876be0fc328974c2ec95a509bf6a435f95d368b66d0145ab87f2be4839533317,1624264161000000,0E-9,False
+382514429e69b110f2997b0fe25842e14b3146b273911bfb5488cf9d7ee61e4d,1624264333000000,0E-9,False
+085b1a0597a845d728a0cfcf8232551c0c90237344dff1ba8437f825b2249aeb,1623667813000000,0E-9,False
+53feb38df8f65cffadf4d5b044586086c1b80cbd1b53d917d3b0903ea812bbed,1624264901000000,0E-9,False
+55751dd97155301364f6b1dbfb3afabdd77db0897d3b54652a082f0ca941d336,1619542041000000,1847280765274854.000000000,False
+33494e0dc652341348f1602f8e5525b4a8eade5a98cb15655e8afd85f6ad1f29,1619537713000000,1055433510722195.000000000,False
+f5625617fa25e4cb7c1ad457558c585e82a1db34c5f9038a417662f3e1f2f7ec,1614913724000000,1456484777367815.000000000,False
+7a7b9c0e01adb21fdb41dd695eee295f7f2bbbee9515faf43041d93f909fcbb1,1619489389000000,47431459306840176.000000000,False
+3356e6f04a8283ebd903900312d944cd3cc927bb5c8ebab9f74f46135daa92c6,1619490021000000,40756167313593676.000000000,False
+b608f709877a19d0684e76d64cf2987787da471b7f8ddead837980387cf41c54,1619531908000000,235958838208695285.000000000,False
+9e26f842b50cae65543d292a186d85d4e4ed9f5096f5e4e400db8e6bd80cc7ea,1614957907000000,12925216665611302.000000000,False
+df4bfe55cef8f014f367a40ef1d32b213b501d878fd4b5f2af846cebfa2d04aa,1628734392000000,0E-9,False
+394f51ef3cd47264a90d32c405a7e559c0bbc2c2b1f87250c1eef9aabf6902a8,1624303998000000,0E-9,False
+c0aae5b7bb23b1f481931c6ff294e16c08f173fe17258746a29937e7cd9c64e4,1630096136000000,0E-9,False
+7e24827dc8cde37696c1b05b8b1ca0422d0d4b794fb550e758a5b9f6487e8296,1624255902000000,0E-9,False
+da74c2d067e8aac2aa1aa900a011bc1a1307cbf137b5d9dadae6010c7b68bbcb,1624256104000000,0E-9,False
+5f9b50b4f8bbeb2a43c5dc22706b92991c05bde3f6746712abd83383544eb826,1630059654000000,0E-9,False
+c1a3181d27817d892a6c4657143721cbc8bfb6d4975bc2d4cfe8e574bbeaaf7e,1630059826000000,0E-9,False
+d308f8716df2bc8a4b2c752e92bf199223b377f15c6968f7d8cb9166a86dbb58,1630059826000000,0E-9,False
+bfe51f82735137d03ce9666a1055977edbf7de27f8320a5d0c9c109c1135ae4f,1630059894000000,0E-9,False
+74810e09056d8e32a7407ef0729432b834aec0c51c94fde1361dd7c0ff70d359,1630059965000000,0E-9,False
+e63a7e07fbf0b7a0afbfa3e6d4ce547da88c08aeaad2ef8241e47d2eff21389c,1623649330000000,0E-9,False
+2fdfb2a852d40f28988d4b3984bafd2e798591c58d75db59d9806be9a9ca7fb5,1628735748000000,0E-9,False
+9013461a01309be94ece543a653ea7a07e77b2d631aa049c4a4c81c2520f4fd0,1630079573000000,0E-9,False
+060b43912333783a61d7aa5bb5b2df3855ea01d5ad68b88212f312f2517194ce,1624311531000000,0E-9,False
+0a83ed1a4fc261da5fb46d14f7a69ce3627903e0c519803cb48dbbdc2a1687fb,1628755364000000,0E-9,False
+0838fe4feabc29e6413b0517974d6937ef063d7f64dd1dbaa83fc2bafb60b254,1628755467000000,0E-9,False
+ed1e6a83d28716f0f837c847687600cb626b8d58ed117883fae87cef6ca8bd2e,1624291626000000,0E-9,False
+f728c277b41c58fa42dbc169b49a713135162885f67f4393c328f70a4bdb1751,1628756120000000,0E-9,False
+79a6d616930b80a3b39ac2668630190340bc9b45ce66fd9ce6d22bce43f8e84a,1628776323000000,0E-9,False
+b174bf1d8a946def71ea7dfea29c0ec029a52f9bbb8666b10e0a554575d958ce,1628776357000000,0E-9,False
+4d6fc6381d8a86e2024ee23bd3a609134a45995e2659928972602c3d6002202c,1628776357000000,0E-9,False
+08c8fbe61f072e8886cc9f49302003e7bbb82630ae274b088cc10fcd19fb515f,1628776357000000,0E-9,False
+1f6361450c3b09b1316da8c4f8df3b3985ef2f36fb646c977f6370bf0ca30172,1623665789000000,0E-9,False
+73ef99823acc4ec25555c8dc1023c87e19218490c1da04af8bb70e616894d37e,1623654893000000,0E-9,False
+cda80c572c7bca23af1dda93a889f02a9da98381be8210299ed982ec6bfc6eb2,1630065429000000,0E-9,False
+2d112d853c05b2140d410cdb407a2388ab38d671f557b7204fd428b0c8415f1c,1630065544000000,0E-9,False
+402233a14940ab4ee820db38f921ad30d18fa9f674e1d770c13eae066fb6ac56,1623633422000000,0E-9,False
+d99fe62e7d442594e00d0cd43d9a84cd4f4dbc4fee1d2586b7bbf1d0bb2ff651,1623633422000000,0E-9,False
+31844a083f140cc0d87110900551009477035ef4fbf3193bc49e93d08f78306c,1624275293000000,0E-9,False
+020b0fe9cf5ade67b049d363dbad5bb1d05868cb35eb87a7cc2cc76e525b811f,1623646132000000,0E-9,False
+f1a5efda72080f007662bba69de66e13c8bf9285e7da80d400b80e0ed6f84f44,1623646173000000,0E-9,False
+bd52f9aff5fe9812dac77f3
+
+2025-01-16 15:47:20 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:47:20 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:47:20 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:47:21 - snowflake.connector.cursor - INFO - Number of results in first chunk: 2
+2025-01-16 15:47:21 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:47:21 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:47:21 - root - INFO - SQL:
+SELECT DISTINCT "success"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+Results:
+success
+True
+False
+
+2025-01-16 15:47:21 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:47:21 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:47:21 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:47:23 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:47:23 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:48:02 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:48:02 - root - INFO - ```sql
+SELECT
+    t."block_number" AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+GROUP BY
+    t."block_number"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:48:02 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:48:02 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:48:02 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:48:04 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:48:04 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:48:04 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:48:04 - root - INFO - SQL:
+SELECT
+    t."block_number" AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+GROUP BY
+    t."block_number"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Results:
+date,total_transaction_amount
+1131984,41906846639921119456.000000000
+
+2025-01-16 15:48:04 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:48:04 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:48:04 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:48:06 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:48:06 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:48:06 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:48:51 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:48:51 - root - INFO - ```sql
+SELECT
+    TO_DATE(TRY_TO_TIMESTAMP("block_timestamp" / 1000000)) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TRY_TO_TIMESTAMP("block_timestamp" / 1000000) IS NOT NULL
+    AND TRY_TO_TIMESTAMP("block_timestamp" / 1000000) < TIMESTAMP '2022-01-01 00:00:00'
+    AND "success" = TRUE
+GROUP BY
+    TO_DATE(TRY_TO_TIMESTAMP("block_timestamp" / 1000000))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:48:51 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:48:51 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:48:51 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:48:52 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:48:52 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:49:32 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:49:32 - root - INFO - ```sql
+SELECT
+    MIN(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp"::BIGINT, 'epoch_microseconds'))) AS "earliest_date",
+    MAX(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp"::BIGINT, 'epoch_microseconds'))) AS "latest_date"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+```
+2025-01-16 15:49:32 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:49:32 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:49:32 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:49:33 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:49:33 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:50:07 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:50:07 - root - INFO - ```sql
+SELECT
+    MIN(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6))) AS "earliest_date",
+    MAX(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6))) AS "latest_date"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS;
+```
+2025-01-16 15:50:07 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:50:07 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:50:07 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:50:08 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:50:08 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:50:08 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:50:08 - root - INFO - SQL:
+SELECT
+    MIN(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6))) AS "earliest_date",
+    MAX(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6))) AS "latest_date"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS;
+Results:
+earliest_date,latest_date
+2019-09-12,2022-08-10
+
+2025-01-16 15:50:08 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:50:08 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:50:08 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:50:09 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:50:10 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:50:29 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:50:29 - root - INFO - ```sql
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) < DATE '2022-01-01'
+GROUP BY
+    "date"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+```
+2025-01-16 15:50:29 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:50:29 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:50:29 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:50:31 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:50:31 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:50:31 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:50:31 - root - INFO - SQL:
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) < DATE '2022-01-01'
+GROUP BY
+    "date"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Results:
+date,total_transaction_amount
+2021-04-27,502568739536336696622.000000000
+
+2025-01-16 15:50:31 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:50:31 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:50:31 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:50:33 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 15:50:33 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:50:33 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:50:33 - root - INFO - SQL:
+SELECT DISTINCT "sender"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Results:
+Too long, hard cut:
+sender
+zil184rqjy38xwykgz6xu2lwcl8ylqqlmlwk8xpatx
+zil13hwp8zerntrxapzhy5f8u7qcc9cp6dgx0htswe
+zil1wr6l0x4hh6e696tgsqywmlnsm2ze3su3sm8k5k
+zil19fr0te7395y3j0w5tk883x6get07l2qcf44kvu
+zil1vh4hfnav6fmml90md2xrrtjmzew8nhc3fekmt4
+zil1fmrjd8jpl9x5ujkd47z7vfqadzd7pfeywpz6n5
+zil1s2ranf28xf5m38gkuaedl6kg54ue2rdd4k4wqp
+zil1wh7axvvyl0vc92kmvhvtndug24sy9thh34u3ar
+zil1hcdhsnn70uugv27rj8hhw494n7awkfehlurncu
+zil1ejlzgw8k0r6yhsscjghanwj0mve8scpeme5ag4
+zil1nl5d9uy7jche0vhhvhx6t4z383vr0umad8x5a8
+zil1hkxwf5elhq4ereln7uejcd3sjsq7emt45eqxj2
+zil1kshgwk6m9xx6tjk4m2d5xtpkpdyp8zrtnkv3rc
+zil10x4tlft7c57wzz2rffj57hyz8ynsqtrdrzc4n4
+zil1tafcfu2k939dcpkwm23y7nhjfcd9lurajtde8g
+zil1n7m2szm79tzhermk020sj523mgw4wuuh79cy90
+zil157srqwjm3hr9f8chmyp9utefhav8dy4e490de9
+zil1j64eyqy5g8zpy8u2x5g278808z4ajjctmh0l6d
+zil1h3vwtnzmgp2nzw3zmlaayhg32jhrdnv7dqafrt
+zil1avdr77lw6c9w8sk06dj8fwzq87wxs88jdqzlhc
+zil1vevc0vx3gh5s2kng20l4vnxuq9uc7xflx9yf7m
+zil1rtz9ddgkswz7tja74xq0qkpxc5zafg3hl3u6au
+zil1c9jmdaxxqkqgupsfxrw9fgpfp4tcp606rf7r6d
+zil10zhy34vaedg95nzepmmcvf6hs6ghfat3c68zry
+zil1jqr2yyyzpf49gsgjswnlvlqrd0h7hd68wkx8vw
+zil1zehwfdawnc80y2vwshcv957nqnt6s5lfdchk73
+zil1gagdz3amrkgwjrlkg0dlhw46vhz9atcpq0jc06
+zil1gyvmmmjx4gmz4shmrdv9yjnvt5ha26efrjdvel
+zil18hpzy2u8h76lanrmx32x20fz5nu82ucaecr980
+zil14glykqxl3jwrp4fqcav6fk5npnxrfepvr42yu6
+zil1xekg7fpulakzzvaka60w0sh3tryflyuq79vku0
+zil1hg2f7873vc95q9rejfmxe78qlcph02gznnn60n
+zil12qwpduzz7zqe56md3de5pal72zyy9wglqa24ce
+zil186w4hd45xjv3htqlfesxa73q247npf5dw7xxw5
+zil1jrfawsx538pfuw7xx9vvudq8794yhlvd6j7w2l
+zil1d6q8kap85e20zk8r2vewy97uwl06twl5r9fhrk
+zil13p4d90k78mrnp6fl9k0ckk8zpdvgwnyew59dz3
+zil19e24266mg4pmxzvm24v92c53lfd4kd4cadc6xl
+zil1ffgsennwlgtma6gkg3s025emvhjs90p5pljmv2
+zil14hgqwxa4dczavweamg820288vw39ccejf83kpu
+zil1fhct5g6r067nex2maz97smq6a24x4l7enw3ax4
+zil1hrqnkd6k4uyegsvhy8cr3devl8pqqtfn99f563
+zil1typ89sse0hx3p2kuhh3mkfa8h2gwv8ln8utzcp
+zil10qxr3rfgs7xtgul2ff9ysrv8jsuhqe2xhmdnh3
+zil1teurfsl4rt3xwcvszwl6spyfulmegntnpdz2zd
+zil1rcj328mycksnn4sc5sn5xwfcpc5ee884uu0m68
+zil12q7sskxusm8fzczzfuzavc4957wszxlxcnf28n
+zil1052vgt2vl0jpydl2xe02xvk7lcpawx4pen3ud2
+zil1qrwy720lnz9s3nsgpsauzdhj0v3az50m70jc43
+zil176uxd08yqr49r394rv0nre4uvtxh5t574ycyk9
+zil1fjw7qxu9xurl67x78zktqj64gkzrmxy54d5m6x
+zil15vzqxfehvahmw4uhk4j56gw6nyp2uj9ad0scnf
+zil1x5hxev7xnz3p68ljn52hvfwxj4nrv537d6uktw
+zil1wr62tmhyz37q72c99mgvslqk260fnf4s7897vp
+zil1fkrppq3n3quk6ju62r5t06qgpwjh8wyz3mewwa
+zil1eh7ye0hhnnnm3yntjmqyvqlsc2crdmgjmj2ldr
+zil184swpptxuv57wh633fx9lr0wam3zhmty9dsyql
+zil15suwfdrmw06nne08k2zdrgaqw6ddc9yz324hvf
+zil17zfvggtz9pjrz5j245zt0735thqn5cu8dxs2ff
+zil1adwcuurhlwxcxc632h2hf8gw65pfdmrjqt7k65
+zil1dgw08jwfd9nkn3uyxtd9nrcxa9a8kk5yfthdzx
+zil1dlenwm870qwwe485jpcehznmvt3htdxkx0pyhk
+zil17p0vumnw8a6yrxfkuuncfeguvnn70502ykeckm
+zil1snns9clslx8h6th9ex37z5ledak2830ege4ewq
+zil1pagf8za4887v209zshgt2rv9eq2u0yqlm24se9
+zil1ddg66kaumljdsx6n9gl2ugcn4pndta75qk8fs8
+zil1l6cqzlf3n6dflsxw9wyxxne9kgmanktmyx3jp8
+zil1nysd3xvm4tswsreprt8zs25u6l3t3phgcxvz9h
+zil1e2u2gz99ckusvzz2227dtmwt2wzh5ehu8cylzl
+zil1zdl73c3dkcerwy03mz242x99zle35kcmnqlzl6
+zil1slhae5hea6r8lnc39mf65ameng2e2szwhx82a4
+zil1vh99xfm9z8dfltsxhsrar8txqny89gz273dxds
+zil1jkx9g4kuf03dtwcpzsgtufxge40jpy4lecjryu
+zil17sdc7c6yhran99sap8vn7uv9vpsd725zs5dtz6
+zil12ldy30m8l8vwrqau48ddtphdl65353wyu4pzsq
+zil1d43uqd5pcv8sf23d3dca0slj4wl4t9yccjvu43
+zil10fkdnddalk4nz4n6spmd8auzezekv29aqwqt7z
+zil1ax23dp9kd5ndhfv0xjq295kalsgf4w9zyja40g
+zil18qd9nc06jv4aua40e887dsgyqy938vfszj9k4s
+zil1rrr8jqmyqjuejr96k37nywghln2s4j82e9p9vp
+zil1wsl70925j9xweldken0t3jfhjvv5e9hj6tmz4v
+zil13w6hme5zl86qkecl04htstdvr6wj9tfm2r6kt9
+zil1surtjhcznudmy8598gkmxr3sjd0qp6x9lq3tmv
+zil104lwrea5yuhs2cx2uvmt9cv9pw57f9u0z24rup
+zil1mga0mjrqwjlnasf69f97ar6gvw6myjfy9tppkv
+zil16munf2fc9zl4q22frjvaghe96up5r7en62s4jk
+zil1u9umlss0lahufhtl2ulrpq2l3xnedwfdncs7lj
+zil1730y0c422hcdu2jmnqq0lh7m3v95xzdpqedt8e
+zil17awjfsqge7rydwqg65mqccm2g5f5yd72d7chza
+zil10pj5ep0xm0cs82yjj7ka4s7uuppvskt973aupk
+zil1wepa3attp7s4624zspl7nskvk9d2s0z4teq7xn
+zil1lk4lcrtt0lg988vyk0tgd4qgl4jsdk85utplg6
+zil146mpv3rrdjnhsn3vccu0s4l373c2nkyhz9rmm8
+zil133yq0u94zah2jz3j9jr4684sp4m3tjwmmvnalt
+zil1v54sjxeu2jejv6ufk7tr0g7rtx9awvy9pjld2y
+zil1wevmnuwywes3zpvll69t4k0h3zlf0mljsc9fcm
+zil1ez6pyp9faxn6jtzzs5qnj4ud7ul84rg3xraete
+zil1zha67y4sqcypupetxwrhjnh3cngckf7clgmysa
+zil1ue45huyhld0mv6vt9reny93l8dxdrtewnmx0a4
+zil1926nt096tqx7f9jflyuw353v48xwnhfqvv4yt5
+zil16d2pe8etkc9m2mc9t3dvm5at0ufxkq02cwz2wp
+zil1xkz20l6u984d5z4x8gtneghpgep4ajr0qnzthz
+zil15vh9awa75eys20na6fyznmva7qtqe038u2ftst
+zil1ezxdj9r9ju5ch0n5lzlpk903r9fc2gq5hd3f8k
+zil1gn8zq2vy35ugy449k0shzewdvg5u330qsuhmt6
+zil1zhe5vsmfnvdzexsqflmnrledqx3ryuml4pcph4
+zil14n8ajajneckavetzkm8a3tyjz6grrzhxxj96al
+zil1uplnqhatvyp69p9xqstg2gcallcmtyka8aqm9v
+zil1jq720778pnvfe7cnqze2yrna60n2afh0xfl0k2
+zil15ltc3klm8j8xphtxtx929d9nfzfetdcw37fav7
+zil1xdl3fquasz24pvtqr386z54t59wagg9vea2sul
+zil1m6lqn80z9us9zh3ghvyy9nxy7dsnlat9mnlunv
+zil1ng7n6myh9aqxk69fvn4w4n6ddw0a6v3tut44t3
+zil1qxx36gggtlzgzy7zg8dqh4kvrkzh4qza4arqns
+zil1rlfsxdag9x8kp7m42k9rpvnczf8q6l593jeqrw
+zil1jn727zn3huzjk0pn4wwa0ymn6dhfcvg34hcjtu
+zil1u
+
+2025-01-16 15:50:33 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:50:33 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:50:33 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:50:34 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:50:35 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:50:55 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:50:55 - root - INFO - ```sql
+SELECT "sender", SUM("amount") AS "total_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "sender"
+ORDER BY "total_amount" DESC
+LIMIT 1000;
+```
+2025-01-16 15:50:55 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:50:55 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:50:55 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:50:57 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 15:50:57 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:50:58 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:50:58 - root - INFO - SQL:
+SELECT "sender", SUM("amount") AS "total_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "sender"
+ORDER BY "total_amount" DESC
+LIMIT 1000;
+Results:
+Too long, hard cut:
+sender,total_amount
+zil1z3zky3kv20f37z3wkq86qfy00t4a875fxxw7sw,357886655729874390000.000000000
+zil1kag6m40qj8r8zrdzv0ct0f87jcdzkggkplgzj9,53673235029737610000.000000000
+zil1qd5zmfqv32ugva9rd8zeep6488m8qxqlkyrcjj,48298218261849489890.000000000
+zil1smnfeqd7lxg4d5zuc0tsq87qk6eeyjn2kvaecg,34482834719100000000.000000000
+zil1tn74ucjf3y5quvlysj3kjc7pn34qsy2hry098c,29082633793874560001.000000000
+zil16khdzmelfthmflfatwshmml6nglz9tsvxcpurm,24493930565390360000.000000000
+zil1zxe9s6fqk90lnh75lqwlgm38pv82mgh9e9u7mk,22560554786000000000.000000000
+zil127qd2lmfjuy8jfgh0lt5fte824r3xj98f6n6qm,21293405000000000000.000000000
+zil1uqq7gatsz8r2p0ks5nylcksxz329n0zyw9yecy,18957952042658360000.000000000
+zil1ftg6qlhdcaaa2la7espskrs2mkz3rx7rwjzzj0,15749284970271430000.000000000
+zil1razqmzszwk248xkwgakh05c9qm052l84x7y9qd,15000000000000000000.000000000
+zil148lqdg94mw238dsz6y470fy28nk7ttpwp8dazk,14418879000000000000.000000000
+zil14kxmnlqqjuavwywatskfv6dlt0lh4p9xl5aa49,14048942471031870000.000000000
+zil1yqknv8jhe42va69aepefxa56xqlfn37x6aeve5,14007067012164940000.000000000
+zil1uy4tx9vccfdler2pzwnjyms4t5jds9xedkwkg2,13579969004153680000.000000000
+zil1sykay5wnaumt499vcnegq08qjquxelu3qx0e9u,12651443000000000000.000000000
+zil1e9k0rdjgh0khx06veut6ghwkggue6snmrlyg4w,12169054050580000000.000000000
+zil1gy44tg8tcyqplyc2h2xuzpcz9gazhfyyn8qsxf,11325600000000000000.000000000
+zil13539y7fj4jt9suf29zx7ql463hnxz305xr0hqv,10500000000000000000.000000000
+zil1en3m8n766p5wp9duwg38az7t8e56aca3n6vjql,10500000000000000000.000000000
+zil13yhyz2hhuh8tt7c3vksl7amvdv4g6zkt2wf73p,10286440002491920000.000000000
+zil16mfzdpwm2u6mjtfjfumasflune2239nld0ctq9,10000000000000000000.000000000
+zil1nmqty6lq4t89w8cpenc6njukmfa5mz6uxn7z4g,9742613730534710000.000000000
+zil1x7wk63ekrd8p3prhnzkfgxjjapzwu6glnqa8zy,9707951424930831420.000000000
+zil1vqdkw4qh268gu3xjwnma79snmdzvqr285mgt6n,8999999978000000000.000000000
+zil1shumj4s3zvyulpjyks5dw36s0efm86gd5n0euc,8835429484061020000.000000000
+zil1mc5tzuvgct2mm7cey42nyuwxrzf7mufe9zqvu0,8805212000000000000.000000000
+zil1le3lnachzhaty6su3a3s4q78ecd0munavlk285,8609097780372621012.000000000
+zil1z978du6a62ehjtl46lsv3p2urcu9xtx8vzg2vf,8499997720000000000.000000000
+zil1zdryz57g8gkj525vnvmt4mwy2zj0xqa537h2z2,8066999460000000000.000000000
+zil1we60d8alnfqcsngcf4mzpyt9xu0kp4xgh9v7th,8040998083000000000.000000000
+zil19jxnz9ynpkfmc6s8mpms5agsalm5ewr5fswj4t,7890024935971800000.000000000
+zil1j7xpvv4s3dv00rs2gjnydz7mr2tlwyytcz7wmq,7793396771181950000.000000000
+zil1flk2t733k6gvuk26rkfqh784ryr6yu945nxe8l,7722384000000000000.000000000
+zil1uyemhxa932teez5gcdsr2yx79n4lfu04c57uda,7378779501000000000.000000000
+zil1ktq92fgaveasccnn4dkqajj283uftpvtkkrvj2,7081342896500000000.000000000
+zil1cy70aywpnc7tfefw8wn4kz6thy599grjzxjem2,6759560219241510000.000000000
+zil1x4gc5rar6p0ewe0vs0c7wwxe0q6dztxmprgpla,6726965030292759290.000000000
+zil1kmk0yal8hgkl7hgs2xeaherwp3md8n5n63myj5,6485182000000000000.000000000
+zil1eynv8rzf9w7cmdzsgdgzf9zm6kkn4hfha6nsqa,6435816000000000000.000000000
+zil1q6834nn7u2z07pexkp0t2q2p3d4g0fj3zjx84x,6305944965000000000.000000000
+zil1jhglsl4qx0cdkp736v72zeu3zknrgul6vvz0hw,5997876520650046359.000000000
+zil14dzm27r68jpdjdnjrnw98ezs8unlp5mrhwal7x,5914916030000000000.000000000
+zil1q0ycfasu5n338wwmxdha5pe6q8824ryesw7sn7,5903860645000000000.000000000
+zil1f8evr3d4jyle555wpmvhm59x5uz6q0jqcvd07g,5900000000000000000.000000000
+zil1h6ggq9rwqde72a27mp7eaa5u3y0hq9l69u9p2c,5845750459830140000.000000000
+zil1ecqvfn5ym6gey80ltmze7yzzmx2dtzt9snfa4v,5799999974000000000.000000000
+zil1zql36j4zd3ngrta69wvdsrv4h0cd04cj8used9,5705550856000000000.000000000
+zil1cv4t8k0kz5fnet8lxz40wcd83v8e8r2n6jtp0t,5692159295947500000.000000000
+zil17rpyuuf3vw4z0jfhqyc04fw2mnpffwj9w9na5p,5681808515467039867.000000000
+zil100qfc9prhu3gl2hwx6399jqaeaxrhd6raafsek,5671180431000000000.000000000
+zil18nwjre2rzcd3nhqjswwnlv75ecmpdq8s07tvpc,5596010000000000000.000000000
+zil1tf3er6eqs0mam6uvgk3egfcr6f5gjfhlhmrq0f,5420555707796510000.000000000
+zil1829canc2d26647sgafx8f2zwy7eq36l2a3t766,5243521553753616745.000000000
+zil1ld32rd6ne8qkzfd7zff0ushpsmvqld4u58tddz,5232000000000000000.000000000
+zil1s826nu76qdjy7mfmwlvhpprxp2nglr52md4m4x,5064074123086885542.000000000
+zil1pm0nv5ft9zjxy26c8wu4xpjqn92j3udhndp6rr,5060993064730612410.000000000
+zil1ljjgl8dzz9j4h3mer67n06yx0vf2mxktqtez0j,5000000000000000000.000000000
+zil1dn9n0yz7mna9yyasrv2v0vxyeh2u5uyvvmrrds,5000000000000000000.000000000
+zil10svrd97xmfg82egyua5q62ghv8kycst65w92wx,4749500000000000000.000000000
+zil16matq22ar4uwsfn08suxvpd6dkfjuv5n5vusm0,4689996500000000000.000000000
+zil1k05kmrr8hlcnjcef3ffm0972a0v8aqs795agps,4672675000000000000.000000000
+zil1kkw8vyeu07fm7qa0d6s4gh5376e8h40kgf2rdf,4545726589219338892.000000000
+zil12agv4gk06kv3tms3qyzae85at5207ev4f00y98,4518000000000000000.000000000
+zil1a2fmqwg73djqmqt6059udeml2ydqhws80c7whk,4481017138000000000.000000000
+zil19u5m094t5m4p8zspd7rumhdjhaay0a6qc5uavj,4335891000000000000.000000000
+zil192vnlrjr94qyxhf9uhpqmqfqsh686m2tq5ymjj,4239999947000000000.000000000
+zil1fl5g2qw8d05n7ayhe68v7gchr8lrt9w7590rvx,4184612000000000000.000
+
+2025-01-16 15:50:58 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:50:58 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:50:58 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:50:59 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-16 15:51:00 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:00 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:51:01 - root - INFO - SQL:
+SELECT DISTINCT "code"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Results:
+Too long, hard cut:
+code
+""
+"
+(* SPDX-License-Identifier: MIT *)
+scilla_version 0
+
+import BoolUtils ListUtils IntUtils PairUtils
+library NonfungibleToken
+
+type Operation =
+| Add
+| Sub
+
+let zero_address = 0x0000000000000000000000000000000000000000
+let false = False
+let true = True
+let zero = Uint256 0
+let one = Uint256 1
+let empty_string = """"
+
+let add_operation = Add
+let sub_operation = Sub
+let min_fee_bps = Uint128 1
+let max_fee_bps = Uint128 10000
+
+let one_msg = 
+  fun (msg: Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let two_msgs =
+  fun (msg1: Message) =>
+  fun (msg2: Message) =>
+    let msgs_tmp = one_msg msg2 in
+    Cons {Message} msg1 msgs_tmp
+
+let get_bal =
+  fun (maybe_bal: Option Uint256) =>
+    match maybe_bal with
+    | None => zero
+    | Some bal => bal
+    end
+
+let build_pair =
+  fun (spender : ByStr20) =>
+  fun (token_id : Uint256) =>
+    Pair {(ByStr20) (Uint256)} spender token_id
+
+type Error =
+  | NotPausedError
+  | PausedError
+  | SelfError
+  | NotContractOwnerError
+  | NotContractOwnershipRecipientError
+  | NotTokenOwnerError
+  | NotMinterError
+  | NotOwnerOrOperatorError
+  | MinterNotFoundError
+  | MinterFoundError
+  | SpenderFoundError
+  | OperatorNotFoundError
+  | OperatorFoundError
+  | NotAllowedToTransferError
+  | TokenNotFoundError
+  | InvalidFeeBPSError
+  | ZeroAddressDestinationError
+  | ThisAddressDestinationError
+
+let make_error =
+  fun (result: Error) =>
+    let result_code = 
+      match result with
+      | NotPausedError                     => Int32 -1
+      | PausedError                        => Int32 -2
+      | SelfError                          => Int32 -3
+      | NotContractOwnerError              => Int32 -4
+      | NotTokenOwnerError                 => Int32 -5
+      | NotMinterError                     => Int32 -6
+      | NotOwnerOrOperatorError            => Int32 -7
+      | MinterNotFoundError                => Int32 -8
+      | MinterFoundError                   => Int32 -9
+      | SpenderFoundError                  => Int32 -10
+      | OperatorNotFoundError              => Int32 -11
+      | OperatorFoundError                 => Int32 -12
+      | NotAllowedToTransferError          => Int32 -13
+      | TokenNotFoundError                 => Int32 -14
+      | InvalidFeeBPSError                 => Int32 -15
+      | ZeroAddressDestinationError        => Int32 -16
+      | ThisAddressDestinationError        => Int32 -17
+      | NotContractOwnershipRecipientError => Int32 -18
+      end
+    in
+    { _exception: ""Error""; code: result_code }
+
+
+contract NonfungibleToken
+(
+  initial_contract_owner: ByStr20,
+  initial_base_uri: String,
+  name: String,
+  symbol: String
+)
+
+
+with
+  let is_contract_owner_invalid = builtin eq initial_contract_owner zero_address in
+  let is_name_invalid = builtin eq name empty_string in
+  let is_symbol_invalid = builtin eq symbol empty_string in
+  let is_name_or_symbol_invalid = orb is_name_invalid is_symbol_invalid in
+
+  let is_invalid = orb is_contract_owner_invalid is_name_or_symbol_invalid in
+  negb is_invalid
+=>
+
+
+field is_paused: Bool = false
+field token_name: String = name
+field token_symbol: String = symbol
+field contract_owner: ByStr20 = initial_contract_owner
+field contract_ownership_recipient: ByStr20 = zero_address
+field royalty_recipient: ByStr20 = initial_contract_owner
+field royalty_fee_bps: Uint128 = Uint128 1000
+field base_uri: String = initial_base_uri
+field token_uris: Map Uint256 String = Emp Uint256 String
+field token_owners: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+field token_id_count: Uint256 = Uint256 0
+field total_supply: Uint256 = Uint256 0
+field balances: Map ByStr20 Uint256 = Emp ByStr20 Uint256
+
+field minters: Map ByStr20 Bool =
+    let emp_map = Emp ByStr20 Bool in
+    builtin put emp_map initial_contract_owner true
+
+field spenders: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+field operators: Map ByStr20 (Map ByStr20 Bool) = Emp ByStr20 (Map ByStr20 Bool)
+
+
+procedure Throw(error: Error)
+  e = make_error error;
+  throw e
+end
+
+procedure RequireNotPaused()
+  paused <- is_paused;
+  match paused with
+  | False =>
+  | True =>
+    error = PausedError;
+    Throw error
+  end
+end
+
+procedure RequireValidRoyaltyFee(fee_bps: Uint128)
+  is_gte_min = uint128_ge fee_bps min_fee_bps;
+  is_lte_max = uint128_le fee_bps max_fee_bps;
+  
+  is_valid = andb is_gte_min is_lte_max;
+  match is_valid with 
+    | True => 
+    | False =>
+      error = InvalidFeeBPSError;
+      Throw error
+  end
+end
+
+procedure RequireContractOwner()
+  cur_owner <- contract_owner;
+  is_contract_owner = builtin eq cur_owner _sender;
+  match is_contract_owner with
+  | True => 
+  | False =>
+    error = NotContractOwnerError;
+    Throw error
+  end
+end
+
+procedure RequireNotSelf(address_a: ByStr20, address_b: ByStr20)
+  is_self = builtin eq address_a address_b;
+  match is_self with
+  | False =>
+  | True =>
+    error = SelfError;
+    Throw error
+  end
+end
+
+procedure RequireExistingToken(token_id: Uint256)
+  has_token <- exists token_owners[token_id];
+  match 
+
+2025-01-16 15:51:01 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:51:01 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:51:01 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:51:02 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:03 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:51:13 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:51:13 - root - INFO - ```sql
+SELECT COUNT(*) AS "accepted_transactions"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00' AND "accepted" = TRUE
+LIMIT 1000;
+```
+2025-01-16 15:51:13 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:51:13 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:51:13 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:51:14 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:51:14 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:15 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:51:15 - root - INFO - SQL:
+SELECT COUNT(*) AS "accepted_transactions"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00' AND "accepted" = TRUE
+LIMIT 1000;
+Results:
+accepted_transactions
+17990
+
+2025-01-16 15:51:15 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:51:15 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:51:15 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:51:16 - snowflake.connector.cursor - INFO - Number of results in first chunk: 3
+2025-01-16 15:51:16 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:16 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:51:17 - root - INFO - SQL:
+SELECT DISTINCT "accepted"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Results:
+accepted
+""
+True
+False
+
+2025-01-16 15:51:17 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:51:17 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:51:17 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:51:18 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:18 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:51:42 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:51:42 - root - INFO - ```sql
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+    AND "accepted" = TRUE
+GROUP BY
+    "date"
+ORDER BY
+    "total_amount" DESC
+LIMIT 1000;
+```
+2025-01-16 15:51:42 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:51:42 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:51:42 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:51:43 - snowflake.connector.cursor - INFO - Number of results in first chunk: 8
+2025-01-16 15:51:43 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:44 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:51:44 - root - INFO - SQL:
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+    AND "accepted" = TRUE
+GROUP BY
+    "date"
+ORDER BY
+    "total_amount" DESC
+LIMIT 1000;
+Results:
+date,total_amount
+2020-11-06,55682067418834342186.000000000
+2021-06-21,52299049648182081685.000000000
+2021-04-27,49707593740730981094.000000000
+2021-03-05,45985507176782592408.000000000
+2021-08-12,30744664102855203672.000000000
+2021-06-14,28672450360486337061.000000000
+2021-08-27,17888029535565034082.000000000
+2020-09-17,1746418506000000.000000000
+
+2025-01-16 15:51:44 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:51:44 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:51:44 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:51:45 - snowflake.connector.cursor - INFO - Number of results in first chunk: 2
+2025-01-16 15:51:45 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:45 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:51:45 - root - INFO - SQL:
+SELECT DISTINCT "version"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Results:
+version
+65537
+65544
+
+2025-01-16 15:51:45 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:51:45 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:51:45 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:51:47 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:51:47 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:52:09 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:52:09 - root - INFO - ```sql
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("gas_limit") AS "total_gas_used"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    "date"
+ORDER BY
+    "total_gas_used" DESC
+LIMIT 1000;
+```
+2025-01-16 15:52:09 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:52:09 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:52:09 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:52:10 - snowflake.connector.cursor - INFO - Number of results in first chunk: 11
+2025-01-16 15:52:10 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:52:10 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:52:11 - root - INFO - SQL:
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("gas_limit") AS "total_gas_used"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    "date"
+ORDER BY
+    "total_gas_used" DESC
+LIMIT 1000;
+Results:
+date,total_gas_used
+2021-04-27,914514133
+2021-06-21,191589181
+2021-03-05,131426318
+2021-06-14,127244278
+2021-08-27,91265702
+2021-08-12,85522338
+2020-11-06,78067403
+2019-09-12,3289073
+2020-09-17,2931590
+2020-01-06,2298367
+2019-12-28,1789936
+
+2025-01-16 15:52:11 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:52:11 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:52:11 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:52:12 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:52:12 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:52:24 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:52:24 - root - INFO - ```sql
+SELECT "id", "block_timestamp", "amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+AND "amount" IS NOT NULL
+ORDER BY "amount" DESC
+LIMIT 1000;
+```
+2025-01-16 15:52:24 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:52:24 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:52:24 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:52:27 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 15:52:27 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:52:27 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:52:27 - root - INFO - SQL:
+SELECT "id", "block_timestamp", "amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+AND "amount" IS NOT NULL
+ORDER BY "amount" DESC
+LIMIT 1000;
+Results:
+Too long, hard cut:
+id,block_timestamp,amount
+fc8f87e5cb8d4bd98ef9b2ec4a26f9e5b16d63832466fd79602341779344d55a,1624279226000000,34482824719100000000.000000000
+ebf4c993b8209ff3cd10daab7698c5f3a288e770d381d94875663b8fed258607,1600382146000000,12651443000000000000.000000000
+aae3e2e3825d57551b4d46fb404776acb5f9f95d4211341d7c7b8adb66376047,1619551798000000,10500000000000000000.000000000
+495f405c9d0bd1f95bbf1eba184ef59f17bd96913a0e1a63a0a5476093d06984,1604639690000000,10000000000000000000.000000000
+6ba40a9850ea7ef495c437c2989cd044b0eda824280cd8991a3b60f22ff49d9f,1578337336000000,7378769501000000000.000000000
+50c78ea44211610d081e79cece8ca687ca802fe8b1aa671c706334a542ab84f2,1577568728000000,5999999989000000000.000000000
+70632f7458354a86a40d1cf1ac0338174d7c3c4c2655a53ba3861c9f791fe5ef,1619551798000000,5235503000000000000.000000000
+bce395be289e94c92fac9fd7543345c08aa857bdb2d8e3c408eb7d7578de20d6,1578309688000000,5232000000000000000.000000000
+d13e781cf03e367ad34637be607b41bd0fc6b180a5794ce61a1fe7824837afe5,1604686733000000,5000000000000000000.000000000
+14bc45982fc952d0ba1a42e121859329911ef327085ae774fcd0ca3d0683587f,1619551798000000,5000000000000000000.000000000
+e45439b0f6722439641477b7fbc8501a4b1241f4df19cb4b832e01e24addc93e,1614912626000000,5000000000000000000.000000000
+fe2a448ea964d395e9199c53eaf490e817bb4d57a6ad48e664ccbe9616941b69,1619492044000000,4518000000000000000.000000000
+e5ea7b81752f5275627b0154f25ecac8d07bbff5f4772efc92c163144b6409a2,1619541124000000,4469901684854428010.000000000
+d6e2554fe0d9416554c4f8a05cfa200b93a047a4c05261263eef3857e2a769eb,1619528737000000,4239999950000000000.000000000
+b5397ec4e8169effd9dde6e182d37289e8a3b2d62aacea1020fb9659c290d4b0,1619529001000000,4239999947000000000.000000000
+9417ed818c5113ef76f1c0627a1b496ace69c2b156418d8fb4bfc544d74066dc,1568252442000000,4214803682520000000.000000000
+724e82f343bc6a01698f031c0e2474baf7a8ed6a029126467aaac6b68775baea,1619563272000000,4199999990000000000.000000000
+42261c3090cbaba7bcca33e4d5a104667ef7a23c7cd64dff1be9fd4972fa0c11,1619563472000000,4199999987000000000.000000000
+3d24d653aaa8469b8d03c9612b12fd9533c5c6dab490535d3db80b7778db18ec,1624273680000000,4164967000000000000.000000000
+811b1cbe1a595751178a2b1ec9530d81ef874672d7cd4f68894fc711ffb3706c,1568249091000000,4164482642183280000.000000000
+2cfb16dabb2bb96bf3b29882e61b1a6997d0c120dcf62d621cfb2a65dfe22081,1604635393000000,4012888000000000000.000000000
+3adeead852a1558c15e78b1686ce42a92af2514f27d14b1d5a11f1f7525b0fc8,1600349694000000,4000000000000000000.000000000
+89c69ba16eb4353dbac96fd8af0fce8e9d00826144bd96a1962e2610e3b088c1,1619506119000000,3969875000000000000.000000000
+52048cf01e6e1f0732635c16d16046de75bf55da92381057c2e8bf69993fb1e4,1600310125000000,3900000000000000000.000000000
+bceb868f221e3f9882a482023d1b3dafa2eb996c0160ccf48d70920ca93fba4a,1619513736000000,3853882000000000000.000000000
+c199bd506eaab00475cc7e167545a76558f356e47f8a801b1e2f72914ddd362b,1619546547000000,3850344000000000000.000000000
+f0eb2d0d68bb77a8fb5aab4b0de4a1c6f907757d6cc57af2515258d3f2a1e0fb,1604693286000000,3800200000000000000.000000000
+06bb0bc4498ad22c0a81dcba3fc84d00944d78a3a11db9d105240676876db82b,1619535430000000,3500000000000000000.000000000
+b2bbfbf79ab0e6f6692c5df23918d22f740e4ee0adf707344a233429dd87beea,1619538601000000,3500000000000000000.000000000
+002c609a7a655791506b2626ad3cf5518de960a16881f6c49a74c55e347f395d,1619530928000000,3499950000000000000.000000000
+d6ea7ea44bdce02a9847c4ceaa0820f8d902e8b5dbda299206e96c5499e66099,1624259533000000,3300292130000000000.000000000
+48e17d93c50a4edb27ba16ee895711ee2b560c8f4838ed202e80dfa26e52e11e,1604635331000000,3260400000000000000.000000000
+910af0c9b081577aeda80344ce67edd78cacd10b445b836b843d150903f4a4ce,1624304587000000,3167764825100000000.000000000
+14647b95e8ca42bbcbb0a89ee638d1a2613d0c8c7a8a48447fb6fd6237b92597,1624304623000000,3167764825100000000.000000000
+0a73c1967db4495d977a6bd42f5c8c01199bb97a24d04f28d6055a3d1218a2b6,1614974678000000,3055534000000000000.000000000
+31ea6a6c61d0194aa8beb8f68e13f615b16b74dc0f534890a84724cfd6337a89,1600327914000000,3009999000000000000.000000000
+04fb80d6ecc60d1373240cd5f7db82469f22f2228b8ee2e18f5e34288727f504,1578343195000000,3000000262000000000.000000000
+2fe223663ff33e12412c2e9441d682381c19e62d01932ab260f68d798add2ca0,1619531290000000,3000000000000000000.000000000
+0408a71fad2d440dd1af114a850696f33520287db22a853fce4f6c3594e4e726,1600312560000000,3000000000000000000.000000000
+76ddf941e226874654292f3ca573c15cc964e20b993c6ace124f88b91f8c4828,1578305312000000,3000000000000000000.000000000
+4496f8a2e463d6c5b9196c799ad2777d3fca5ebb28c7d50966bad4d8297431f7,1577568526000000,3000000000000000000.000000000
+8969585de5a5cf92c8ddf2cde5327a9141c7740e687870cd4e211c7099a3b62a,1578308525000000,2999999999000000000.000000000
+370bd1fd7383374570c479634053e0fb5ae6b8020f301f0278f433d9a3428bfb,1578309935000000,2999999998000000000.000000000
+3c6c3c1ecf8ef7464e31db9852bba004ecb3f27d574a37940b65256d638b6d26,1578307222000000,2999999990000000000.000000000
+a99b6c6efb4407a194fc53d031971c19826a7cfd28
+
+2025-01-16 15:52:27 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:52:27 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:52:27 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:52:28 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:52:29 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:52:48 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:52:48 - root - INFO - ```sql
+SELECT "to_addr", COUNT(*) AS "transaction_count"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "to_addr"
+ORDER BY "transaction_count" DESC
+LIMIT 1000;
+```
+2025-01-16 15:52:48 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:52:48 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:52:48 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:52:50 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-16 15:52:50 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:52:50 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:52:50 - root - INFO - SQL:
+SELECT "to_addr", COUNT(*) AS "transaction_count"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "to_addr"
+ORDER BY "transaction_count" DESC
+LIMIT 1000;
+Results:
+Too long, hard cut:
+to_addr,transaction_count
+zil17rpyuuf3vw4z0jfhqyc04fw2mnpffwj9w9na5p,88140
+zil17mmtyxrfapluk87qedl09pd2rgnpcp5053p995,36495
+zil1g029nmzsf36r99vupp4s43lhs40fsscx3jjpuy,17436
+zil1v25at4s3eh9w34uqqhe3vdvfsvcwq6un3fupc2,16875
+zil1hgg7k77vpgpwj3av7q7vv5dl4uvunmqqjzpv2w,11853
+zil1wt7276q45kuu98cy2aj3c5qa5f2kpvxqh4le20,10934
+zil1z3zky3kv20f37z3wkq86qfy00t4a875fxxw7sw,10118
+zil1dcc7dm8duspfjpv2f2zyf9tvty2ehf26dpx0sj,9069
+zil1jrpjd8pjuv50cfkfr7eu6yrm3rn5u8rulqhqpz,7640
+zil146g2gzntnp9uyerxjlgxaqdrspg8htg8er9j6z,5655
+zil1qsnhpa7uadjqsx5a9lvrdl494wdnnmyt3lkcn5,5221
+zil18f5rlhqz9vndw4w8p60d0n7vg3n9sqvta7n6t2,4918
+zil1scsujefgcdcjt97z32fvmlsv7m887ancusmqmq,4520
+zil1zxhlwgh355pxycc2u3g5crpyyrp2k8vn4pr8ur,4335
+zil16kdgpzxfy4gtnryzhdln5vg440s6s8ra3rfclt,4283
+zil1suz56n4de46f33udfk5njmgl7la5f2y7mqx6ke,4207
+zil1lt3cmmx2fvqycgwl0jpruekatkdcdz805spchh,4199
+zil1dhth7uvmkkf8yf4fnjltrwuucy09jx8djc0tv5,4165
+zil14pnmdwznze00h8cqjdfdwv9c6uaq6kln9ewre0,4101
+zil1eyz2rg7mf9kcdhnpux853w2mdjs8gl3p4kdnr9,4078
+zil1dw6qthyycu8yql4vx9asawvfpp2yf2er89gr8u,3923
+zil19mmy0fq6f5kmzr478dua7szscnduy27j3m508x,3304
+zil1g4wlr8luu3mlnvwps5gewg3hh0awf8mgrcjj3l,2352
+zil144fujqgsuvv5zyr2v23m7ndyt3artkh78kyd92,2192
+zil1efkn743p324gnnfqgpk0y2hwy6ag7cyfephyjt,2005
+zil1ayakns9zz8aemxmwcsjamu6ky97pxh86p4tk70,1704
+zil14pzuzq6v6pmmmrfjhczywguu0e97djepxt8g3e,1487
+zil1kkwptgx908etkfhnc9q5yheux2aw7l40m3nn66,1368
+zil1ajkyz9tf2s5tdhmjarkpyvpls6kh83wdwc37zr,1245
+zil1ucvrn22x8366vzpw5t7su6eyml2auczu6wnqqg,1115
+zil1tf3er6eqs0mam6uvgk3egfcr6f5gjfhlhmrq0f,1087
+zil1kag6m40qj8r8zrdzv0ct0f87jcdzkggkplgzj9,1059
+zil1p5suryq6q647usxczale29cu3336hhp376c627,1008
+zil1uy4tx9vccfdler2pzwnjyms4t5jds9xedkwkg2,947
+zil1nmqty6lq4t89w8cpenc6njukmfa5mz6uxn7z4g,930
+zil1zxe9s6fqk90lnh75lqwlgm38pv82mgh9e9u7mk,888
+zil1r96nfxl4puklmm9cwdpz5kwjn9a0x9cx03pmhm,838
+zil1e7g79p6ccc8dcv75tdznx52clpgsd92vfwyqcv,796
+zil19jxnz9ynpkfmc6s8mpms5agsalm5ewr5fswj4t,776
+zil1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9yf6pz,760
+zil163lpumypene0lhf9v39qka37lraq6amwpn04n3,693
+zil1dn9n0yz7mna9yyasrv2v0vxyeh2u5uyvvmrrds,675
+zil1r3zhrp80zvy8nnkrs80huw5nz6th59jz7jyr7h,672
+zil1qd5zmfqv32ugva9rd8zeep6488m8qxqlkyrcjj,656
+zil135rxuss8dh7neafx2zew6060j4lwj2wn9xe5ax,594
+zil182yhsex28x2caq8sp07hmtvk0m848tpr3ugcgv,577
+zil14kxmnlqqjuavwywatskfv6dlt0lh4p9xl5aa49,576
+zil1qd3a985nxmuehwgfjck8ynh8s2u4xu6uzcd9em,540
+zil15yw7wej02h6mm7z5f2dvwytfr5qn0z6vlwqug6,539
+zil1h5n009patw46zvelpyzkn9t7yjn562neqwq3xc,526
+zil1fakc92f0klx8acpmutjydx6gnfespddsg0kjp8,494
+zil1tlcxhzcph43jmf6dq2905hwjkz72e5vll03wk7,456
+zil1zlwu52k94wahn2fxpmq27ksdgz565nn5nslcsk,430
+zil1zu72vac254htqpg3mtywdcfm84l3dfd9qzww8t,392
+zil1uqq7gatsz8r2p0ks5nylcksxz329n0zyw9yecy,377
+zil18lnyaze7ncgsmve3kvh2ymsersrlznuq0j3uxs,371
+zil1mq4t9zjhufavl30jk5s6ps5tthn0qxctz5clxe,286
+zil147t2af9ncpurwc7jlajazsmpkf3j2arl8vdza8,263
+zil19nmxkh020jnequql9kvqkf3pkwm0j0spqtd26e,256
+zil1y7z63nkdj5sw8yeq6v6e64x08cy2slryvclp34,253
+zil1fzrlk6fq4zh9pzr9g0hg4fgymfkflqalzyx0pa,249
+zil19jhrzuldlhest7v5qy3h7fe68la8hcjnajxmta,248
+zil1504065pp76uuxm7s9m2c4gwszhez8pu3mp6r8c,244
+zil1cyck4za8yrxryxs6h0mupu5w3j72a3as6e5lqz,237
+zil1upsmt9e87pprykwn4e0uua98f3jzaf6lnkgpdw,233
+zil1xfsrre5qgx0mqg99xc0l2cuyu9ntt259ngsu7s,229
+zil1dw5m8tulqxhcen0n5u84nskljas03gmtckdmnp,227
+zil1v8p87vwqa57ldvt3rq9es27lhr0qnkkqu6d8n5,225
+zil1guj0dgf9mjwazhke05t6gqrhu72hqrjanj0wrm,199
+zil15dehfm809esr33uz5re2sfatdchlk7xuynlm5s,187
+zil1cznkkuwq0sk38uavsvr3dd2cfcpq6lt8042rgw,183
+zil1kwfu3x9n6fsuxc4ynp72uk5rxge25enw7zsf9z,183
+zil1cnga585aglaqqxagzhh59xkugx7z3hefxvyaz4,175
+zil1cefnmv0k68cgv4nagw0505tk92rgpz44ptepu2,172
+zil19u5m094t5m4p8zspd7rumhdjhaay0a6qc5uavj,160
+zil1ftg6qlhdcaaa2la7espskrs2mkz3rx7rwjzzj0,154
+zil1sykay5wnaumt499vcnegq08qjquxelu3qx0e9u,153
+zil1aenskmvxxc62j888f5ke33mc23vf837284347s,145
+zil1fl5g2qw8d05n7ayhe68v7gchr8lrt9w7590rvx,144
+zil1gpk9cy5xzynegehwwa0xhr34af6y020hhsls0u,143
+zil18uzjpmzta69qahwy2hntdtmtegrs3um26840fy,142
+zil1jcgu2wlx6xejqk9jw3aaankw6lsjzeunx2j0jz,140
+zil1ktq92fgaveasccnn4dkqajj283uftpvtkkrvj2,134
+zil1smdpqyuac77k7gzwzs9ydfwgcg3ktl659nzd6d,133
+zil1feshcqtzn930lyw4xva5l2h85y58dgdry0l37v,117
+zil1er0pyxz72hqm7gyx7e3pw69yt8j2hvljf7amu7,116
+zil1jjn9gpa54q3phn887cuuscqlqhjgyfq204m20d,104
+zil16gw00yy7gu5a02hnp62gzdg93wrndd0fhusukf,103
+zil1z66falx62kmg879yaluxry6k36hww82d5fjmdr,100
+zil1m25jv2wwacpxx6at2fvvz5ey2lzams7pujy45n,98
+zil1avqt4tt798jzrezejkwzytlwcgnrl69qyrcam4,93
+zil1rdm6jegaypfkw2empmu8dles3ugzyps2eny5al,93
+zil1nfja74djv69ql86lwjfx0je4rgm7ru7e7p33dh,91
+zil1slkdqqym00xng0fteqsudz6qdaf03jymzr0unx,90
+zil14dzm27r68jpdjdnjrnw98ezs8unlp5mrhwal7x,90
+zil18lxwlxmpl8ws24vypaaexzuw4pamlkkrtq7za2,90
+zil139tkqvc8rw92e6jrs40gawwc3mmdmmauv3x3yz,89
+zil1y489820r5qwc9drlfxvmxfaumf3mj6058w7qlw,89
+zil1e060dmkv23tx705ve7e4cfamqh9e4dk7gqzgv6,89
+zil13scgclkdm5yl3l795yaetcwlqpxypfmry2aqzc,88
+zil1elg54gx7aeu2td35m4ms6g4ss0fdesq3tess37,88
+zil1r5wt6hgge2445r34zruhgctx5w4p2a27ut829z,87
+zil1pumumlnaa42yxpn6lwv50s5f07tak666lpkuzv,87
+zil1gy44tg8tcyqplyc2h2xuzpcz9gazhfyyn8qsxf,87
+zil18xjc7tj3vy5wvshw095dnc85y0cmzjwsqsqp44,86
+zil1jgt5hhkjf2y
+
+2025-01-16 15:52:50 - root - INFO - itercount: 0
+2025-01-16 15:52:50 - root - INFO - Database Name: CRYPTO
+Schema Name: CRYPTO_BAND
+DDL describes table information.
+,0
+table_name,BLOCKS
+description,
+DDL,"create or replace TABLE BLOCKS (
+	""block_height"" NUMBER(38,0),
+	""block_timestamp"" VARCHAR(16777216),
+	""block_timestamp_truncated"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216),
+	""proposer_address"" VARCHAR(16777216),
+	""last_commit_hash"" VARCHAR(16777216),
+	""data_hash"" VARCHAR(16777216),
+	""validators_hash"" VARCHAR(16777216),
+	""next_validators_hash"" VARCHAR(16777216),
+	""consensus_hash"" VARCHAR(16777216),
+	""app_hash"" VARCHAR(16777216),
+	""last_results_hash"" VARCHAR(16777216),
+	""evidence_hash"" VARCHAR(16777216),
+	""signatures"" VARIANT
+);"
+
+,1
+table_name,ORACLE_REQUESTS
+description,
+DDL,"create or replace TABLE ORACLE_REQUESTS (
+	""block_height"" NUMBER(38,0),
+	""block_timestamp"" VARCHAR(16777216),
+	""block_timestamp_truncated"" NUMBER(38,0),
+	""oracle_request_id"" NUMBER(38,0),
+	""request"" VARIANT,
+	""reports"" VARIANT,
+	""result"" VARIANT,
+	""decoded_result"" VARIANT,
+	""oracle_script"" VARIANT
+);"
+
+,2
+table_name,ERRORS
+description,
+DDL,"create or replace TABLE ERRORS (
+	""tableRow"" VARCHAR(16777216),
+	""errors"" VARCHAR(16777216)
+);"
+
+,3
+table_name,LOGS
+description,
+DDL,"create or replace TABLE LOGS (
+	""block_height"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_timestamp_truncated"" NUMBER(38,0),
+	""txhash"" VARCHAR(16777216),
+	""log_index"" NUMBER(38,0),
+	""msg_index"" NUMBER(38,0),
+	""log"" VARCHAR(16777216),
+	""events"" VARIANT
+);"
+
+,4
+table_name,MESSAGES
+description,
+DDL,"create or replace TABLE MESSAGES (
+	""block_height"" NUMBER(38,0),
+	""block_timestamp"" VARCHAR(16777216),
+	""block_timestamp_truncated"" NUMBER(38,0),
+	""txhash"" VARCHAR(16777216),
+	""message_type"" VARCHAR(16777216),
+	""oracle_Activate"" VARIANT,
+	""oracle_AddReporter"" VARIANT,
+	""oracle_CreateDataSource"" VARIANT,
+	""oracle_CreateOracleScript"" VARIANT,
+	""oracle_EditDataSource"" VARIANT,
+	""oracle_EditOracleScript"" VARIANT,
+	""oracle_Report"" VARIANT,
+	""oracle_Request"" VARIANT,
+	""cosmos_sdk_MsgDelegate"" VARIANT,
+	""cosmos_sdk_MsgEditValidator"" VARIANT,
+	""cosmos_sdk_MsgMultiSend"" VARIANT,
+	""cosmos_sdk_MsgSend"" VARIANT,
+	""oracle_RemoveReporter"" VARIANT,
+	""cosmos_sdk_MsgBeginRedelegate"" VARIANT,
+	""cosmos_sdk_MsgCreateValidator"" VARIANT,
+	""cosmos_sdk_MsgDeposit"" VARIANT,
+	""cosmos_sdk_MsgFundCommunityPool"" VARIANT,
+	""cosmos_sdk_MsgModifyWithdrawAddress"" VARIANT,
+	""cosmos_sdk_MsgSubmitEvidence"" VARIANT,
+	""cosmos_sdk_MsgSubmitProposal"" VARIANT,
+	""cosmos_sdk_MsgUndelegate"" VARIANT,
+	""cosmos_sdk_MsgUnjail"" VARIANT,
+	""cosmos_sdk_MsgVerifyInvariant"" VARIANT,
+	""cosmos_sdk_MsgVote"" VARIANT,
+	""cosmos_sdk_MsgWithdrawDelegationReward"" VARIANT,
+	""cosmos_sdk_MsgWithdrawValidatorCommission"" VARIANT
+);"
+
+,5
+table_name,BLOCK_EVENTS
+description,
+DDL,"create or replace TABLE BLOCK_EVENTS (
+	""block_height"" NUMBER(38,0),
+	""block_timestamp"" VARCHAR(16777216),
+	""block_timestamp_truncated"" NUMBER(38,0),
+	""event_type"" VARCHAR(16777216),
+	""block_event_type"" VARCHAR(16777216),
+	""attributes"" VARIANT
+);"
+
+,6
+table_name,TRANSACTIONS
+description,
+DDL,"create or replace TABLE TRANSACTIONS (
+	""block_height"" NUMBER(38,0),
+	""block_timestamp"" VARCHAR(16777216),
+	""block_timestamp_truncated"" NUMBER(38,0),
+	""txhash"" VARCHAR(16777216),
+	""transaction_type"" VARCHAR(16777216),
+	""gas_wanted"" NUMBER(38,9),
+	""gas_used"" NUMBER(38,9),
+	""sender"" VARCHAR(16777216),
+	""fee"" VARIANT,
+	""memo"" VARCHAR(16777216)
+);"
+
+Database Name: CRYPTO
+Schema Name: CRYPTO_BITCOIN
+DDL describes table information.
+,0
+table_name,OUTPUTS
+description,
+DDL,"create or replace TABLE OUTPUTS (
+	""transaction_hash"" VARCHAR(16777216),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""index"" NUMBER(38,0),
+	""script_asm"" VARCHAR(16777216),
+	""script_hex"" VARCHAR(16777216),
+	""required_signatures"" NUMBER(38,0),
+	""type"" VARCHAR(16777216),
+	""addresses"" VARIANT,
+	""value"" NUMBER(38,9)
+);"
+
+,1
+table_name,INPUTS
+description,
+DDL,"create or replace TABLE INPUTS (
+	""transaction_hash"" VARCHAR(16777216),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""index"" NUMBER(38,0),
+	""spent_transaction_hash"" VARCHAR(16777216),
+	""spent_output_index"" NUMBER(38,0),
+	""script_asm"" VARCHAR(16777216),
+	""script_hex"" VARCHAR(16777216),
+	""sequence"" NUMBER(38,0),
+	""required_signatures"" NUMBER(38,0),
+	""type"" VARCHAR(16777216),
+	""addresses"" VARIANT,
+	""value"" NUMBER(38,9)
+);"
+
+,2
+table_name,BLOCKS
+description,
+DDL,"create or replace TABLE BLOCKS (
+	""hash"" VARCHAR(16777216),
+	""size"" NUMBER(38,0),
+	""stripped_size"" NUMBER(38,0),
+	""weight"" NUMBER(38,0),
+	""number"" NUMBER(38,0),
+	""version"" NUMBER(38,0),
+	""merkle_root"" VARCHAR(16777216),
+	""timestamp"" NUMBER(38,0),
+	""timestamp_month"" DATE,
+	""nonce"" VARCHAR(16777216),
+	""bits"" VARCHAR(16777216),
+	""coinbase_param"" VARCHAR(16777216),
+	""transaction_count"" NUMBER(38,0)
+);"
+
+,3
+table_name,TRANSACTIONS
+description,
+DDL,"create or replace TABLE TRANSACTIONS (
+	""hash"" VARCHAR(16777216),
+	""size"" NUMBER(38,0),
+	""virtual_size"" NUMBER(38,0),
+	""version"" NUMBER(38,0),
+	""lock_time"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_timestamp_month"" DATE,
+	""input_count"" NUMBER(38,0),
+	""output_count"" NUMBER(38,0),
+	""input_value"" NUMBER(38,9),
+	""output_value"" NUMBER(38,9),
+	""is_coinbase"" BOOLEAN,
+	""fee"" NUMBER(38,9),
+	""inputs"" VARIANT,
+	""outputs"" VARIANT
+);"
+
+Database Name: CRYPTO
+Schema Name: CRYPTO_BITCOIN_CASH
+DDL describes table information.
+,0
+table_name,OUTPUTS
+description,
+DDL,"create or replace TABLE OUTPUTS (
+	""transaction_hash"" VARCHAR(16777216),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""index"" NUMBER(38,0),
+	""script_asm"" VARCHAR(16777216),
+	""script_hex"" VARCHAR(16777216),
+	""required_signatures"" NUMBER(38,0),
+	""type"" VARCHAR(16777216),
+	""addresses"" VARIANT,
+	""value"" NUMBER(38,9)
+);"
+
+,1
+table_name,BLOCKS
+description,
+DDL,"create or replace TABLE BLOCKS (
+	""hash"" VARCHAR(16777216),
+	""size"" NUMBER(38,0),
+	""stripped_size"" NUMBER(38,0),
+	""weight"" NUMBER(38,0),
+	""number"" NUMBER(38,0),
+	""version"" NUMBER(38,0),
+	""merkle_root"" VARCHAR(16777216),
+	""timestamp"" NUMBER(38,0),
+	""timestamp_month"" DATE,
+	""nonce"" VARCHAR(16777216),
+	""bits"" VARCHAR(16777216),
+	""coinbase_param"" VARCHAR(16777216),
+	""transaction_count"" NUMBER(38,0)
+);"
+
+,2
+table_name,INPUTS
+description,
+DDL,"create or replace TABLE INPUTS (
+	""transaction_hash"" VARCHAR(16777216),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""index"" NUMBER(38,0),
+	""spent_transaction_hash"" VARCHAR(16777216),
+	""spent_output_index"" NUMBER(38,0),
+	""script_asm"" VARCHAR(16777216),
+	""script_hex"" VARCHAR(16777216),
+	""sequence"" NUMBER(38,0),
+	""required_signatures"" NUMBER(38,0),
+	""type"" VARCHAR(16777216),
+	""addresses"" VARIANT,
+	""value"" NUMBER(38,9)
+);"
+
+,3
+table_name,TRANSACTIONS
+description,
+DDL,"create or replace TABLE TRANSACTIONS (
+	""hash"" VARCHAR(16777216),
+	""size"" NUMBER(38,0),
+	""virtual_size"" NUMBER(38,0),
+	""version"" NUMBER(38,0),
+	""lock_time"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_timestamp_month"" DATE,
+	""input_count"" NUMBER(38,0),
+	""output_count"" NUMBER(38,0),
+	""input_value"" NUMBER(38,9),
+	""output_value"" NUMBER(38,9),
+	""is_coinbase"" BOOLEAN,
+	""fee"" NUMBER(38,9),
+	""inputs"" VARIANT,
+	""outputs"" VARIANT
+);"
+
+Database Name: CRYPTO
+Schema Name: CRYPTO_DASH
+DDL describes table information.
+,0
+table_name,INPUTS
+description,
+DDL,"create or replace TABLE INPUTS (
+	""transaction_hash"" VARCHAR(16777216),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""index"" NUMBER(38,0),
+	""spent_transaction_hash"" VARCHAR(16777216),
+	""spent_output_index"" NUMBER(38,0),
+	""script_asm"" VARCHAR(16777216),
+	""script_hex"" VARCHAR(16777216),
+	""sequence"" NUMBER(38,0),
+	""required_signatures"" NUMBER(38,0),
+	""type"" VARCHAR(16777216),
+	""addresses"" VARIANT,
+	""value"" NUMBER(38,9)
+);"
+
+,1
+table_name,TRANSACTIONS
+description,
+DDL,"create or replace TABLE TRANSACTIONS (
+	""hash"" VARCHAR(16777216),
+	""size"" NUMBER(38,0),
+	""virtual_size"" NUMBER(38,0),
+	""version"" NUMBER(38,0),
+	""lock_time"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_timestamp_month"" DATE,
+	""input_count"" NUMBER(38,0),
+	""output_count"" NUMBER(38,0),
+	""input_value"" NUMBER(38,9),
+	""output_value"" NUMBER(38,9),
+	""is_coinbase"" BOOLEAN,
+	""fee"" NUMBER(38,9),
+	""inputs"" VARIANT,
+	""outputs"" VARIANT
+);"
+
+,2
+table_name,BLOCKS
+description,
+DDL,"create or replace TABLE BLOCKS (
+	""hash"" VARCHAR(16777216),
+	""size"" NUMBER(38,0),
+	""stripped_size"" NUMBER(38,0),
+	""weight"" NUMBER(38,0),
+	""number"" NUMBER(38,0),
+	""version"" NUMBER(38,0),
+	""merkle_root"" VARCHAR(16777216),
+	""timestamp"" NUMBER(38,0),
+	""timestamp_month"" DATE,
+	""nonce"" VARCHAR(16777216),
+	""bits"" VARCHAR(16777216),
+	""coinbase_param"" VARCHAR(16777216),
+	""transaction_count"" NUMBER(38,0)
+);"
+
+,3
+table_name,OUTPUTS
+description,
+DDL,"create or replace TABLE OUTPUTS (
+	""transaction_hash"" VARCHAR(16777216),
+	""block_hash"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""index"" NUMBER(38,0),
+	""script_asm"" VARCHAR(16777216),
+	""script_hex"" VARCHAR(16777216),
+	""required_signatures"" NUMBER(38,0),
+	""type"" VARCHAR(16777216),
+	""addresses"" VARIANT,
+	""value"" NUMBER(38,9)
+);"
+
+Database Name: CRYPTO
+Schema Name: CRYPTO_ETHEREUM
+DDL describes table information.
+,0
+table_name,BLOCKS
+description,
+DDL,"create or replace TABLE BLOCKS (
+	""timestamp"" NUMBER(38,0),
+	""number"" NUMBER(38,0),
+	""hash"" VARCHAR(16777216),
+	""parent_hash"" VARCHAR(16777216),
+	""nonce"" VARCHAR(16777216),
+	""sha3_uncles"" VARCHAR(16777216),
+	""logs_bloom"" VARCHAR(16777216),
+	""transactions_root"" VARCHAR(16777216),
+	""state_root"" VARCHAR(16777216),
+	""receipts_root"" VARCHAR(16777216),
+	""miner"" VARCHAR(16777216),
+	""difficulty"" NUMBER(38,9),
+	""total_difficulty"" NUMBER(38,9),
+	""size"" NUMBER(38,0),
+	""extra_data"" VARCHAR(16777216),
+	""gas_limit"" NUMBER(38,0),
+	""gas_used"" NUMBER(38,0),
+	""transaction_count"" NUMBER(38,0),
+	""base_fee_per_gas"" NUMBER(38,0),
+	""withdrawals_root"" VARCHAR(16777216),
+	""withdrawals"" VARIANT,
+	""blob_gas_used"" NUMBER(38,0),
+	""excess_blob_gas"" NUMBER(38,0)
+);"
+
+,1
+table_name,LOGS
+description,
+DDL,"create or replace TABLE LOGS (
+	""log_index"" NUMBER(38,0),
+	""transaction_hash"" VARCHAR(16777216),
+	""transaction_index"" NUMBER(38,0),
+	""address"" VARCHAR(16777216),
+	""data"" VARCHAR(16777216),
+	""topics"" VARIANT,
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+,2
+table_name,TRACES
+description,
+DDL,"create or replace TABLE TRACES (
+	""transaction_hash"" VARCHAR(16777216),
+	""transaction_index"" NUMBER(38,0),
+	""from_address"" VARCHAR(16777216),
+	""to_address"" VARCHAR(16777216),
+	""value"" NUMBER(38,9),
+	""input"" VARCHAR(16777216),
+	""output"" VARCHAR(16777216),
+	""trace_type"" VARCHAR(16777216),
+	""call_type"" VARCHAR(16777216),
+	""reward_type"" VARCHAR(16777216),
+	""gas"" NUMBER(38,0),
+	""gas_used"" NUMBER(38,0),
+	""subtraces"" NUMBER(38,0),
+	""trace_address"" VARCHAR(16777216),
+	""error"" VARCHAR(16777216),
+	""status"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216),
+	""trace_id"" VARCHAR(16777216)
+);"
+
+,3
+table_name,TRANSACTIONS
+description,
+DDL,"create or replace TABLE TRANSACTIONS (
+	""hash"" VARCHAR(16777216),
+	""nonce"" NUMBER(38,0),
+	""transaction_index"" NUMBER(38,0),
+	""from_address"" VARCHAR(16777216),
+	""to_address"" VARCHAR(16777216),
+	""value"" NUMBER(38,9),
+	""gas"" NUMBER(38,0),
+	""gas_price"" NUMBER(38,0),
+	""input"" VARCHAR(16777216),
+	""receipt_cumulative_gas_used"" NUMBER(38,0),
+	""receipt_gas_used"" NUMBER(38,0),
+	""receipt_contract_address"" VARCHAR(16777216),
+	""receipt_root"" VARCHAR(16777216),
+	""receipt_status"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216),
+	""max_fee_per_gas"" NUMBER(38,0),
+	""max_priority_fee_per_gas"" NUMBER(38,0),
+	""transaction_type"" NUMBER(38,0),
+	""receipt_effective_gas_price"" NUMBER(38,0),
+	""max_fee_per_blob_gas"" NUMBER(38,0),
+	""blob_versioned_hashes"" VARIANT,
+	""receipt_blob_gas_price"" NUMBER(38,0),
+	""receipt_blob_gas_used"" NUMBER(38,0)
+);"
+
+,4
+table_name,CONTRACTS
+description,
+DDL,"create or replace TABLE CONTRACTS (
+	""address"" VARCHAR(16777216),
+	""bytecode"" VARCHAR(16777216),
+	""function_sighashes"" VARIANT,
+	""is_erc20"" BOOLEAN,
+	""is_erc721"" BOOLEAN,
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+,5
+table_name,TOKEN_TRANSFERS
+description,
+DDL,"create or replace TABLE TOKEN_TRANSFERS (
+	""token_address"" VARCHAR(16777216),
+	""from_address"" VARCHAR(16777216),
+	""to_address"" VARCHAR(16777216),
+	""value"" VARCHAR(16777216),
+	""transaction_hash"" VARCHAR(16777216),
+	""log_index"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+Database Name: CRYPTO
+Schema Name: CRYPTO_ETHEREUM_CLASSIC
+DDL describes table information.
+,0
+table_name,BLOCKS
+description,
+DDL,"create or replace TABLE BLOCKS (
+	""timestamp"" NUMBER(38,0),
+	""number"" NUMBER(38,0),
+	""hash"" VARCHAR(16777216),
+	""parent_hash"" VARCHAR(16777216),
+	""nonce"" VARCHAR(16777216),
+	""sha3_uncles"" VARCHAR(16777216),
+	""logs_bloom"" VARCHAR(16777216),
+	""transactions_root"" VARCHAR(16777216),
+	""state_root"" VARCHAR(16777216),
+	""receipts_root"" VARCHAR(16777216),
+	""miner"" VARCHAR(16777216),
+	""difficulty"" NUMBER(38,9),
+	""total_difficulty"" NUMBER(38,9),
+	""size"" NUMBER(38,0),
+	""extra_data"" VARCHAR(16777216),
+	""gas_limit"" NUMBER(38,0),
+	""gas_used"" NUMBER(38,0),
+	""transaction_count"" NUMBER(38,0)
+);"
+
+,1
+table_name,CONTRACTS
+description,
+DDL,"create or replace TABLE CONTRACTS (
+	""address"" VARCHAR(16777216),
+	""bytecode"" VARCHAR(16777216),
+	""function_sighashes"" VARIANT,
+	""is_erc20"" BOOLEAN,
+	""is_erc721"" BOOLEAN,
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+,2
+table_name,TRACES
+description,
+DDL,"create or replace TABLE TRACES (
+	""transaction_hash"" VARCHAR(16777216),
+	""transaction_index"" NUMBER(38,0),
+	""from_address"" VARCHAR(16777216),
+	""to_address"" VARCHAR(16777216),
+	""value"" NUMBER(38,9),
+	""input"" VARCHAR(16777216),
+	""output"" VARCHAR(16777216),
+	""trace_type"" VARCHAR(16777216),
+	""call_type"" VARCHAR(16777216),
+	""reward_type"" VARCHAR(16777216),
+	""gas"" NUMBER(38,0),
+	""gas_used"" NUMBER(38,0),
+	""subtraces"" NUMBER(38,0),
+	""trace_address"" VARCHAR(16777216),
+	""error"" VARCHAR(16777216),
+	""status"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216),
+	""trace_id"" VARCHAR(16777216)
+);"
+
+,3
+table_name,TOKENS
+description,
+DDL,"create or replace TABLE TOKENS (
+	""address"" VARCHAR(16777216),
+	""symbol"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216),
+	""decimals"" VARCHAR(16777216),
+	""total_supply"" VARCHAR(16777216),
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+,4
+table_name,TOKEN_TRANSFERS
+description,
+DDL,"create or replace TABLE TOKEN_TRANSFERS (
+	""token_address"" VARCHAR(16777216),
+	""from_address"" VARCHAR(16777216),
+	""to_address"" VARCHAR(16777216),
+	""value"" VARCHAR(16777216),
+	""transaction_hash"" VARCHAR(16777216),
+	""log_index"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+,5
+table_name,BALANCES
+description,
+DDL,"create or replace TABLE BALANCES (
+	""address"" VARCHAR(16777216),
+	""eth_balance"" NUMBER(38,9)
+);"
+
+,6
+table_name,LOGS
+description,
+DDL,"create or replace TABLE LOGS (
+	""log_index"" NUMBER(38,0),
+	""transaction_hash"" VARCHAR(16777216),
+	""transaction_index"" NUMBER(38,0),
+	""address"" VARCHAR(16777216),
+	""data"" VARCHAR(16777216),
+	""topics"" VARIANT,
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+,7
+table_name,TRANSACTIONS
+description,
+DDL,"create or replace TABLE TRANSACTIONS (
+	""hash"" VARCHAR(16777216),
+	""nonce"" NUMBER(38,0),
+	""transaction_index"" NUMBER(38,0),
+	""from_address"" VARCHAR(16777216),
+	""to_address"" VARCHAR(16777216),
+	""value"" NUMBER(38,9),
+	""gas"" NUMBER(38,0),
+	""gas_price"" NUMBER(38,0),
+	""input"" VARCHAR(16777216),
+	""receipt_cumulative_gas_used"" NUMBER(38,0),
+	""receipt_gas_used"" NUMBER(38,0),
+	""receipt_contract_address"" VARCHAR(16777216),
+	""receipt_root"" VARCHAR(16777216),
+	""receipt_status"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""block_number"" NUMBER(38,0),
+	""block_hash"" VARCHAR(16777216)
+);"
+
+Database Name: CRYPTO
+Schema Name: CRYPTO_ZILLIQA
+DDL describes table information.
+,0
+table_name,EVENT_LOGS
+description,
+DDL,"create or replace TABLE EVENT_LOGS (
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""transaction_id"" VARCHAR(16777216),
+	""index"" NUMBER(38,0),
+	""address"" VARCHAR(16777216),
+	""event_name"" VARCHAR(16777216),
+	""params"" VARIANT
+);"
+
+,1
+table_name,TX_BLOCKS
+description,
+DDL,"create or replace TABLE TX_BLOCKS (
+	""number"" NUMBER(38,0),
+	""ds_block_number"" NUMBER(38,0),
+	""timestamp"" NUMBER(38,0),
+	""version"" NUMBER(38,0),
+	""gas_limit"" NUMBER(38,0),
+	""gas_used"" NUMBER(38,0),
+	""mb_info_hash"" VARCHAR(16777216),
+	""tx_leader_pub_key"" VARCHAR(16777216),
+	""tx_leader_address"" VARCHAR(16777216),
+	""num_micro_blocks"" NUMBER(38,0),
+	""num_transactions"" NUMBER(38,0),
+	""num_present_transactions"" NUMBER(38,0),
+	""prev_block_hash"" VARCHAR(16777216),
+	""rewards"" NUMBER(38,0),
+	""state_delta_hash"" VARCHAR(16777216),
+	""state_root_hash"" VARCHAR(16777216),
+	""header_signature"" BINARY(8388608)
+);"
+
+,2
+table_name,EXCEPTIONS
+description,
+DDL,"create or replace TABLE EXCEPTIONS (
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""transaction_id"" VARCHAR(16777216),
+	""index"" NUMBER(38,0),
+	""line"" NUMBER(38,0),
+	""message"" VARCHAR(16777216)
+);"
+
+,3
+table_name,TRANSACTIONS
+description,
+DDL,"create or replace TABLE TRANSACTIONS (
+	""id"" VARCHAR(16777216),
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""amount"" NUMBER(38,9),
+	""code"" VARCHAR(16777216),
+	""data"" VARCHAR(16777216),
+	""gas_limit"" NUMBER(38,0),
+	""gas_price"" NUMBER(38,0),
+	""sender_pub_key"" VARCHAR(16777216),
+	""sender"" VARCHAR(16777216),
+	""signature"" BINARY(8388608),
+	""to_addr"" VARCHAR(16777216),
+	""version"" NUMBER(38,0),
+	""accepted"" BOOLEAN,
+	""success"" BOOLEAN,
+	""cumulative_gas"" NUMBER(38,0),
+	""epoch_num"" NUMBER(38,0)
+);"
+
+,4
+table_name,TRANSITIONS
+description,
+DDL,"create or replace TABLE TRANSITIONS (
+	""block_number"" NUMBER(38,0),
+	""block_timestamp"" NUMBER(38,0),
+	""transaction_id"" VARCHAR(16777216),
+	""index"" NUMBER(38,0),
+	""accepted"" BOOLEAN,
+	""addr"" VARCHAR(16777216),
+	""depth"" NUMBER(38,0),
+	""amount"" NUMBER(38,9),
+	""recipient"" VARCHAR(16777216),
+	""tag"" VARCHAR(16777216),
+	""params"" VARIANT
+);"
+
+,5
+table_name,DS_BLOCKS
+description,
+DDL,"create or replace TABLE DS_BLOCKS (
+	""number"" NUMBER(38,0),
+	""timestamp"" NUMBER(38,0),
+	""difficulty"" NUMBER(38,0),
+	""difficulty_ds"" NUMBER(38,0),
+	""gas_price"" NUMBER(38,0),
+	""ds_leader_pub_key"" VARCHAR(16777216),
+	""ds_leader_address"" VARCHAR(16777216),
+	""prev_hash"" VARCHAR(16777216),
+	""signature"" BINARY(8388608)
+);"
+
+External knowledge that might be helpful: 
+None
+The table structure information is ({database name: {schema name: {table name}}}): 
+{'CRYPTO': {'CRYPTO_BAND': ['BLOCKS', 'BLOCK_EVENTS', 'ERRORS', 'LOGS', 'MESSAGES', 'ORACLE_REQUESTS', 'TRANSACTIONS'], 'CRYPTO_BITCOIN': ['BLOCKS', 'INPUTS', 'OUTPUTS', 'TRANSACTIONS'], 'CRYPTO_BITCOIN_CASH': ['BLOCKS', 'INPUTS', 'OUTPUTS', 'TRANSACTIONS'], 'CRYPTO_DASH': ['BLOCKS', 'INPUTS', 'OUTPUTS', 'TRANSACTIONS'], 'CRYPTO_ETHEREUM': ['BLOCKS', 'CONTRACTS', 'LOGS', 'TOKEN_TRANSFERS', 'TRACES', 'TRANSACTIONS'], 'CRYPTO_ETHEREUM_CLASSIC': ['BALANCES', 'BLOCKS', 'CONTRACTS', 'LOGS', 'TOKENS', 'TOKEN_TRANSFERS', 'TRACES', 'TRANSACTIONS'], 'CRYPTO_ZILLIQA': ['DS_BLOCKS', 'EVENT_LOGS', 'EXCEPTIONS', 'TRANSACTIONS', 'TRANSITIONS', 'TX_BLOCKS']}}
+Begin Exploring Related Columns
+**Relevant Tables and Columns:**
+
+- **Table:** `CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS`
+  - **Column:** `"block_timestamp"`: Potential usage - To extract the date of each transaction. It records the timestamp of the transaction and can be converted to a date.
+  - **Column:** `"amount"`: Potential usage - Represents the amount of each transaction. Used to sum up the transaction amounts per date.
+  - **Column:** `"success"`: Potential usage - Indicates whether a transaction was successful. Can be used to filter only successful transactions.
+  - **Condition:** Transactions before 2022, i.e., where `"block_timestamp"` is before January 1, 2022.
+  - **Condition:** Include only successful transactions, i.e., where `"success"` = TRUE.
+
+**SQL Queries to Understand Related Columns:**
+
+1. **Get distinct dates of transactions before 2022:**
+
+   ```sql
+   SELECT DISTINCT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+   LIMIT 1000;
+   ```
+
+2. **Get distinct years from transaction timestamps:**
+
+   ```sql
+   SELECT DISTINCT YEAR(TO_TIMESTAMP("block_timestamp")) AS "year"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+   ```
+
+3. **Check the range of transaction amounts:**
+
+   ```sql
+   SELECT MIN("amount") AS "min_amount", MAX("amount") AS "max_amount"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+   ```
+
+4. **Get the number of transactions per date before 2022:**
+
+   ```sql
+   SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", COUNT(*) AS "transaction_count"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+   GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+   ORDER BY "transaction_count" DESC
+   LIMIT 1000;
+   ```
+
+5. **Get total transaction amount per date before 2022:**
+
+   ```sql
+   SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("amount") AS "total_amount"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+   GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+   ORDER BY "total_amount" DESC
+   LIMIT 1000;
+   ```
+
+6. **List all transactions that were not successful:**
+
+   ```sql
+   SELECT "id", "block_timestamp", "amount", "success"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   WHERE "success" = FALSE
+   LIMIT 1000;
+   ```
+
+7. **Check distinct values of the "success" column:**
+
+   ```sql
+   SELECT DISTINCT "success"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+   ```
+
+8. **Get total transaction amount per date for successful transactions before 2022:**
+
+   ```sql
+   SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("amount") AS "total_amount"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00') AND "success" = TRUE
+   GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+   ORDER BY "total_amount" DESC
+   LIMIT 1000;
+   ```
+
+9. **Get the earliest and latest transaction dates:**
+
+   ```sql
+   SELECT MIN(TO_DATE(TO_TIMESTAMP("block_timestamp"))) AS "earliest_date",
+          MAX(TO_DATE(TO_TIMESTAMP("block_timestamp"))) AS "latest_date"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+   ```
+
+10. **Count the total number of transactions before 2022:**
+
+    ```sql
+    SELECT COUNT(*) AS "total_transactions"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+    LIMIT 1000;
+    ```
+
+11. **Get distinct "sender" addresses:**
+
+    ```sql
+    SELECT DISTINCT "sender"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+    ```
+
+12. **Get total transaction amounts by "sender" before 2022:**
+
+    ```sql
+    SELECT "sender", SUM("amount") AS "total_amount"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+    GROUP BY "sender"
+    ORDER BY "total_amount" DESC
+    LIMIT 1000;
+    ```
+
+13. **List distinct "code" values in transactions:**
+
+    ```sql
+    SELECT DISTINCT "code"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+    ```
+
+14. **Get the number of accepted transactions before 2022:**
+
+    ```sql
+    SELECT COUNT(*) AS "accepted_transactions"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00') AND "accepted" = TRUE
+    LIMIT 1000;
+    ```
+
+15. **Check distinct values of the "accepted" column:**
+
+    ```sql
+    SELECT DISTINCT "accepted"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+    ```
+
+16. **Get total transaction amount per date where "accepted" is TRUE before 2022:**
+
+    ```sql
+    SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("amount") AS "total_amount"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00') AND "accepted" = TRUE
+    GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+    ORDER BY "total_amount" DESC
+    LIMIT 1000;
+    ```
+
+17. **List distinct transaction "versions":**
+
+    ```sql
+    SELECT DISTINCT "version"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+    ```
+
+18. **Get total gas used per date before 2022:**
+
+    ```sql
+    SELECT TO_DATE(TO_TIMESTAMP("block_timestamp")) AS "date", SUM("gas_limit") AS "total_gas_used"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+    GROUP BY TO_DATE(TO_TIMESTAMP("block_timestamp"))
+    ORDER BY "total_gas_used" DESC
+    LIMIT 1000;
+    ```
+
+19. **Find transactions with the highest "amount" before 2022:**
+
+    ```sql
+    SELECT "id", "block_timestamp", "amount"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+    ORDER BY "amount" DESC
+    LIMIT 1000;
+    ```
+
+20. **Get total number of transactions per "to_addr" before 2022:**
+
+    ```sql
+    SELECT "to_addr", COUNT(*) AS "transaction_count"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    WHERE "block_timestamp" < UNIX_TIMESTAMP('2022-01-01 00:00:00')
+    GROUP BY "to_addr"
+    ORDER BY "transaction_count" DESC
+    LIMIT 1000;
+    ```
+
+These queries help in understanding the data distribution and values in the relevant columns, which can assist in formulating the final SQL query to answer the task.Query:
+SELECT
+    TO_DATE(DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00') < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    TO_DATE(DATEADD('second', "block_timestamp", TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Answer:
+No data found for the specified query.
+Query:
+SELECT DISTINCT YEAR(TO_TIMESTAMP("block_timestamp")) AS "year"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+Answer:
+Too long, hard cut:
+year
+51473535
+51657349
+51616263
+51473932
+51616267
+51657378
+51454854
+51616269
+51473630
+51657388
+51454817
+51473987
+51454822
+51657406
+51657408
+51474006
+51657420
+51474016
+51454868
+51474018
+51657437
+51454946
+51616276
+51454809
+51473980
+51454812
+51474004
+51616330
+51616332
+51474013
+51657150
+51474036
+51454926
+51474047
+51454934
+51616375
+51655424
+51472718
+51454972
+51657195
+51657492
+51473756
+51474103
+51474113
+51657217
+51616129
+51474118
+51454597
+51453509
+51657255
+51474162
+51473836
+51454661
+51657284
+51472488
+51454697
+51616223
+51616236
+51657314
+51472487
+50852454
+51656801
+49991064
+52609261
+51473964
+51474049
+51473957
+51655338
+51657422
+51454921
+51616359
+51616364
+51474051
+51474054
+51616288
+51454958
+51657183
+51454960
+51454965
+51473744
+51473747
+51657199
+51616404
+51616406
+51474105
+51455007
+51452775
+51616134
+51616145
+51455033
+51616442
+51616152
+51454627
+51616155
+51616159
+51454639
+51616163
+51616176
+51616181
+51616188
+51473863
+51473902
+51616240
+51323675
+51615616
+51472593
+51474324
+51474005
+51616142
+51616447
+51657257
+51454644
+51455072
+51473844
+51472826
+51616190
+51454682
+51473866
+51454694
+51473874
+51616234
+51473909
+51473913
+51454745
+51323822
+50850670
+51473302
+51657689
+51616227
+52609559
+51615315
+51656891
+51473558
+51656775
+51615768
+51656359
+51454224
+51323176
+50850408
+50851727
+51178522
+50850460
+51656519
+50850580
+50851892
+50851514
+51656377
+51177947
+51454326
+52610791
+51615776
+51616068
+51656691
+51615316
+51615329
+51322790
+51616477
+51615551
+51178218
+51473542
+51323584
+51177053
+51453290
+51474606
+51657078
+51615413
+51474507
+51454222
+51473564
+51323859
+51177719
+51656743
+50851122
+51454409
+52609707
+51616305
+51454588
+51455026
+51657544
+51473822
+51616464
+51616183
+51176925
+51656518
+50852434
+51655982
+52608370
+51616126
+51473827
+51454689
+51616210
+51616221
+51454738
+51454748
+51321611
+51176364
+51616880
+51472300
+52608347
+51454723
+51657329
+51656656
+51472848
+51615345
+51615317
+51323423
+51473481
+51656478
+51323277
+51323294
+51615370
+51176640
+51178040
+51321483
+51454042
+51176693
+51656510
+51656536
+50852309
+51178207
+51473096
+50851970
+51178285
+51177845
+50851573
+51178834
+51656389
+50851613
+50851615
+50852499
+50852069
+51323557
+51472570
+51657663
+51656791
+51615442
+51656846
+51471980
+51473364
+51656571
+52610507
+51616106
+51656609
+51473077
+51616135
+51615843
+51453917
+51454263
+51656128
+51474220
+52610581
+49991145
+52610021
+52609327
+51454200
+51615705
+51178471
+50852141
+51177116
+51323250
+52609004
+50851124
+50851604
+51178879
+51323605
+51615960
+52610135
+51656228
+52608630
+51615163
+51656561
+51616114
+52610238
+51615838
+51616147
+51452907
+51453357
+51473047
+51615755
+51323760
+51323807
+50851988
+51177883
+50851197
+51321775
+51321831
+51323598
+51321418
+51615229
+52610653
+51178540
+51455402
+51472875
+51657061
+51656181
+50851741
+51615190
+52610119
+51472072
+51614382
+51615601
+51616222
+51657637
+51176768
+50850559
+51656411
+51472903
+51616604
+50853012
+51178030
+51178378
+51616561
+51657385
+51455365
+51323120
+52610696
+51323301
+51176639
+51657077
+51657262
+50851290
+51176393
+51178729
+51472266
+51454220
+51323169
+51323700
+50851552
+51454297
+51615355
+51471915
+51321943
+51177747
+51178750
+50852892
+51454023
+52609626
+51455423
+52608976
+51453868
+50850952
+51176342
+51616918
+51453476
+51454322
+51655654
+51178819
+51656567
+51473085
+51453324
+51656047
+51614301
+50850436
+51178579
+51177714
+51177313
+51321665
+51472302
+51473001
+51657958
+51616040
+51474422
+51615362
+52609595
+52608875
+51177831
+51472298
+51455288
+51454466
+51474451
+51455023
+51474461
+51616816
+52609544
+51323413
+51454390
+51655669
+51474444
+51614979
+51472188
+51472899
+52608301
+52610147
+52609046
+51323946
+51473524
+51473610
+51657140
+50850387
+51616009
+51615921
+50851280
+50852134
+50852567
+49698270
+50016028
+50714693
+51322283
+49990748
+50713885
+50852138
+51321861
+51322284
+50017771
+50713886
+50715523
+50715946
+51321862
+51323171
+50016464
+50715524
+51177527
+50850393
+50851705
+49992870
+50016465
+50852575
+50852998
+51321866
+51323175
+49993303
+49698282
+50714701
+51176625
+51177531
+50853000
+51321433
+51322725
+49990757
+50714285
+51177533
+50851291
+50851710
+50852578
+50853001
+51322727
+50713894
+51178000
+50851711
+51322294
+50713895
+50715955
+50851713
+49699892
+50713896
+50715535
+51177089
+50852585
+51323185
+49993312
+50016477
+50715960
+50851299
+49698299
+50015606
+51321441
+50714298
+51321879
+49992037
+49992885
+51322304
+51322738
+51323190
+49993317
+50715541
+50715965
+50714304
+51178016
+50850855
+51321884
+50715128
+51177100
+51178017
+49699911
+50017795
+50713498
+50850423
+50850858
+51323642
+50850859
+50852164
+50852160
+50715132
+50715134
+50715974
+50852600
+51323201
+49992479
+50715553
+50850864
+49699923
+51176655
+50850432
+50850867
+50851319
+50852605
+50853028
+51322320
+50713514
+51176199
+51177564
+50852174
+50852606
+50853029
+51322322
+50714320
+50714731
+50715141
+51176201
+51321899
+51322323
+51176203
+50715983
+51177567
+50016925
+51178033
+50713516
+51322758
+50850438
+50853033
+51322760
+49992489
+51178037
+51178519
+50852179
+50851745
+51321475
+50852620
+50714739
+50851748
+51323663
+49698346
+50713928
+50850881
+50851332
+51615126
+50713889
+50017776
+50715957
+50851297
+51321446
+51176628
+51323191
+51177102
+51321887
+50017792
+50850862
+51178027
+50715977
+51321895
+51176197
+50715559
+50851740
+50713519
+51177119
+
+Query:
+SELECT
+    TO_DATE(DATEADD('second', txb."timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00')) AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+    JOIN CRYPTO.CRYPTO_ZILLIQA.TX_BLOCKS txb
+        ON t."block_number" = txb."number"
+GROUP BY
+    TO_DATE(DATEADD('second', txb."timestamp" / 1000, TIMESTAMP '1970-01-01 00:00:00'))
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Answer:
+No data found for the specified query.
+Query:
+SELECT
+    t."block_number" AS "date",
+    SUM(t."amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS t
+GROUP BY
+    t."block_number"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Answer:
+date,total_transaction_amount
+1131984,41906846639921119456.000000000
+Query:
+SELECT "id", "block_timestamp", "amount", "success"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   WHERE "success" = FALSE
+   LIMIT 1000;
+Answer:
+Too long, hard cut:
+id,block_timestamp,amount,success
+64f1943d1f0e33d910a1a105d2d9d59937e4b110f88595a0583bf3457197503f,1619491474000000,3349537853336088.000000000,False
+914ac2869b60aca1f9356704013abe04fa83ef87f99259988ff2b4668fd78578,1614907691000000,3113772954701504.000000000,False
+4ace24581709bb24fd082bb8755786dee27c94c972ca8a4531dca1d4b5fb5906,1619488450000000,4500466099816486.000000000,False
+c75853b3e9ad941f4197f92ea91e87fbf509f1c841d7905ff083d236e2db9671,1619544038000000,69612378625506312.000000000,False
+81c0b6cc23be805d92d286bf0f5158033123712489a432462ebd5f95e77f217b,1619544567000000,69604995032230656.000000000,False
+6f0ad3dba6dbd24a4824931a13076d2fda4313e3d8dcb9cf899926547c98a665,1619527505000000,6639361407913916.000000000,False
+8a896d4f75449bef2096f1ea100f093ee89562f97589455e70eaff98e20fd2fc,1624248323000000,0E-9,False
+2bb7dbe69628e2c37a86a6d4122c0b28e027e468f7b4684c9cedd64d59e03071,1624263762000000,0E-9,False
+876be0fc328974c2ec95a509bf6a435f95d368b66d0145ab87f2be4839533317,1624264161000000,0E-9,False
+382514429e69b110f2997b0fe25842e14b3146b273911bfb5488cf9d7ee61e4d,1624264333000000,0E-9,False
+085b1a0597a845d728a0cfcf8232551c0c90237344dff1ba8437f825b2249aeb,1623667813000000,0E-9,False
+53feb38df8f65cffadf4d5b044586086c1b80cbd1b53d917d3b0903ea812bbed,1624264901000000,0E-9,False
+55751dd97155301364f6b1dbfb3afabdd77db0897d3b54652a082f0ca941d336,1619542041000000,1847280765274854.000000000,False
+33494e0dc652341348f1602f8e5525b4a8eade5a98cb15655e8afd85f6ad1f29,1619537713000000,1055433510722195.000000000,False
+f5625617fa25e4cb7c1ad457558c585e82a1db34c5f9038a417662f3e1f2f7ec,1614913724000000,1456484777367815.000000000,False
+7a7b9c0e01adb21fdb41dd695eee295f7f2bbbee9515faf43041d93f909fcbb1,1619489389000000,47431459306840176.000000000,False
+3356e6f04a8283ebd903900312d944cd3cc927bb5c8ebab9f74f46135daa92c6,1619490021000000,40756167313593676.000000000,False
+b608f709877a19d0684e76d64cf2987787da471b7f8ddead837980387cf41c54,1619531908000000,235958838208695285.000000000,False
+9e26f842b50cae65543d292a186d85d4e4ed9f5096f5e4e400db8e6bd80cc7ea,1614957907000000,12925216665611302.000000000,False
+df4bfe55cef8f014f367a40ef1d32b213b501d878fd4b5f2af846cebfa2d04aa,1628734392000000,0E-9,False
+394f51ef3cd47264a90d32c405a7e559c0bbc2c2b1f87250c1eef9aabf6902a8,1624303998000000,0E-9,False
+c0aae5b7bb23b1f481931c6ff294e16c08f173fe17258746a29937e7cd9c64e4,1630096136000000,0E-9,False
+7e24827dc8cde37696c1b05b8b1ca0422d0d4b794fb550e758a5b9f6487e8296,1624255902000000,0E-9,False
+da74c2d067e8aac2aa1aa900a011bc1a1307cbf137b5d9dadae6010c7b68bbcb,1624256104000000,0E-9,False
+5f9b50b4f8bbeb2a43c5dc22706b92991c05bde3f6746712abd83383544eb826,1630059654000000,0E-9,False
+c1a3181d27817d892a6c4657143721cbc8bfb6d4975bc2d4cfe8e574bbeaaf7e,1630059826000000,0E-9,False
+d308f8716df2bc8a4b2c752e92bf199223b377f15c6968f7d8cb9166a86dbb58,1630059826000000,0E-9,False
+bfe51f82735137d03ce9666a1055977edbf7de27f8320a5d0c9c109c1135ae4f,1630059894000000,0E-9,False
+74810e09056d8e32a7407ef0729432b834aec0c51c94fde1361dd7c0ff70d359,1630059965000000,0E-9,False
+e63a7e07fbf0b7a0afbfa3e6d4ce547da88c08aeaad2ef8241e47d2eff21389c,1623649330000000,0E-9,False
+2fdfb2a852d40f28988d4b3984bafd2e798591c58d75db59d9806be9a9ca7fb5,1628735748000000,0E-9,False
+9013461a01309be94ece543a653ea7a07e77b2d631aa049c4a4c81c2520f4fd0,1630079573000000,0E-9,False
+060b43912333783a61d7aa5bb5b2df3855ea01d5ad68b88212f312f2517194ce,1624311531000000,0E-9,False
+0a83ed1a4fc261da5fb46d14f7a69ce3627903e0c519803cb48dbbdc2a1687fb,1628755364000000,0E-9,False
+0838fe4feabc29e6413b0517974d6937ef063d7f64dd1dbaa83fc2bafb60b254,1628755467000000,0E-9,False
+ed1e6a83d28716f0f837c847687600cb626b8d58ed117883fae87cef6ca8bd2e,1624291626000000,0E-9,False
+f728c277b41c58fa42dbc169b49a713135162885f67f4393c328f70a4bdb1751,1628756120000000,0E-9,False
+79a6d616930b80a3b39ac2668630190340bc9b45ce66fd9ce6d22bce43f8e84a,1628776323000000,0E-9,False
+b174bf1d8a946def71ea7dfea29c0ec029a52f9bbb8666b10e0a554575d958ce,1628776357000000,0E-9,False
+4d6fc6381d8a86e2024ee23bd3a609134a45995e2659928972602c3d6002202c,1628776357000000,0E-9,False
+08c8fbe61f072e8886cc9f49302003e7bbb82630ae274b088cc10fcd19fb515f,1628776357000000,0E-9,False
+1f6361450c3b09b1316da8c4f8df3b3985ef2f36fb646c977f6370bf0ca30172,1623665789000000,0E-9,False
+73ef99823acc4ec25555c8dc1023c87e19218490c1da04af8bb70e616894d37e,1623654893000000,0E-9,False
+cda80c572c7bca23af1dda93a889f02a9da98381be8210299ed982ec6bfc6eb2,1630065429000000,0E-9,False
+2d112d853c05b2140d410cdb407a2388ab38d671f557b7204fd428b0c8415f1c,1630065544000000,0E-9,False
+402233a14940ab4ee820db38f921ad30d18fa9f674e1d770c13eae066fb6ac56,1623633422000000,0E-9,False
+d99fe62e7d442594e00d0cd43d9a84cd4f4dbc4fee1d2586b7bbf1d0bb2ff651,1623633422000000,0E-9,False
+31844a083f140cc0d87110900551009477035ef4fbf3193bc49e93d08f78306c,1624275293000000,0E-9,False
+020b0fe9cf5ade67b049d363dbad5bb1d05868cb35eb87a7cc2cc76e525b811f,1623646132000000,0E-9,False
+f1a5efda72080f007662bba69de66e13c8bf9285e7da80d400b80e0ed6f84f44,1623646173000000,0E-9,False
+bd52f9aff5fe9812dac77f3
+Query:
+SELECT DISTINCT "success"
+   FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+   LIMIT 1000;
+Answer:
+success
+True
+False
+Query:
+SELECT
+    MIN(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6))) AS "earliest_date",
+    MAX(TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6))) AS "latest_date"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS;
+Answer:
+earliest_date,latest_date
+2019-09-12,2022-08-10
+Query:
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) < DATE '2022-01-01'
+GROUP BY
+    "date"
+ORDER BY
+    "total_transaction_amount" DESC
+LIMIT 1;
+Answer:
+date,total_transaction_amount
+2021-04-27,502568739536336696622.000000000
+Query:
+SELECT DISTINCT "sender"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Answer:
+Too long, hard cut:
+sender
+zil184rqjy38xwykgz6xu2lwcl8ylqqlmlwk8xpatx
+zil13hwp8zerntrxapzhy5f8u7qcc9cp6dgx0htswe
+zil1wr6l0x4hh6e696tgsqywmlnsm2ze3su3sm8k5k
+zil19fr0te7395y3j0w5tk883x6get07l2qcf44kvu
+zil1vh4hfnav6fmml90md2xrrtjmzew8nhc3fekmt4
+zil1fmrjd8jpl9x5ujkd47z7vfqadzd7pfeywpz6n5
+zil1s2ranf28xf5m38gkuaedl6kg54ue2rdd4k4wqp
+zil1wh7axvvyl0vc92kmvhvtndug24sy9thh34u3ar
+zil1hcdhsnn70uugv27rj8hhw494n7awkfehlurncu
+zil1ejlzgw8k0r6yhsscjghanwj0mve8scpeme5ag4
+zil1nl5d9uy7jche0vhhvhx6t4z383vr0umad8x5a8
+zil1hkxwf5elhq4ereln7uejcd3sjsq7emt45eqxj2
+zil1kshgwk6m9xx6tjk4m2d5xtpkpdyp8zrtnkv3rc
+zil10x4tlft7c57wzz2rffj57hyz8ynsqtrdrzc4n4
+zil1tafcfu2k939dcpkwm23y7nhjfcd9lurajtde8g
+zil1n7m2szm79tzhermk020sj523mgw4wuuh79cy90
+zil157srqwjm3hr9f8chmyp9utefhav8dy4e490de9
+zil1j64eyqy5g8zpy8u2x5g278808z4ajjctmh0l6d
+zil1h3vwtnzmgp2nzw3zmlaayhg32jhrdnv7dqafrt
+zil1avdr77lw6c9w8sk06dj8fwzq87wxs88jdqzlhc
+zil1vevc0vx3gh5s2kng20l4vnxuq9uc7xflx9yf7m
+zil1rtz9ddgkswz7tja74xq0qkpxc5zafg3hl3u6au
+zil1c9jmdaxxqkqgupsfxrw9fgpfp4tcp606rf7r6d
+zil10zhy34vaedg95nzepmmcvf6hs6ghfat3c68zry
+zil1jqr2yyyzpf49gsgjswnlvlqrd0h7hd68wkx8vw
+zil1zehwfdawnc80y2vwshcv957nqnt6s5lfdchk73
+zil1gagdz3amrkgwjrlkg0dlhw46vhz9atcpq0jc06
+zil1gyvmmmjx4gmz4shmrdv9yjnvt5ha26efrjdvel
+zil18hpzy2u8h76lanrmx32x20fz5nu82ucaecr980
+zil14glykqxl3jwrp4fqcav6fk5npnxrfepvr42yu6
+zil1xekg7fpulakzzvaka60w0sh3tryflyuq79vku0
+zil1hg2f7873vc95q9rejfmxe78qlcph02gznnn60n
+zil12qwpduzz7zqe56md3de5pal72zyy9wglqa24ce
+zil186w4hd45xjv3htqlfesxa73q247npf5dw7xxw5
+zil1jrfawsx538pfuw7xx9vvudq8794yhlvd6j7w2l
+zil1d6q8kap85e20zk8r2vewy97uwl06twl5r9fhrk
+zil13p4d90k78mrnp6fl9k0ckk8zpdvgwnyew59dz3
+zil19e24266mg4pmxzvm24v92c53lfd4kd4cadc6xl
+zil1ffgsennwlgtma6gkg3s025emvhjs90p5pljmv2
+zil14hgqwxa4dczavweamg820288vw39ccejf83kpu
+zil1fhct5g6r067nex2maz97smq6a24x4l7enw3ax4
+zil1hrqnkd6k4uyegsvhy8cr3devl8pqqtfn99f563
+zil1typ89sse0hx3p2kuhh3mkfa8h2gwv8ln8utzcp
+zil10qxr3rfgs7xtgul2ff9ysrv8jsuhqe2xhmdnh3
+zil1teurfsl4rt3xwcvszwl6spyfulmegntnpdz2zd
+zil1rcj328mycksnn4sc5sn5xwfcpc5ee884uu0m68
+zil12q7sskxusm8fzczzfuzavc4957wszxlxcnf28n
+zil1052vgt2vl0jpydl2xe02xvk7lcpawx4pen3ud2
+zil1qrwy720lnz9s3nsgpsauzdhj0v3az50m70jc43
+zil176uxd08yqr49r394rv0nre4uvtxh5t574ycyk9
+zil1fjw7qxu9xurl67x78zktqj64gkzrmxy54d5m6x
+zil15vzqxfehvahmw4uhk4j56gw6nyp2uj9ad0scnf
+zil1x5hxev7xnz3p68ljn52hvfwxj4nrv537d6uktw
+zil1wr62tmhyz37q72c99mgvslqk260fnf4s7897vp
+zil1fkrppq3n3quk6ju62r5t06qgpwjh8wyz3mewwa
+zil1eh7ye0hhnnnm3yntjmqyvqlsc2crdmgjmj2ldr
+zil184swpptxuv57wh633fx9lr0wam3zhmty9dsyql
+zil15suwfdrmw06nne08k2zdrgaqw6ddc9yz324hvf
+zil17zfvggtz9pjrz5j245zt0735thqn5cu8dxs2ff
+zil1adwcuurhlwxcxc632h2hf8gw65pfdmrjqt7k65
+zil1dgw08jwfd9nkn3uyxtd9nrcxa9a8kk5yfthdzx
+zil1dlenwm870qwwe485jpcehznmvt3htdxkx0pyhk
+zil17p0vumnw8a6yrxfkuuncfeguvnn70502ykeckm
+zil1snns9clslx8h6th9ex37z5ledak2830ege4ewq
+zil1pagf8za4887v209zshgt2rv9eq2u0yqlm24se9
+zil1ddg66kaumljdsx6n9gl2ugcn4pndta75qk8fs8
+zil1l6cqzlf3n6dflsxw9wyxxne9kgmanktmyx3jp8
+zil1nysd3xvm4tswsreprt8zs25u6l3t3phgcxvz9h
+zil1e2u2gz99ckusvzz2227dtmwt2wzh5ehu8cylzl
+zil1zdl73c3dkcerwy03mz242x99zle35kcmnqlzl6
+zil1slhae5hea6r8lnc39mf65ameng2e2szwhx82a4
+zil1vh99xfm9z8dfltsxhsrar8txqny89gz273dxds
+zil1jkx9g4kuf03dtwcpzsgtufxge40jpy4lecjryu
+zil17sdc7c6yhran99sap8vn7uv9vpsd725zs5dtz6
+zil12ldy30m8l8vwrqau48ddtphdl65353wyu4pzsq
+zil1d43uqd5pcv8sf23d3dca0slj4wl4t9yccjvu43
+zil10fkdnddalk4nz4n6spmd8auzezekv29aqwqt7z
+zil1ax23dp9kd5ndhfv0xjq295kalsgf4w9zyja40g
+zil18qd9nc06jv4aua40e887dsgyqy938vfszj9k4s
+zil1rrr8jqmyqjuejr96k37nywghln2s4j82e9p9vp
+zil1wsl70925j9xweldken0t3jfhjvv5e9hj6tmz4v
+zil13w6hme5zl86qkecl04htstdvr6wj9tfm2r6kt9
+zil1surtjhcznudmy8598gkmxr3sjd0qp6x9lq3tmv
+zil104lwrea5yuhs2cx2uvmt9cv9pw57f9u0z24rup
+zil1mga0mjrqwjlnasf69f97ar6gvw6myjfy9tppkv
+zil16munf2fc9zl4q22frjvaghe96up5r7en62s4jk
+zil1u9umlss0lahufhtl2ulrpq2l3xnedwfdncs7lj
+zil1730y0c422hcdu2jmnqq0lh7m3v95xzdpqedt8e
+zil17awjfsqge7rydwqg65mqccm2g5f5yd72d7chza
+zil10pj5ep0xm0cs82yjj7ka4s7uuppvskt973aupk
+zil1wepa3attp7s4624zspl7nskvk9d2s0z4teq7xn
+zil1lk4lcrtt0lg988vyk0tgd4qgl4jsdk85utplg6
+zil146mpv3rrdjnhsn3vccu0s4l373c2nkyhz9rmm8
+zil133yq0u94zah2jz3j9jr4684sp4m3tjwmmvnalt
+zil1v54sjxeu2jejv6ufk7tr0g7rtx9awvy9pjld2y
+zil1wevmnuwywes3zpvll69t4k0h3zlf0mljsc9fcm
+zil1ez6pyp9faxn6jtzzs5qnj4ud7ul84rg3xraete
+zil1zha67y4sqcypupetxwrhjnh3cngckf7clgmysa
+zil1ue45huyhld0mv6vt9reny93l8dxdrtewnmx0a4
+zil1926nt096tqx7f9jflyuw353v48xwnhfqvv4yt5
+zil16d2pe8etkc9m2mc9t3dvm5at0ufxkq02cwz2wp
+zil1xkz20l6u984d5z4x8gtneghpgep4ajr0qnzthz
+zil15vh9awa75eys20na6fyznmva7qtqe038u2ftst
+zil1ezxdj9r9ju5ch0n5lzlpk903r9fc2gq5hd3f8k
+zil1gn8zq2vy35ugy449k0shzewdvg5u330qsuhmt6
+zil1zhe5vsmfnvdzexsqflmnrledqx3ryuml4pcph4
+zil14n8ajajneckavetzkm8a3tyjz6grrzhxxj96al
+zil1uplnqhatvyp69p9xqstg2gcallcmtyka8aqm9v
+zil1jq720778pnvfe7cnqze2yrna60n2afh0xfl0k2
+zil15ltc3klm8j8xphtxtx929d9nfzfetdcw37fav7
+zil1xdl3fquasz24pvtqr386z54t59wagg9vea2sul
+zil1m6lqn80z9us9zh3ghvyy9nxy7dsnlat9mnlunv
+zil1ng7n6myh9aqxk69fvn4w4n6ddw0a6v3tut44t3
+zil1qxx36gggtlzgzy7zg8dqh4kvrkzh4qza4arqns
+zil1rlfsxdag9x8kp7m42k9rpvnczf8q6l593jeqrw
+zil1jn727zn3huzjk0pn4wwa0ymn6dhfcvg34hcjtu
+zil1u
+Query:
+SELECT "sender", SUM("amount") AS "total_amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "sender"
+ORDER BY "total_amount" DESC
+LIMIT 1000;
+Answer:
+Too long, hard cut:
+sender,total_amount
+zil1z3zky3kv20f37z3wkq86qfy00t4a875fxxw7sw,357886655729874390000.000000000
+zil1kag6m40qj8r8zrdzv0ct0f87jcdzkggkplgzj9,53673235029737610000.000000000
+zil1qd5zmfqv32ugva9rd8zeep6488m8qxqlkyrcjj,48298218261849489890.000000000
+zil1smnfeqd7lxg4d5zuc0tsq87qk6eeyjn2kvaecg,34482834719100000000.000000000
+zil1tn74ucjf3y5quvlysj3kjc7pn34qsy2hry098c,29082633793874560001.000000000
+zil16khdzmelfthmflfatwshmml6nglz9tsvxcpurm,24493930565390360000.000000000
+zil1zxe9s6fqk90lnh75lqwlgm38pv82mgh9e9u7mk,22560554786000000000.000000000
+zil127qd2lmfjuy8jfgh0lt5fte824r3xj98f6n6qm,21293405000000000000.000000000
+zil1uqq7gatsz8r2p0ks5nylcksxz329n0zyw9yecy,18957952042658360000.000000000
+zil1ftg6qlhdcaaa2la7espskrs2mkz3rx7rwjzzj0,15749284970271430000.000000000
+zil1razqmzszwk248xkwgakh05c9qm052l84x7y9qd,15000000000000000000.000000000
+zil148lqdg94mw238dsz6y470fy28nk7ttpwp8dazk,14418879000000000000.000000000
+zil14kxmnlqqjuavwywatskfv6dlt0lh4p9xl5aa49,14048942471031870000.000000000
+zil1yqknv8jhe42va69aepefxa56xqlfn37x6aeve5,14007067012164940000.000000000
+zil1uy4tx9vccfdler2pzwnjyms4t5jds9xedkwkg2,13579969004153680000.000000000
+zil1sykay5wnaumt499vcnegq08qjquxelu3qx0e9u,12651443000000000000.000000000
+zil1e9k0rdjgh0khx06veut6ghwkggue6snmrlyg4w,12169054050580000000.000000000
+zil1gy44tg8tcyqplyc2h2xuzpcz9gazhfyyn8qsxf,11325600000000000000.000000000
+zil13539y7fj4jt9suf29zx7ql463hnxz305xr0hqv,10500000000000000000.000000000
+zil1en3m8n766p5wp9duwg38az7t8e56aca3n6vjql,10500000000000000000.000000000
+zil13yhyz2hhuh8tt7c3vksl7amvdv4g6zkt2wf73p,10286440002491920000.000000000
+zil16mfzdpwm2u6mjtfjfumasflune2239nld0ctq9,10000000000000000000.000000000
+zil1nmqty6lq4t89w8cpenc6njukmfa5mz6uxn7z4g,9742613730534710000.000000000
+zil1x7wk63ekrd8p3prhnzkfgxjjapzwu6glnqa8zy,9707951424930831420.000000000
+zil1vqdkw4qh268gu3xjwnma79snmdzvqr285mgt6n,8999999978000000000.000000000
+zil1shumj4s3zvyulpjyks5dw36s0efm86gd5n0euc,8835429484061020000.000000000
+zil1mc5tzuvgct2mm7cey42nyuwxrzf7mufe9zqvu0,8805212000000000000.000000000
+zil1le3lnachzhaty6su3a3s4q78ecd0munavlk285,8609097780372621012.000000000
+zil1z978du6a62ehjtl46lsv3p2urcu9xtx8vzg2vf,8499997720000000000.000000000
+zil1zdryz57g8gkj525vnvmt4mwy2zj0xqa537h2z2,8066999460000000000.000000000
+zil1we60d8alnfqcsngcf4mzpyt9xu0kp4xgh9v7th,8040998083000000000.000000000
+zil19jxnz9ynpkfmc6s8mpms5agsalm5ewr5fswj4t,7890024935971800000.000000000
+zil1j7xpvv4s3dv00rs2gjnydz7mr2tlwyytcz7wmq,7793396771181950000.000000000
+zil1flk2t733k6gvuk26rkfqh784ryr6yu945nxe8l,7722384000000000000.000000000
+zil1uyemhxa932teez5gcdsr2yx79n4lfu04c57uda,7378779501000000000.000000000
+zil1ktq92fgaveasccnn4dkqajj283uftpvtkkrvj2,7081342896500000000.000000000
+zil1cy70aywpnc7tfefw8wn4kz6thy599grjzxjem2,6759560219241510000.000000000
+zil1x4gc5rar6p0ewe0vs0c7wwxe0q6dztxmprgpla,6726965030292759290.000000000
+zil1kmk0yal8hgkl7hgs2xeaherwp3md8n5n63myj5,6485182000000000000.000000000
+zil1eynv8rzf9w7cmdzsgdgzf9zm6kkn4hfha6nsqa,6435816000000000000.000000000
+zil1q6834nn7u2z07pexkp0t2q2p3d4g0fj3zjx84x,6305944965000000000.000000000
+zil1jhglsl4qx0cdkp736v72zeu3zknrgul6vvz0hw,5997876520650046359.000000000
+zil14dzm27r68jpdjdnjrnw98ezs8unlp5mrhwal7x,5914916030000000000.000000000
+zil1q0ycfasu5n338wwmxdha5pe6q8824ryesw7sn7,5903860645000000000.000000000
+zil1f8evr3d4jyle555wpmvhm59x5uz6q0jqcvd07g,5900000000000000000.000000000
+zil1h6ggq9rwqde72a27mp7eaa5u3y0hq9l69u9p2c,5845750459830140000.000000000
+zil1ecqvfn5ym6gey80ltmze7yzzmx2dtzt9snfa4v,5799999974000000000.000000000
+zil1zql36j4zd3ngrta69wvdsrv4h0cd04cj8used9,5705550856000000000.000000000
+zil1cv4t8k0kz5fnet8lxz40wcd83v8e8r2n6jtp0t,5692159295947500000.000000000
+zil17rpyuuf3vw4z0jfhqyc04fw2mnpffwj9w9na5p,5681808515467039867.000000000
+zil100qfc9prhu3gl2hwx6399jqaeaxrhd6raafsek,5671180431000000000.000000000
+zil18nwjre2rzcd3nhqjswwnlv75ecmpdq8s07tvpc,5596010000000000000.000000000
+zil1tf3er6eqs0mam6uvgk3egfcr6f5gjfhlhmrq0f,5420555707796510000.000000000
+zil1829canc2d26647sgafx8f2zwy7eq36l2a3t766,5243521553753616745.000000000
+zil1ld32rd6ne8qkzfd7zff0ushpsmvqld4u58tddz,5232000000000000000.000000000
+zil1s826nu76qdjy7mfmwlvhpprxp2nglr52md4m4x,5064074123086885542.000000000
+zil1pm0nv5ft9zjxy26c8wu4xpjqn92j3udhndp6rr,5060993064730612410.000000000
+zil1ljjgl8dzz9j4h3mer67n06yx0vf2mxktqtez0j,5000000000000000000.000000000
+zil1dn9n0yz7mna9yyasrv2v0vxyeh2u5uyvvmrrds,5000000000000000000.000000000
+zil10svrd97xmfg82egyua5q62ghv8kycst65w92wx,4749500000000000000.000000000
+zil16matq22ar4uwsfn08suxvpd6dkfjuv5n5vusm0,4689996500000000000.000000000
+zil1k05kmrr8hlcnjcef3ffm0972a0v8aqs795agps,4672675000000000000.000000000
+zil1kkw8vyeu07fm7qa0d6s4gh5376e8h40kgf2rdf,4545726589219338892.000000000
+zil12agv4gk06kv3tms3qyzae85at5207ev4f00y98,4518000000000000000.000000000
+zil1a2fmqwg73djqmqt6059udeml2ydqhws80c7whk,4481017138000000000.000000000
+zil19u5m094t5m4p8zspd7rumhdjhaay0a6qc5uavj,4335891000000000000.000000000
+zil192vnlrjr94qyxhf9uhpqmqfqsh686m2tq5ymjj,4239999947000000000.000000000
+zil1fl5g2qw8d05n7ayhe68v7gchr8lrt9w7590rvx,4184612000000000000.000
+Query:
+SELECT DISTINCT "code"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Answer:
+Too long, hard cut:
+code
+""
+"
+(* SPDX-License-Identifier: MIT *)
+scilla_version 0
+
+import BoolUtils ListUtils IntUtils PairUtils
+library NonfungibleToken
+
+type Operation =
+| Add
+| Sub
+
+let zero_address = 0x0000000000000000000000000000000000000000
+let false = False
+let true = True
+let zero = Uint256 0
+let one = Uint256 1
+let empty_string = """"
+
+let add_operation = Add
+let sub_operation = Sub
+let min_fee_bps = Uint128 1
+let max_fee_bps = Uint128 10000
+
+let one_msg = 
+  fun (msg: Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let two_msgs =
+  fun (msg1: Message) =>
+  fun (msg2: Message) =>
+    let msgs_tmp = one_msg msg2 in
+    Cons {Message} msg1 msgs_tmp
+
+let get_bal =
+  fun (maybe_bal: Option Uint256) =>
+    match maybe_bal with
+    | None => zero
+    | Some bal => bal
+    end
+
+let build_pair =
+  fun (spender : ByStr20) =>
+  fun (token_id : Uint256) =>
+    Pair {(ByStr20) (Uint256)} spender token_id
+
+type Error =
+  | NotPausedError
+  | PausedError
+  | SelfError
+  | NotContractOwnerError
+  | NotContractOwnershipRecipientError
+  | NotTokenOwnerError
+  | NotMinterError
+  | NotOwnerOrOperatorError
+  | MinterNotFoundError
+  | MinterFoundError
+  | SpenderFoundError
+  | OperatorNotFoundError
+  | OperatorFoundError
+  | NotAllowedToTransferError
+  | TokenNotFoundError
+  | InvalidFeeBPSError
+  | ZeroAddressDestinationError
+  | ThisAddressDestinationError
+
+let make_error =
+  fun (result: Error) =>
+    let result_code = 
+      match result with
+      | NotPausedError                     => Int32 -1
+      | PausedError                        => Int32 -2
+      | SelfError                          => Int32 -3
+      | NotContractOwnerError              => Int32 -4
+      | NotTokenOwnerError                 => Int32 -5
+      | NotMinterError                     => Int32 -6
+      | NotOwnerOrOperatorError            => Int32 -7
+      | MinterNotFoundError                => Int32 -8
+      | MinterFoundError                   => Int32 -9
+      | SpenderFoundError                  => Int32 -10
+      | OperatorNotFoundError              => Int32 -11
+      | OperatorFoundError                 => Int32 -12
+      | NotAllowedToTransferError          => Int32 -13
+      | TokenNotFoundError                 => Int32 -14
+      | InvalidFeeBPSError                 => Int32 -15
+      | ZeroAddressDestinationError        => Int32 -16
+      | ThisAddressDestinationError        => Int32 -17
+      | NotContractOwnershipRecipientError => Int32 -18
+      end
+    in
+    { _exception: ""Error""; code: result_code }
+
+
+contract NonfungibleToken
+(
+  initial_contract_owner: ByStr20,
+  initial_base_uri: String,
+  name: String,
+  symbol: String
+)
+
+
+with
+  let is_contract_owner_invalid = builtin eq initial_contract_owner zero_address in
+  let is_name_invalid = builtin eq name empty_string in
+  let is_symbol_invalid = builtin eq symbol empty_string in
+  let is_name_or_symbol_invalid = orb is_name_invalid is_symbol_invalid in
+
+  let is_invalid = orb is_contract_owner_invalid is_name_or_symbol_invalid in
+  negb is_invalid
+=>
+
+
+field is_paused: Bool = false
+field token_name: String = name
+field token_symbol: String = symbol
+field contract_owner: ByStr20 = initial_contract_owner
+field contract_ownership_recipient: ByStr20 = zero_address
+field royalty_recipient: ByStr20 = initial_contract_owner
+field royalty_fee_bps: Uint128 = Uint128 1000
+field base_uri: String = initial_base_uri
+field token_uris: Map Uint256 String = Emp Uint256 String
+field token_owners: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+field token_id_count: Uint256 = Uint256 0
+field total_supply: Uint256 = Uint256 0
+field balances: Map ByStr20 Uint256 = Emp ByStr20 Uint256
+
+field minters: Map ByStr20 Bool =
+    let emp_map = Emp ByStr20 Bool in
+    builtin put emp_map initial_contract_owner true
+
+field spenders: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+field operators: Map ByStr20 (Map ByStr20 Bool) = Emp ByStr20 (Map ByStr20 Bool)
+
+
+procedure Throw(error: Error)
+  e = make_error error;
+  throw e
+end
+
+procedure RequireNotPaused()
+  paused <- is_paused;
+  match paused with
+  | False =>
+  | True =>
+    error = PausedError;
+    Throw error
+  end
+end
+
+procedure RequireValidRoyaltyFee(fee_bps: Uint128)
+  is_gte_min = uint128_ge fee_bps min_fee_bps;
+  is_lte_max = uint128_le fee_bps max_fee_bps;
+  
+  is_valid = andb is_gte_min is_lte_max;
+  match is_valid with 
+    | True => 
+    | False =>
+      error = InvalidFeeBPSError;
+      Throw error
+  end
+end
+
+procedure RequireContractOwner()
+  cur_owner <- contract_owner;
+  is_contract_owner = builtin eq cur_owner _sender;
+  match is_contract_owner with
+  | True => 
+  | False =>
+    error = NotContractOwnerError;
+    Throw error
+  end
+end
+
+procedure RequireNotSelf(address_a: ByStr20, address_b: ByStr20)
+  is_self = builtin eq address_a address_b;
+  match is_self with
+  | False =>
+  | True =>
+    error = SelfError;
+    Throw error
+  end
+end
+
+procedure RequireExistingToken(token_id: Uint256)
+  has_token <- exists token_owners[token_id];
+  match 
+Query:
+SELECT COUNT(*) AS "accepted_transactions"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00' AND "accepted" = TRUE
+LIMIT 1000;
+Answer:
+accepted_transactions
+17990
+Query:
+SELECT DISTINCT "accepted"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Answer:
+accepted
+""
+True
+False
+Query:
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+    AND "accepted" = TRUE
+GROUP BY
+    "date"
+ORDER BY
+    "total_amount" DESC
+LIMIT 1000;
+Answer:
+date,total_amount
+2020-11-06,55682067418834342186.000000000
+2021-06-21,52299049648182081685.000000000
+2021-04-27,49707593740730981094.000000000
+2021-03-05,45985507176782592408.000000000
+2021-08-12,30744664102855203672.000000000
+2021-06-14,28672450360486337061.000000000
+2021-08-27,17888029535565034082.000000000
+2020-09-17,1746418506000000.000000000
+Query:
+SELECT DISTINCT "version"
+    FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+    LIMIT 1000;
+Answer:
+version
+65537
+65544
+Query:
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("gas_limit") AS "total_gas_used"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    "date"
+ORDER BY
+    "total_gas_used" DESC
+LIMIT 1000;
+Answer:
+date,total_gas_used
+2021-04-27,914514133
+2021-06-21,191589181
+2021-03-05,131426318
+2021-06-14,127244278
+2021-08-27,91265702
+2021-08-12,85522338
+2020-11-06,78067403
+2019-09-12,3289073
+2020-09-17,2931590
+2020-01-06,2298367
+2019-12-28,1789936
+Query:
+SELECT "id", "block_timestamp", "amount"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+AND "amount" IS NOT NULL
+ORDER BY "amount" DESC
+LIMIT 1000;
+Answer:
+Too long, hard cut:
+id,block_timestamp,amount
+fc8f87e5cb8d4bd98ef9b2ec4a26f9e5b16d63832466fd79602341779344d55a,1624279226000000,34482824719100000000.000000000
+ebf4c993b8209ff3cd10daab7698c5f3a288e770d381d94875663b8fed258607,1600382146000000,12651443000000000000.000000000
+aae3e2e3825d57551b4d46fb404776acb5f9f95d4211341d7c7b8adb66376047,1619551798000000,10500000000000000000.000000000
+495f405c9d0bd1f95bbf1eba184ef59f17bd96913a0e1a63a0a5476093d06984,1604639690000000,10000000000000000000.000000000
+6ba40a9850ea7ef495c437c2989cd044b0eda824280cd8991a3b60f22ff49d9f,1578337336000000,7378769501000000000.000000000
+50c78ea44211610d081e79cece8ca687ca802fe8b1aa671c706334a542ab84f2,1577568728000000,5999999989000000000.000000000
+70632f7458354a86a40d1cf1ac0338174d7c3c4c2655a53ba3861c9f791fe5ef,1619551798000000,5235503000000000000.000000000
+bce395be289e94c92fac9fd7543345c08aa857bdb2d8e3c408eb7d7578de20d6,1578309688000000,5232000000000000000.000000000
+d13e781cf03e367ad34637be607b41bd0fc6b180a5794ce61a1fe7824837afe5,1604686733000000,5000000000000000000.000000000
+14bc45982fc952d0ba1a42e121859329911ef327085ae774fcd0ca3d0683587f,1619551798000000,5000000000000000000.000000000
+e45439b0f6722439641477b7fbc8501a4b1241f4df19cb4b832e01e24addc93e,1614912626000000,5000000000000000000.000000000
+fe2a448ea964d395e9199c53eaf490e817bb4d57a6ad48e664ccbe9616941b69,1619492044000000,4518000000000000000.000000000
+e5ea7b81752f5275627b0154f25ecac8d07bbff5f4772efc92c163144b6409a2,1619541124000000,4469901684854428010.000000000
+d6e2554fe0d9416554c4f8a05cfa200b93a047a4c05261263eef3857e2a769eb,1619528737000000,4239999950000000000.000000000
+b5397ec4e8169effd9dde6e182d37289e8a3b2d62aacea1020fb9659c290d4b0,1619529001000000,4239999947000000000.000000000
+9417ed818c5113ef76f1c0627a1b496ace69c2b156418d8fb4bfc544d74066dc,1568252442000000,4214803682520000000.000000000
+724e82f343bc6a01698f031c0e2474baf7a8ed6a029126467aaac6b68775baea,1619563272000000,4199999990000000000.000000000
+42261c3090cbaba7bcca33e4d5a104667ef7a23c7cd64dff1be9fd4972fa0c11,1619563472000000,4199999987000000000.000000000
+3d24d653aaa8469b8d03c9612b12fd9533c5c6dab490535d3db80b7778db18ec,1624273680000000,4164967000000000000.000000000
+811b1cbe1a595751178a2b1ec9530d81ef874672d7cd4f68894fc711ffb3706c,1568249091000000,4164482642183280000.000000000
+2cfb16dabb2bb96bf3b29882e61b1a6997d0c120dcf62d621cfb2a65dfe22081,1604635393000000,4012888000000000000.000000000
+3adeead852a1558c15e78b1686ce42a92af2514f27d14b1d5a11f1f7525b0fc8,1600349694000000,4000000000000000000.000000000
+89c69ba16eb4353dbac96fd8af0fce8e9d00826144bd96a1962e2610e3b088c1,1619506119000000,3969875000000000000.000000000
+52048cf01e6e1f0732635c16d16046de75bf55da92381057c2e8bf69993fb1e4,1600310125000000,3900000000000000000.000000000
+bceb868f221e3f9882a482023d1b3dafa2eb996c0160ccf48d70920ca93fba4a,1619513736000000,3853882000000000000.000000000
+c199bd506eaab00475cc7e167545a76558f356e47f8a801b1e2f72914ddd362b,1619546547000000,3850344000000000000.000000000
+f0eb2d0d68bb77a8fb5aab4b0de4a1c6f907757d6cc57af2515258d3f2a1e0fb,1604693286000000,3800200000000000000.000000000
+06bb0bc4498ad22c0a81dcba3fc84d00944d78a3a11db9d105240676876db82b,1619535430000000,3500000000000000000.000000000
+b2bbfbf79ab0e6f6692c5df23918d22f740e4ee0adf707344a233429dd87beea,1619538601000000,3500000000000000000.000000000
+002c609a7a655791506b2626ad3cf5518de960a16881f6c49a74c55e347f395d,1619530928000000,3499950000000000000.000000000
+d6ea7ea44bdce02a9847c4ceaa0820f8d902e8b5dbda299206e96c5499e66099,1624259533000000,3300292130000000000.000000000
+48e17d93c50a4edb27ba16ee895711ee2b560c8f4838ed202e80dfa26e52e11e,1604635331000000,3260400000000000000.000000000
+910af0c9b081577aeda80344ce67edd78cacd10b445b836b843d150903f4a4ce,1624304587000000,3167764825100000000.000000000
+14647b95e8ca42bbcbb0a89ee638d1a2613d0c8c7a8a48447fb6fd6237b92597,1624304623000000,3167764825100000000.000000000
+0a73c1967db4495d977a6bd42f5c8c01199bb97a24d04f28d6055a3d1218a2b6,1614974678000000,3055534000000000000.000000000
+31ea6a6c61d0194aa8beb8f68e13f615b16b74dc0f534890a84724cfd6337a89,1600327914000000,3009999000000000000.000000000
+04fb80d6ecc60d1373240cd5f7db82469f22f2228b8ee2e18f5e34288727f504,1578343195000000,3000000262000000000.000000000
+2fe223663ff33e12412c2e9441d682381c19e62d01932ab260f68d798add2ca0,1619531290000000,3000000000000000000.000000000
+0408a71fad2d440dd1af114a850696f33520287db22a853fce4f6c3594e4e726,1600312560000000,3000000000000000000.000000000
+76ddf941e226874654292f3ca573c15cc964e20b993c6ace124f88b91f8c4828,1578305312000000,3000000000000000000.000000000
+4496f8a2e463d6c5b9196c799ad2777d3fca5ebb28c7d50966bad4d8297431f7,1577568526000000,3000000000000000000.000000000
+8969585de5a5cf92c8ddf2cde5327a9141c7740e687870cd4e211c7099a3b62a,1578308525000000,2999999999000000000.000000000
+370bd1fd7383374570c479634053e0fb5ae6b8020f301f0278f433d9a3428bfb,1578309935000000,2999999998000000000.000000000
+3c6c3c1ecf8ef7464e31db9852bba004ecb3f27d574a37940b65256d638b6d26,1578307222000000,2999999990000000000.000000000
+a99b6c6efb4407a194fc53d031971c19826a7cfd28
+Query:
+SELECT "to_addr", COUNT(*) AS "transaction_count"
+FROM CRYPTO.CRYPTO_ZILLIQA.TRANSACTIONS
+WHERE TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY "to_addr"
+ORDER BY "transaction_count" DESC
+LIMIT 1000;
+Answer:
+Too long, hard cut:
+to_addr,transaction_count
+zil17rpyuuf3vw4z0jfhqyc04fw2mnpffwj9w9na5p,88140
+zil17mmtyxrfapluk87qedl09pd2rgnpcp5053p995,36495
+zil1g029nmzsf36r99vupp4s43lhs40fsscx3jjpuy,17436
+zil1v25at4s3eh9w34uqqhe3vdvfsvcwq6un3fupc2,16875
+zil1hgg7k77vpgpwj3av7q7vv5dl4uvunmqqjzpv2w,11853
+zil1wt7276q45kuu98cy2aj3c5qa5f2kpvxqh4le20,10934
+zil1z3zky3kv20f37z3wkq86qfy00t4a875fxxw7sw,10118
+zil1dcc7dm8duspfjpv2f2zyf9tvty2ehf26dpx0sj,9069
+zil1jrpjd8pjuv50cfkfr7eu6yrm3rn5u8rulqhqpz,7640
+zil146g2gzntnp9uyerxjlgxaqdrspg8htg8er9j6z,5655
+zil1qsnhpa7uadjqsx5a9lvrdl494wdnnmyt3lkcn5,5221
+zil18f5rlhqz9vndw4w8p60d0n7vg3n9sqvta7n6t2,4918
+zil1scsujefgcdcjt97z32fvmlsv7m887ancusmqmq,4520
+zil1zxhlwgh355pxycc2u3g5crpyyrp2k8vn4pr8ur,4335
+zil16kdgpzxfy4gtnryzhdln5vg440s6s8ra3rfclt,4283
+zil1suz56n4de46f33udfk5njmgl7la5f2y7mqx6ke,4207
+zil1lt3cmmx2fvqycgwl0jpruekatkdcdz805spchh,4199
+zil1dhth7uvmkkf8yf4fnjltrwuucy09jx8djc0tv5,4165
+zil14pnmdwznze00h8cqjdfdwv9c6uaq6kln9ewre0,4101
+zil1eyz2rg7mf9kcdhnpux853w2mdjs8gl3p4kdnr9,4078
+zil1dw6qthyycu8yql4vx9asawvfpp2yf2er89gr8u,3923
+zil19mmy0fq6f5kmzr478dua7szscnduy27j3m508x,3304
+zil1g4wlr8luu3mlnvwps5gewg3hh0awf8mgrcjj3l,2352
+zil144fujqgsuvv5zyr2v23m7ndyt3artkh78kyd92,2192
+zil1efkn743p324gnnfqgpk0y2hwy6ag7cyfephyjt,2005
+zil1ayakns9zz8aemxmwcsjamu6ky97pxh86p4tk70,1704
+zil14pzuzq6v6pmmmrfjhczywguu0e97djepxt8g3e,1487
+zil1kkwptgx908etkfhnc9q5yheux2aw7l40m3nn66,1368
+zil1ajkyz9tf2s5tdhmjarkpyvpls6kh83wdwc37zr,1245
+zil1ucvrn22x8366vzpw5t7su6eyml2auczu6wnqqg,1115
+zil1tf3er6eqs0mam6uvgk3egfcr6f5gjfhlhmrq0f,1087
+zil1kag6m40qj8r8zrdzv0ct0f87jcdzkggkplgzj9,1059
+zil1p5suryq6q647usxczale29cu3336hhp376c627,1008
+zil1uy4tx9vccfdler2pzwnjyms4t5jds9xedkwkg2,947
+zil1nmqty6lq4t89w8cpenc6njukmfa5mz6uxn7z4g,930
+zil1zxe9s6fqk90lnh75lqwlgm38pv82mgh9e9u7mk,888
+zil1r96nfxl4puklmm9cwdpz5kwjn9a0x9cx03pmhm,838
+zil1e7g79p6ccc8dcv75tdznx52clpgsd92vfwyqcv,796
+zil19jxnz9ynpkfmc6s8mpms5agsalm5ewr5fswj4t,776
+zil1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9yf6pz,760
+zil163lpumypene0lhf9v39qka37lraq6amwpn04n3,693
+zil1dn9n0yz7mna9yyasrv2v0vxyeh2u5uyvvmrrds,675
+zil1r3zhrp80zvy8nnkrs80huw5nz6th59jz7jyr7h,672
+zil1qd5zmfqv32ugva9rd8zeep6488m8qxqlkyrcjj,656
+zil135rxuss8dh7neafx2zew6060j4lwj2wn9xe5ax,594
+zil182yhsex28x2caq8sp07hmtvk0m848tpr3ugcgv,577
+zil14kxmnlqqjuavwywatskfv6dlt0lh4p9xl5aa49,576
+zil1qd3a985nxmuehwgfjck8ynh8s2u4xu6uzcd9em,540
+zil15yw7wej02h6mm7z5f2dvwytfr5qn0z6vlwqug6,539
+zil1h5n009patw46zvelpyzkn9t7yjn562neqwq3xc,526
+zil1fakc92f0klx8acpmutjydx6gnfespddsg0kjp8,494
+zil1tlcxhzcph43jmf6dq2905hwjkz72e5vll03wk7,456
+zil1zlwu52k94wahn2fxpmq27ksdgz565nn5nslcsk,430
+zil1zu72vac254htqpg3mtywdcfm84l3dfd9qzww8t,392
+zil1uqq7gatsz8r2p0ks5nylcksxz329n0zyw9yecy,377
+zil18lnyaze7ncgsmve3kvh2ymsersrlznuq0j3uxs,371
+zil1mq4t9zjhufavl30jk5s6ps5tthn0qxctz5clxe,286
+zil147t2af9ncpurwc7jlajazsmpkf3j2arl8vdza8,263
+zil19nmxkh020jnequql9kvqkf3pkwm0j0spqtd26e,256
+zil1y7z63nkdj5sw8yeq6v6e64x08cy2slryvclp34,253
+zil1fzrlk6fq4zh9pzr9g0hg4fgymfkflqalzyx0pa,249
+zil19jhrzuldlhest7v5qy3h7fe68la8hcjnajxmta,248
+zil1504065pp76uuxm7s9m2c4gwszhez8pu3mp6r8c,244
+zil1cyck4za8yrxryxs6h0mupu5w3j72a3as6e5lqz,237
+zil1upsmt9e87pprykwn4e0uua98f3jzaf6lnkgpdw,233
+zil1xfsrre5qgx0mqg99xc0l2cuyu9ntt259ngsu7s,229
+zil1dw5m8tulqxhcen0n5u84nskljas03gmtckdmnp,227
+zil1v8p87vwqa57ldvt3rq9es27lhr0qnkkqu6d8n5,225
+zil1guj0dgf9mjwazhke05t6gqrhu72hqrjanj0wrm,199
+zil15dehfm809esr33uz5re2sfatdchlk7xuynlm5s,187
+zil1cznkkuwq0sk38uavsvr3dd2cfcpq6lt8042rgw,183
+zil1kwfu3x9n6fsuxc4ynp72uk5rxge25enw7zsf9z,183
+zil1cnga585aglaqqxagzhh59xkugx7z3hefxvyaz4,175
+zil1cefnmv0k68cgv4nagw0505tk92rgpz44ptepu2,172
+zil19u5m094t5m4p8zspd7rumhdjhaay0a6qc5uavj,160
+zil1ftg6qlhdcaaa2la7espskrs2mkz3rx7rwjzzj0,154
+zil1sykay5wnaumt499vcnegq08qjquxelu3qx0e9u,153
+zil1aenskmvxxc62j888f5ke33mc23vf837284347s,145
+zil1fl5g2qw8d05n7ayhe68v7gchr8lrt9w7590rvx,144
+zil1gpk9cy5xzynegehwwa0xhr34af6y020hhsls0u,143
+zil18uzjpmzta69qahwy2hntdtmtegrs3um26840fy,142
+zil1jcgu2wlx6xejqk9jw3aaankw6lsjzeunx2j0jz,140
+zil1ktq92fgaveasccnn4dkqajj283uftpvtkkrvj2,134
+zil1smdpqyuac77k7gzwzs9ydfwgcg3ktl659nzd6d,133
+zil1feshcqtzn930lyw4xva5l2h85y58dgdry0l37v,117
+zil1er0pyxz72hqm7gyx7e3pw69yt8j2hvljf7amu7,116
+zil1jjn9gpa54q3phn887cuuscqlqhjgyfq204m20d,104
+zil16gw00yy7gu5a02hnp62gzdg93wrndd0fhusukf,103
+zil1z66falx62kmg879yaluxry6k36hww82d5fjmdr,100
+zil1m25jv2wwacpxx6at2fvvz5ey2lzams7pujy45n,98
+zil1avqt4tt798jzrezejkwzytlwcgnrl69qyrcam4,93
+zil1rdm6jegaypfkw2empmu8dles3ugzyps2eny5al,93
+zil1nfja74djv69ql86lwjfx0je4rgm7ru7e7p33dh,91
+zil1slkdqqym00xng0fteqsudz6qdaf03jymzr0unx,90
+zil14dzm27r68jpdjdnjrnw98ezs8unlp5mrhwal7x,90
+zil18lxwlxmpl8ws24vypaaexzuw4pamlkkrtq7za2,90
+zil139tkqvc8rw92e6jrs40gawwc3mmdmmauv3x3yz,89
+zil1y489820r5qwc9drlfxvmxfaumf3mj6058w7qlw,89
+zil1e060dmkv23tx705ve7e4cfamqh9e4dk7gqzgv6,89
+zil13scgclkdm5yl3l795yaetcwlqpxypfmry2aqzc,88
+zil1elg54gx7aeu2td35m4ms6g4ss0fdesq3tess37,88
+zil1r5wt6hgge2445r34zruhgctx5w4p2a27ut829z,87
+zil1pumumlnaa42yxpn6lwv50s5f07tak666lpkuzv,87
+zil1gy44tg8tcyqplyc2h2xuzpcz9gazhfyyn8qsxf,87
+zil18xjc7tj3vy5wvshw095dnc85y0cmzjwsqsqp44,86
+zil1jgt5hhkjf2y
+End Exploring Related Columns
+Task: Which date before 2022 had the highest total transaction amount in the Zilliqa blockchain data?
+
+Please answer only one complete SQL in snowflake dialect in ```sql``` format.
+Usage example: SELECT S."Column_Name" FROM {Database Name}.{Schema Name}.{Table_name} (ensure all column names are enclosed in double quotations)
+Follow the answer format like: To determine which date before 2022 had the highest total transaction amount in the Zilliqa blockchain data, we would aggregate the total transaction amounts for each date and identify the date with the maximum total.
+
+```csv
+date,total_transaction_amount
+date_before_2022,total_amount:float > 0
+```
+
+**Explanation:**
+
+- **date**: The specific date before 2022 with the highest total transaction amount.
+- **total_transaction_amount**: The sum of all transaction amounts on that date. This value is a positive float representing the total amount transacted.
+
+Since exact values cannot be inferred from the task description, placeholders have been used to represent the date and the total transaction amount..
+Here are some useful tips for answering:
+When calculating distances between two geometries, use `ST_MakePoint(x, y)` to make a point and `ST_Distance(geometry1 GEOMETRY, geometry2 GEOMETRY)` to compute. No need to convert from meters to miles unless requested. Don't use Haversine like 2 * 6371000 * ASIN(...), use ST_DISTANCE for more precise results.
+When performing a UNION operation on many tables, ensure that all table names are explicitly listed. Union first and then add condition and selection. e.g. SELECT "col1", "col2" FROM (TABLE1 UNION ALL TABLE2) WHERE ...; Don't write sqls as (SELECT col1, col2 FROM TABLE1 WHERE ...) UNION ALL (SELECT col1, col2 FROM TABLE2 WHERE ...); Don't use ['-- Include all', '-- Omit', '-- Continue', '-- Union all', '-- ...', '-- List all', '-- Replace this', '-- Each table', '-- Add other'] to omit any table. Table names here: ({database name: {schema name: {table name}}}): 
+{'CRYPTO': {'CRYPTO_BAND': ['BLOCKS', 'BLOCK_EVENTS', 'ERRORS', 'LOGS', 'MESSAGES', 'ORACLE_REQUESTS', 'TRANSACTIONS'], 'CRYPTO_BITCOIN': ['BLOCKS', 'INPUTS', 'OUTPUTS', 'TRANSACTIONS'], 'CRYPTO_BITCOIN_CASH': ['BLOCKS', 'INPUTS', 'OUTPUTS', 'TRANSACTIONS'], 'CRYPTO_DASH': ['BLOCKS', 'INPUTS', 'OUTPUTS', 'TRANSACTIONS'], 'CRYPTO_ETHEREUM': ['BLOCKS', 'CONTRACTS', 'LOGS', 'TOKEN_TRANSFERS', 'TRACES', 'TRANSACTIONS'], 'CRYPTO_ETHEREUM_CLASSIC': ['BALANCES', 'BLOCKS', 'CONTRACTS', 'LOGS', 'TOKENS', 'TOKEN_TRANSFERS', 'TRACES', 'TRANSACTIONS'], 'CRYPTO_ZILLIQA': ['DS_BLOCKS', 'EVENT_LOGS', 'EXCEPTIONS', 'TRANSACTIONS', 'TRANSITIONS', 'TX_BLOCKS']}}
+
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+When handling TO_TIMESTAMP_NTZ conversions, use query like: SELECT CASE WHEN "date" >= 1e15 THEN TO_TIMESTAMP_NTZ("date" / 1000000) WHEN "date" >= 1e12 THEN TO_TIMESTAMP_NTZ("date" / 1000) ELSE TO_TIMESTAMP_NTZ("date") END AS parsed_timestamp FROM my_table;
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+Keep all decimals to four decimal places.
+You need to follow the format's positive and negative signs.
+
+2025-01-16 15:53:13 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:53:13 - root - INFO - ```sql
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA."TRANSACTIONS"
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    "date"
+ORDER BY
+    "total_transaction_amount" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 15:53:13 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:53:13 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:53:13 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:53:14 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:53:14 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:53:14 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:53:15 - root - INFO - itercount: 1
+2025-01-16 15:53:15 - root - INFO - 0
+2025-01-16 15:53:15 - root - INFO - results: 
+date,total_transaction_amount
+2021-04-27,502568739536336696622.000000000
+
+
+2025-01-16 15:53:15 - root - INFO - Please check the answer again by reviewing Which date before 2022 had the highest total transaction amount in the Zilliqa blockchain data?, reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: To determine which date before 2022 had the highest total transaction amount in the Zilliqa blockchain data, we would aggregate the total transaction amounts for each date and identify the date with the maximum total.
+
+```csv
+date,total_transaction_amount
+date_before_2022,total_amount:float > 0
+```
+
+**Explanation:**
+
+- **date**: The specific date before 2022 with the highest total transaction amount.
+- **total_transaction_amount**: The sum of all transaction amounts on that date. This value is a positive float representing the total amount transacted.
+
+Since exact values cannot be inferred from the task description, placeholders have been used to represent the date and the total transaction amount. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+date,total_transaction_amount
+2021-04-27,502568739536336696622.000000000
+Current sql:
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA."TRANSACTIONS"
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    "date"
+ORDER BY
+    "total_transaction_amount" DESC NULLS LAST
+LIMIT 1;When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-16 15:53:44 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-16 15:53:44 - root - INFO - To determine which date before 2022 had the highest total transaction amount in the Zilliqa blockchain data, we aggregate the total transaction amounts for each date before 2022 and identify the date with the maximum total.
+
+```csv
+date,total_transaction_amount
+2021-04-27,502568739536336696622.0000
+```
+
+**SQL Query:**
+
+```sql
+SELECT
+    TO_DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "date",
+    SUM("amount") AS "total_transaction_amount"
+FROM
+    CRYPTO.CRYPTO_ZILLIQA."TRANSACTIONS"
+WHERE
+    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < TIMESTAMP '2022-01-01 00:00:00'
+GROUP BY
+    "date"
+ORDER BY
+    "total_transaction_amount" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-16 15:53:44 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-16 15:53:44 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-16 15:53:44 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-16 15:53:45 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-16 15:53:45 - snowflake.connector.connection - INFO - closed
+2025-01-16 15:53:46 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-16 15:53:46 - root - INFO - itercount: 2
+2025-01-16 15:53:46 - root - INFO - 0
+2025-01-16 15:53:46 - root - INFO - Total iteration counts: 2
