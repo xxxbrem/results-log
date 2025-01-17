@@ -1,0 +1,142 @@
+After comparing the three SQL queries and their results, here's the analysis:
+
+---
+
+### **0result.sql**
+
+```sql
+SELECT "CUSTOMERS"."FirstName", ROUND(SUM("INVOICE_ITEMS"."UnitPrice" * "INVOICE_ITEMS"."Quantity"), 4) AS "AmountSpent"
+FROM "CHINOOK"."CHINOOK"."INVOICE_ITEMS"
+JOIN "CHINOOK"."CHINOOK"."TRACKS" ON "INVOICE_ITEMS"."TrackId" = "TRACKS"."TrackId"
+JOIN "CHINOOK"."CHINOOK"."ALBUMS" ON "TRACKS"."AlbumId" = "ALBUMS"."AlbumId"
+JOIN "CHINOOK"."CHINOOK"."ARTISTS" ON "ALBUMS"."ArtistId" = "ARTISTS"."ArtistId"
+JOIN "CHINOOK"."CHINOOK"."INVOICES" ON "INVOICE_ITEMS"."InvoiceId" = "INVOICES"."InvoiceId"
+JOIN "CHINOOK"."CHINOOK"."CUSTOMERS" ON "INVOICES"."CustomerId" = "CUSTOMERS"."CustomerId"
+WHERE "ARTISTS"."ArtistId" = 90
+GROUP BY "CUSTOMERS"."CustomerId", "CUSTOMERS"."FirstName"
+HAVING SUM("INVOICE_ITEMS"."UnitPrice" * "INVOICE_ITEMS"."Quantity") < 1;
+```
+
+- **Artist Selection**: This query selects customers who purchased tracks from the artist with `ArtistId = 90`.
+- **Limitation**: It assumes that the best-selling artist has `ArtistId = 90`.
+- **Result**:
+
+  ```
+  FirstName,AmountSpent
+  Stanisław,0.99
+  Ladislav,0.99
+  Eduardo,0.99
+  Hugh,0.99
+  Edward,0.99
+  ```
+
+---
+
+### **1result.sql**
+
+```sql
+SELECT c."FirstName",
+       ROUND(SUM(ii."UnitPrice" * ii."Quantity"), 4) AS "AmountSpent"
+FROM "CHINOOK"."CHINOOK"."CUSTOMERS" c
+JOIN "CHINOOK"."CHINOOK"."INVOICES" inv ON c."CustomerId" = inv."CustomerId"
+JOIN "CHINOOK"."CHINOOK"."INVOICE_ITEMS" ii ON inv."InvoiceId" = ii."InvoiceId"
+JOIN "CHINOOK"."CHINOOK"."TRACKS" t ON ii."TrackId" = t."TrackId"
+JOIN "CHINOOK"."CHINOOK"."ALBUMS" alb ON t."AlbumId" = alb."AlbumId"
+JOIN "CHINOOK"."CHINOOK"."ARTISTS" ar ON alb."ArtistId" = ar."ArtistId"
+WHERE ar."Name" = 'Iron Maiden'
+GROUP BY c."CustomerId", c."FirstName"
+HAVING SUM(ii."UnitPrice" * ii."Quantity") < 1.00
+ORDER BY c."FirstName";
+```
+
+- **Artist Selection**: This query selects customers who purchased tracks from the artist named `'Iron Maiden'`.
+- **Limitation**: It assumes that `'Iron Maiden'` is the best-selling artist.
+- **Result**:
+
+  ```
+  FirstName,AmountSpent
+  Eduardo,0.99
+  Edward,0.99
+  Hugh,0.99
+  Ladislav,0.99
+  Stanisław,0.99
+  ```
+
+---
+
+### **2result.sql**
+
+```sql
+WITH BestSellingArtist AS (
+    SELECT
+        A."ArtistId",
+        A."Name",
+        SUM(II."Quantity") AS TotalTracksSold
+    FROM
+        "CHINOOK"."CHINOOK"."INVOICE_ITEMS" II
+        JOIN "CHINOOK"."CHINOOK"."TRACKS" T ON II."TrackId" = T."TrackId"
+        JOIN "CHINOOK"."CHINOOK"."ALBUMS" AL ON T."AlbumId" = AL."AlbumId"
+        JOIN "CHINOOK"."CHINOOK"."ARTISTS" A ON AL."ArtistId" = A."ArtistId"
+    GROUP BY
+        A."ArtistId",
+        A."Name"
+    ORDER BY
+        TotalTracksSold DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    C."FirstName",
+    ROUND(SUM(II."UnitPrice" * II."Quantity"), 4) AS "Amount"
+FROM
+    "CHINOOK"."CHINOOK"."CUSTOMERS" C
+    JOIN "CHINOOK"."CHINOOK"."INVOICES" I ON C."CustomerId" = I."CustomerId"
+    JOIN "CHINOOK"."CHINOOK"."INVOICE_ITEMS" II ON I."InvoiceId" = II."InvoiceId"
+    JOIN "CHINOOK"."CHINOOK"."TRACKS" T ON II."TrackId" = T."TrackId"
+    JOIN "CHINOOK"."CHINOOK"."ALBUMS" AL ON T."AlbumId" = AL."AlbumId"
+    JOIN BestSellingArtist BSA ON AL."ArtistId" = BSA."ArtistId"
+GROUP BY
+    C."CustomerId",
+    C."FirstName"
+HAVING
+    SUM(II."UnitPrice" * II."Quantity") < 1.0000;
+```
+
+- **Artist Selection**: This query dynamically identifies the best-selling artist based on total tracks sold.
+- **Advantage**: It ensures accuracy even if the best-selling artist changes in the data.
+- **Result**:
+
+  ```
+  FirstName,Amount
+  Stanisław,0.99
+  Ladislav,0.99
+  Eduardo,0.99
+  Edward,0.99
+  Hugh,0.99
+  ```
+
+---
+
+### **Conclusion**
+
+- **Queries 0 and 1** hard-code the artist as `ArtistId = 90` or `Name = 'Iron Maiden'`, assuming that this artist is the best-selling one. While the results are correct based on the current data, these queries won't adapt if the best-selling artist changes.
+- **Query 2** dynamically calculates the best-selling artist by summing the total tracks sold per artist and selecting the one with the highest sales. It then finds customers who spent less than $1 on that artist's tracks.
+
+### **Correct Answer**
+
+Given that the task is to find customers who spent less than $1 on tracks by the **best-selling artist**, it's essential to dynamically determine who that artist is.
+
+**Therefore, the correct SQL query is:**
+
+```plain
+2result.sql
+```
+
+This query ensures that:
+
+- The best-selling artist is accurately identified based on the data.
+- The customers who spent less than $1 on that artist are correctly retrieved.
+- It satisfies the requirement even if the data changes in the future.
+
+---
+
+**Note:** All monetary values are rounded to four decimal places as specified.
