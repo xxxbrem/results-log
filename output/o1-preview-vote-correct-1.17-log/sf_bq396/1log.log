@@ -1,0 +1,2284 @@
+2025-01-17 19:17:24 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-17 19:18:36 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-17 19:18:36 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:18:36 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:18:36 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:18:37 - snowflake.connector.cursor - INFO - Number of results in first chunk: 7
+2025-01-17 19:18:37 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:18:37 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:18:37 - root - INFO - SQL:
+SELECT DISTINCT "day_of_week"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+Results:
+day_of_week
+7
+6
+4
+1
+5
+2
+3
+
+2025-01-17 19:18:37 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:18:37 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:18:37 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:18:39 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:18:39 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:12 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-17 19:19:12 - root - INFO - Thank you for bringing this to my attention.
+
+The error occurs because the column `"day_of_week_name"` does not exist in the `ACCIDENT_2016` table. Instead, we can map the numeric values in `"day_of_week"` to their corresponding day names using a `CASE` statement.
+
+**Here's how you can modify your SQL query:**
+
+```sql
+SELECT DISTINCT "day_of_week",
+  CASE "day_of_week"
+    WHEN 1 THEN 'Sunday'
+    WHEN 2 THEN 'Monday'
+    WHEN 3 THEN 'Tuesday'
+    WHEN 4 THEN 'Wednesday'
+    WHEN 5 THEN 'Thursday'
+    WHEN 6 THEN 'Friday'
+    WHEN 7 THEN 'Saturday'
+    ELSE 'Unknown'
+  END AS "day_name"
+FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+LIMIT 1000;
+```
+
+**Explanation:**
+
+- The `CASE` statement maps each numeric value of `"day_of_week"` to its corresponding day name.
+- This way, you can see which numeric codes correspond to weekend days (Saturday and Sunday).
+
+**Sample Result:**
+
+```csv
+day_of_week,day_name
+1,Sunday
+2,Monday
+3,Tuesday
+4,Wednesday
+5,Thursday
+6,Friday
+7,Saturday
+```
+
+**Next Steps:**
+
+Now that we have identified that:
+
+- `1` corresponds to **Sunday**
+- `7` corresponds to **Saturday**
+
+We can proceed to filter accidents that occurred on weekends by selecting records where `"day_of_week"` is `1` or `7`.
+
+**Calculating the Differences:**
+
+To find the top 3 states with the largest differences in the number of traffic accidents between rainy and clear weather during weekends in 2016, follow these steps:
+
+1. **Filter for weekend accidents.**
+2. **Group by state and weather condition.**
+3. **Calculate the difference between the number of accidents in rainy and clear weather for each state.**
+4. **Order the results by the absolute difference in descending order.**
+5. **Select the top 3 states and their respective differences.**
+
+**Final SQL Query:**
+
+```sql
+SELECT
+  "state_name",
+  ABS(
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+  ) AS "difference_in_accidents"
+FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+WHERE "day_of_week" IN (1, 7)
+GROUP BY "state_name"
+ORDER BY "difference_in_accidents" DESC
+LIMIT 3;
+```
+
+**Explanation:**
+
+- **`"day_of_week" IN (1, 7)`** filters for weekends (Saturday and Sunday).
+- **`LOWER("atmospheric_conditions_1_name") LIKE '%rain%'`** identifies accidents that occurred in rainy weather.
+- **`LOWER("atmospheric_conditions_1_name") LIKE '%clear%'`** identifies accidents that occurred in clear weather.
+- The `ABS` function calculates the absolute difference between the counts.
+- We group the results by `"state_name"` and order them by `"difference_in_accidents"` in descending order.
+- **`LIMIT 3`** selects the top 3 states with the largest differences.
+
+**Result Format:**
+
+Assuming the query runs successfully, the result would be:
+
+```csv
+state_name,difference_in_accidents
+State A,num:int
+State B,num:int
+State C,num:int
+```
+
+**Final Answer:**
+
+```csv
+state_name,difference_in_accidents
+state_name:str,num:int
+state_name:str,num:int
+state_name:str,num:int
+```
+
+**Explanation:**
+
+- **`state_name`**: The name of the state.
+- **`difference_in_accidents`**: The absolute difference in the number of traffic accidents between rainy and clear weather during weekends in 2016 for that state.
+- The states are listed in order from the largest to the smallest difference.
+
+**Note:** Since we don't have access to actual data, the state names and numbers are placeholders (`state_name:str`, `num:int`). When you execute the SQL query on your database, it will return the actual state names and corresponding difference values.
+
+**Additional Considerations:**
+
+- Ensure that the column `"atmospheric_conditions_1_name"` exists in your table. If it doesn't, you might need to use `"atmospheric_conditions_1"` and refer to a codebook to map codes to weather conditions.
+- If `"atmospheric_conditions_1_name"` is not available, you can modify the query as follows (assuming that weather condition codes are known):
+
+  ```sql
+  SELECT DISTINCT "atmospheric_conditions_1"
+  FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+  LIMIT 1000;
+  ```
+
+  Then map the codes to "Rainy" and "Clear" accordingly in your `CASE` statements.
+
+**Let me know** if you need further assistance or if you encounter any other issues.
+2025-01-17 19:19:12 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:12 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:12 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:13 - snowflake.connector.cursor - INFO - Number of results in first chunk: 3
+2025-01-17 19:19:13 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:13 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:13 - root - INFO - SQL:
+SELECT
+  "state_name",
+  ABS(
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+  ) AS "difference_in_accidents"
+FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+WHERE "day_of_week" IN (1, 7)
+GROUP BY "state_name"
+ORDER BY "difference_in_accidents" DESC
+LIMIT 3;
+Results:
+state_name,difference_in_accidents
+California,924
+Texas,827
+Florida,750
+
+2025-01-17 19:19:13 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:13 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:13 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:15 - snowflake.connector.cursor - INFO - Number of results in first chunk: 13
+2025-01-17 19:19:15 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:15 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:15 - root - INFO - SQL:
+SELECT DISTINCT "atmospheric_conditions_1_name"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+Results:
+atmospheric_conditions_1_name
+"Sleet, Hail"
+Severe Crosswinds
+Other
+"Blowing Sand, Soil, Dirt"
+Blowing Snow
+Freezing Rain or Drizzle
+Unknown
+Clear
+Rain
+"Fog, Smog, Smoke"
+Cloudy
+Snow
+Not Reported
+
+2025-01-17 19:19:15 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:15 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:15 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:16 - snowflake.connector.cursor - INFO - Number of results in first chunk: 13
+2025-01-17 19:19:16 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:17 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:17 - root - INFO - SQL:
+SELECT DISTINCT "atmospheric_conditions_1", "atmospheric_conditions_1_name"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+Results:
+atmospheric_conditions_1,atmospheric_conditions_1_name
+3,"Sleet, Hail"
+6,Severe Crosswinds
+8,Other
+7,"Blowing Sand, Soil, Dirt"
+11,Blowing Snow
+12,Freezing Rain or Drizzle
+99,Unknown
+1,Clear
+2,Rain
+5,"Fog, Smog, Smoke"
+10,Cloudy
+98,Not Reported
+4,Snow
+
+2025-01-17 19:19:17 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:17 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:17 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:18 - snowflake.connector.cursor - INFO - Number of results in first chunk: 51
+2025-01-17 19:19:18 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:18 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:19 - root - INFO - SQL:
+SELECT "state_name", COUNT(*) AS "accident_count"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   GROUP BY "state_name"
+   ORDER BY "accident_count" DESC
+   LIMIT 1000;
+Results:
+state_name,accident_count
+California,3540
+Texas,3427
+Florida,2935
+Georgia,1424
+North Carolina,1348
+Pennsylvania,1088
+Ohio,1053
+Illinois,1000
+Michigan,981
+New York,981
+Alabama,979
+Tennessee,962
+South Carolina,941
+Missouri,872
+Arizona,856
+Indiana,776
+Kentucky,763
+Virginia,722
+Louisiana,704
+Oklahoma,628
+Mississippi,625
+New Jersey,570
+Colorado,558
+Wisconsin,544
+Washington,504
+Arkansas,504
+Maryland,484
+Oregon,448
+Kansas,381
+New Mexico,361
+Minnesota,357
+Massachusetts,356
+Iowa,355
+Nevada,304
+Connecticut,292
+Utah,259
+West Virginia,250
+Idaho,232
+Nebraska,194
+Montana,171
+Maine,150
+New Hampshire,130
+Delaware,116
+Hawaii,109
+South Dakota,103
+North Dakota,102
+Wyoming,100
+Alaska,78
+Vermont,57
+Rhode Island,48
+District of Columbia,26
+
+2025-01-17 19:19:19 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:19 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:19 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:20 - snowflake.connector.cursor - INFO - Number of results in first chunk: 7
+2025-01-17 19:19:20 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:20 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:20 - root - INFO - SQL:
+SELECT "day_of_week", COUNT(*) AS "accident_count"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   GROUP BY "day_of_week"
+   ORDER BY "day_of_week"
+   LIMIT 1000;
+Results:
+day_of_week,accident_count
+1,5353
+2,4537
+3,4157
+4,4439
+5,4706
+6,5397
+7,6159
+
+2025-01-17 19:19:20 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:20 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:20 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:21 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-17 19:19:21 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:22 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:22 - root - INFO - SQL:
+SELECT COUNT(*) AS "weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7);
+Results:
+weekend_accidents
+11512
+
+2025-01-17 19:19:22 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:22 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:22 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:23 - snowflake.connector.cursor - INFO - Number of results in first chunk: 51
+2025-01-17 19:19:23 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:23 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:24 - root - INFO - SQL:
+SELECT "state_name", COUNT(*) AS "weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7)
+   GROUP BY "state_name"
+   ORDER BY "weekend_accidents" DESC
+   LIMIT 1000;
+Results:
+state_name,weekend_accidents
+California,1210
+Texas,1202
+Florida,1002
+Georgia,467
+North Carolina,425
+Illinois,368
+Ohio,347
+Tennessee,341
+Alabama,329
+Pennsylvania,329
+South Carolina,325
+Michigan,321
+New York,303
+Missouri,287
+Arizona,273
+Virginia,249
+Louisiana,244
+Indiana,244
+Kentucky,235
+Mississippi,213
+Oklahoma,206
+Wisconsin,192
+New Jersey,187
+Washington,170
+Colorado,168
+Maryland,165
+Arkansas,151
+Oregon,135
+Kansas,119
+Massachusetts,116
+Iowa,115
+New Mexico,111
+Minnesota,109
+Nevada,98
+Connecticut,90
+Utah,78
+Nebraska,69
+West Virginia,68
+Montana,65
+Idaho,61
+Maine,48
+Hawaii,44
+North Dakota,39
+Delaware,38
+South Dakota,35
+New Hampshire,34
+Wyoming,29
+Alaska,23
+Vermont,17
+Rhode Island,10
+District of Columbia,8
+
+2025-01-17 19:19:24 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:24 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:24 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:25 - snowflake.connector.cursor - INFO - Number of results in first chunk: 46
+2025-01-17 19:19:25 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:25 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:25 - root - INFO - SQL:
+SELECT "state_name", COUNT(*) AS "rainy_weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7)
+     AND LOWER("atmospheric_conditions_1_name") LIKE '%rain%'
+   GROUP BY "state_name"
+   ORDER BY "rainy_weekend_accidents" DESC
+   LIMIT 1000;
+Results:
+state_name,rainy_weekend_accidents
+Texas,68
+California,55
+Florida,49
+North Carolina,36
+Tennessee,29
+Kentucky,27
+Alabama,26
+Georgia,25
+Washington,24
+New York,23
+Indiana,21
+Michigan,21
+Pennsylvania,20
+Ohio,19
+Virginia,18
+South Carolina,18
+Illinois,17
+Oregon,16
+New Jersey,15
+Louisiana,14
+Mississippi,12
+Oklahoma,12
+Arkansas,11
+Maryland,10
+Massachusetts,9
+West Virginia,9
+Missouri,8
+Arizona,6
+Minnesota,6
+Hawaii,5
+Nebraska,5
+Alaska,5
+Kansas,5
+Wisconsin,4
+Maine,4
+Iowa,4
+New Mexico,3
+Montana,3
+Utah,3
+Nevada,2
+Connecticut,2
+Delaware,2
+Colorado,2
+Wyoming,2
+Idaho,2
+New Hampshire,1
+
+2025-01-17 19:19:25 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:25 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:25 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:27 - snowflake.connector.cursor - INFO - Number of results in first chunk: 50
+2025-01-17 19:19:27 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:27 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:27 - root - INFO - SQL:
+SELECT "state_name", COUNT(*) AS "clear_weekend_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+      AND LOWER("atmospheric_conditions_1_name") LIKE '%clear%'
+    GROUP BY "state_name"
+    ORDER BY "clear_weekend_accidents" DESC
+    LIMIT 1000;
+Results:
+state_name,clear_weekend_accidents
+California,979
+Texas,895
+Florida,799
+Georgia,360
+North Carolina,328
+Illinois,326
+South Carolina,285
+Pennsylvania,282
+Tennessee,275
+Alabama,251
+Arizona,226
+Ohio,219
+Missouri,218
+Michigan,210
+Louisiana,199
+New York,196
+Indiana,170
+Mississippi,170
+Kentucky,161
+New Jersey,158
+Oklahoma,131
+Maryland,127
+Wisconsin,121
+Arkansas,116
+Washington,113
+New Mexico,96
+Massachusetts,81
+Nevada,81
+Connecticut,80
+Iowa,79
+Oregon,76
+Minnesota,74
+Nebraska,52
+Utah,52
+West Virginia,50
+Idaho,42
+Montana,38
+Maine,36
+Hawaii,34
+Kansas,33
+South Dakota,32
+North Dakota,31
+Delaware,30
+Wyoming,23
+New Hampshire,23
+Colorado,16
+Vermont,11
+Alaska,11
+Rhode Island,8
+District of Columbia,7
+
+2025-01-17 19:19:27 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:27 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:27 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:28 - snowflake.connector.cursor - INFO - Number of results in first chunk: 51
+2025-01-17 19:19:28 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:29 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:29 - root - INFO - SQL:
+SELECT "state_name",
+      SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) AS "rainy_accidents",
+      SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END) AS "clear_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    GROUP BY "state_name"
+    LIMIT 1000;
+Results:
+state_name,rainy_accidents,clear_accidents
+Idaho,2,42
+Maryland,10,127
+Ohio,19,219
+California,55,979
+Kansas,5,33
+Maine,4,36
+Missouri,8,218
+Arkansas,11,116
+Georgia,25,360
+North Carolina,36,328
+Montana,3,38
+Oklahoma,12,131
+Washington,24,113
+Wisconsin,4,121
+South Carolina,18,285
+Iowa,4,79
+Virginia,18,0
+South Dakota,0,32
+Arizona,6,226
+North Dakota,0,31
+District of Columbia,0,7
+Michigan,21,210
+Delaware,2,30
+New Mexico,3,96
+Tennessee,29,275
+Illinois,17,326
+Minnesota,6,74
+New Hampshire,1,23
+Vermont,0,11
+Hawaii,5,34
+Nevada,2,81
+Massachusetts,9,81
+Indiana,21,170
+Texas,68,895
+West Virginia,9,50
+Pennsylvania,20,282
+Kentucky,27,161
+New York,23,196
+Florida,49,799
+Rhode Island,0,8
+Utah,3,52
+Connecticut,2,80
+Wyoming,2,23
+Louisiana,14,199
+New Jersey,15,158
+Oregon,16,76
+Alabama,26,251
+Mississippi,12,170
+Alaska,5,11
+Colorado,2,16
+Nebraska,5,52
+
+2025-01-17 19:19:29 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:29 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:29 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:30 - snowflake.connector.cursor - INFO - Number of results in first chunk: 51
+2025-01-17 19:19:30 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:30 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:31 - root - INFO - SQL:
+SELECT "state_name",
+      ABS(
+        SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+        SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+      ) AS "difference_in_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    GROUP BY "state_name"
+    ORDER BY "difference_in_accidents" DESC
+    LIMIT 1000;
+Results:
+state_name,difference_in_accidents
+California,924
+Texas,827
+Florida,750
+Georgia,335
+Illinois,309
+North Carolina,292
+South Carolina,267
+Pennsylvania,262
+Tennessee,246
+Alabama,225
+Arizona,220
+Missouri,210
+Ohio,200
+Michigan,189
+Louisiana,185
+New York,173
+Mississippi,158
+Indiana,149
+New Jersey,143
+Kentucky,134
+Oklahoma,119
+Wisconsin,117
+Maryland,117
+Arkansas,105
+New Mexico,93
+Washington,89
+Nevada,79
+Connecticut,78
+Iowa,75
+Massachusetts,72
+Minnesota,68
+Oregon,60
+Utah,49
+Nebraska,47
+West Virginia,41
+Idaho,40
+Montana,35
+Maine,32
+South Dakota,32
+North Dakota,31
+Hawaii,29
+Delaware,28
+Kansas,28
+New Hampshire,22
+Wyoming,21
+Virginia,18
+Colorado,14
+Vermont,11
+Rhode Island,8
+District of Columbia,7
+Alaska,6
+
+2025-01-17 19:19:31 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:31 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:31 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:32 - snowflake.connector.cursor - INFO - Number of results in first chunk: 13
+2025-01-17 19:19:32 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:32 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:32 - root - INFO - SQL:
+SELECT DISTINCT "atmospheric_conditions_1_name"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    LIMIT 1000;
+Results:
+atmospheric_conditions_1_name
+"Sleet, Hail"
+Severe Crosswinds
+Other
+Unknown
+Blowing Snow
+Freezing Rain or Drizzle
+"Blowing Sand, Soil, Dirt"
+Clear
+Rain
+Snow
+Not Reported
+"Fog, Smog, Smoke"
+Cloudy
+
+2025-01-17 19:19:32 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:32 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:32 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:34 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-17 19:19:34 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:34 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:34 - root - INFO - SQL:
+SELECT DISTINCT "year_of_crash"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    LIMIT 1000;
+Results:
+year_of_crash
+2016
+
+2025-01-17 19:19:34 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:19:34 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:19:34 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:19:35 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-17 19:19:35 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:19:36 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:19:36 - root - INFO - SQL:
+SELECT COUNT(*) AS "total_rainy_weekend_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+      AND LOWER("atmospheric_conditions_1_name") LIKE '%rain%'
+    LIMIT 1000;
+Results:
+total_rainy_weekend_accidents
+678
+
+2025-01-17 19:19:36 - root - INFO - itercount: 0
+2025-01-17 19:19:36 - root - INFO - Database Name: NHTSA_TRAFFIC_FATALITIES
+Schema Name: NHTSA_TRAFFIC_FATALITIES
+DDL describes table information.
+,0
+table_name,ACCIDENT_2016
+description,
+DDL,"create or replace TABLE ACCIDENT_2016 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""number_of_vehicle_forms_submitted_all"" NUMBER(38,0),
+	""number_of_motor_vehicles_in_transport_mvit"" NUMBER(38,0),
+	""number_of_parked_working_vehicles"" NUMBER(38,0),
+	""number_of_forms_submitted_for_persons_not_in_motor_vehicles"" NUMBER(38,0),
+	""number_of_persons_not_in_motor_vehicles_in_transport_mvit"" NUMBER(38,0),
+	""number_of_persons_in_motor_vehicles_in_transport_mvit"" NUMBER(38,0),
+	""number_of_forms_submitted_for_persons_in_motor_vehicles"" NUMBER(38,0),
+	""county"" NUMBER(38,0),
+	""city"" NUMBER(38,0),
+	""day_of_crash"" NUMBER(38,0),
+	""month_of_crash"" NUMBER(38,0),
+	""year_of_crash"" NUMBER(38,0),
+	""day_of_week"" NUMBER(38,0),
+	""hour_of_crash"" NUMBER(38,0),
+	""minute_of_crash"" NUMBER(38,0),
+	""national_highway_system"" NUMBER(38,0),
+	""land_use"" NUMBER(38,0),
+	""land_use_name"" VARCHAR(16777216),
+	""functional_system"" NUMBER(38,0),
+	""functional_system_name"" VARCHAR(16777216),
+	""ownership"" NUMBER(38,0),
+	""ownership_name"" VARCHAR(16777216),
+	""route_signing"" NUMBER(38,0),
+	""route_signing_name"" VARCHAR(16777216),
+	""trafficway_identifier"" VARCHAR(16777216),
+	""trafficway_identifier_2"" VARCHAR(16777216),
+	""milepoint"" NUMBER(38,0),
+	""latitude"" FLOAT,
+	""longitude"" FLOAT,
+	""special_jurisdiction"" NUMBER(38,0),
+	""special_jurisdiction_name"" VARCHAR(16777216),
+	""first_harmful_event"" NUMBER(38,0),
+	""first_harmful_event_name"" VARCHAR(16777216),
+	""manner_of_collision"" NUMBER(38,0),
+	""manner_of_collision_name"" VARCHAR(16777216),
+	""relation_to_junction_within_interchange_area"" VARCHAR(16777216),
+	""relation_to_junction_specific_location"" NUMBER(38,0),
+	""relation_to_junction_specific_location_name"" VARCHAR(16777216),
+	""type_of_intersection"" VARCHAR(16777216),
+	""work_zone"" VARCHAR(16777216),
+	""relation_to_trafficway"" NUMBER(38,0),
+	""relation_to_trafficway_name"" VARCHAR(16777216),
+	""light_condition"" NUMBER(38,0),
+	""light_condition_name"" VARCHAR(16777216),
+	""atmospheric_conditions_1"" NUMBER(38,0),
+	""atmospheric_conditions_1_name"" VARCHAR(16777216),
+	""atmospheric_conditions_2"" NUMBER(38,0),
+	""atmospheric_conditions_2_name"" VARCHAR(16777216),
+	""atmospheric_conditions"" NUMBER(38,0),
+	""atmospheric_conditions_name"" VARCHAR(16777216),
+	""school_bus_related"" VARCHAR(16777216),
+	""rail_grade_crossing_identifier"" VARCHAR(16777216),
+	""hour_of_notification"" NUMBER(38,0),
+	""minute_of_notification"" NUMBER(38,0),
+	""hour_of_arrival_at_scene"" NUMBER(38,0),
+	""minute_of_arrival_at_scene"" NUMBER(38,0),
+	""hour_of_ems_arrival_at_hospital"" NUMBER(38,0),
+	""minute_of_ems_arrival_at_hospital"" NUMBER(38,0),
+	""related_factors_crash_level_1"" NUMBER(38,0),
+	""related_factors_crash_level_1_name"" VARCHAR(16777216),
+	""related_factors_crash_level_2"" NUMBER(38,0),
+	""related_factors_crash_level_2_name"" VARCHAR(16777216),
+	""related_factors_crash_level_3"" NUMBER(38,0),
+	""related_factors_crash_level_3_name"" VARCHAR(16777216),
+	""number_of_fatalities"" NUMBER(38,0),
+	""number_of_drunk_drivers"" NUMBER(38,0),
+	""timestamp_of_crash"" NUMBER(38,0)
+);"
+
+Some other tables have the similar structure: ['ACCIDENT_2016', 'ACCIDENT_2020', 'ACCIDENT_2015', 'ACCIDENT_2018', 'ACCIDENT_2019', 'ACCIDENT_2017']
+,1
+table_name,CEVENT_2020
+description,
+DDL,"create or replace TABLE CEVENT_2020 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""event_number"" NUMBER(38,0),
+	""vehicle_number_this_vehicle"" NUMBER(38,0),
+	""area_of_impact_this_vehicle"" NUMBER(38,0),
+	""area_of_impact_this_vehicle_name"" VARCHAR(16777216),
+	""sequence_of_events"" NUMBER(38,0),
+	""sequence_of_events_name"" VARCHAR(16777216),
+	""vehicle_number_other_vehicle"" NUMBER(38,0),
+	""vehicle_number_other_vehicle_name"" VARCHAR(16777216),
+	""area_of_impact_other_vehicle"" VARCHAR(16777216),
+	""area_of_impact_other_vehicle_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['CEVENT_2020', 'CEVENT_2015', 'CEVENT_2017', 'CEVENT_2016', 'CEVENT_2018', 'CEVENT_2019']
+,2
+table_name,DISTRACT_2015
+description,
+DDL,"create or replace TABLE DISTRACT_2015 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""driver_distracted_by"" NUMBER(38,0),
+	""driver_distracted_by_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['DISTRACT_2015', 'DISTRACT_2016', 'DISTRACT_2017', 'DISTRACT_2018', 'DISTRACT_2019', 'DISTRACT_2020']
+,3
+table_name,DRIMPAIR_2020
+description,
+DDL,"create or replace TABLE DRIMPAIR_2020 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""condition_impairment_at_time_of_crash_driver"" NUMBER(38,0),
+	""condition_impairment_at_time_of_crash_driver_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['DRIMPAIR_2020', 'DRIMPAIR_2017', 'DRIMPAIR_2019', 'DRIMPAIR_2016', 'DRIMPAIR_2015', 'DRIMPAIR_2018']
+,4
+table_name,NMPRIOR_2019
+description,
+DDL,"create or replace TABLE NMPRIOR_2019 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""person_number"" NUMBER(38,0),
+	""non_motorist_action_circumstances"" NUMBER(38,0),
+	""non_motorist_action_circumstances_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['NMPRIOR_2019', 'NMPRIOR_2017', 'NMPRIOR_2016', 'NMPRIOR_2020', 'NMPRIOR_2015', 'NMPRIOR_2018']
+,5
+table_name,PARKWORK_2018
+description,
+DDL,"create or replace TABLE PARKWORK_2018 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""number_of_motor_vehicles_in_transport_mvit"" NUMBER(38,0),
+	""number_of_occupants"" NUMBER(38,0),
+	""number_of_occupants_name"" VARCHAR(16777216),
+	""day_of_crash"" NUMBER(38,0),
+	""day_of_crash_name"" VARCHAR(16777216),
+	""month_of_crash"" NUMBER(38,0),
+	""month_of_crash_name"" VARCHAR(16777216),
+	""hour_of_crash"" NUMBER(38,0),
+	""hour_of_crash_name"" VARCHAR(16777216),
+	""minute_of_crash"" NUMBER(38,0),
+	""minute_of_crash_name"" VARCHAR(16777216),
+	""first_harmful_event"" NUMBER(38,0),
+	""first_harmful_event_name"" VARCHAR(16777216),
+	""manner_of_collision"" NUMBER(38,0),
+	""manner_of_collision_name"" VARCHAR(16777216),
+	""unit_type"" NUMBER(38,0),
+	""unit_type_name"" VARCHAR(16777216),
+	""hit_and_run"" NUMBER(38,0),
+	""hit_and_run_name"" VARCHAR(16777216),
+	""registration_state"" NUMBER(38,0),
+	""registration_state_name"" VARCHAR(16777216),
+	""registered_vehicle_owner"" NUMBER(38,0),
+	""registered_vehicle_owner_name"" VARCHAR(16777216),
+	""vehicle_make"" NUMBER(38,0),
+	""vehicle_make_name"" VARCHAR(16777216),
+	""vehicle_model"" NUMBER(38,0),
+	""make_model_combined"" VARCHAR(16777216),
+	""make_model_combined_name"" VARCHAR(16777216),
+	""body_type"" NUMBER(38,0),
+	""body_type_name"" VARCHAR(16777216),
+	""vehicle_model_year"" NUMBER(38,0),
+	""vehicle_model_year_name"" VARCHAR(16777216),
+	""vehicle_identification_number_vin"" VARCHAR(16777216),
+	""vehicle_identification_number_vin_name"" VARCHAR(16777216),
+	""vin_character_1"" VARCHAR(16777216),
+	""vin_character_2"" VARCHAR(16777216),
+	""vin_character_3"" VARCHAR(16777216),
+	""vin_character_4"" VARCHAR(16777216),
+	""vin_character_5"" VARCHAR(16777216),
+	""vin_character_6"" VARCHAR(16777216),
+	""vin_character_7"" VARCHAR(16777216),
+	""vin_character_8"" VARCHAR(16777216),
+	""vin_character_9"" VARCHAR(16777216),
+	""vin_character_10"" VARCHAR(16777216),
+	""vin_character_11"" VARCHAR(16777216),
+	""vin_character_12"" VARCHAR(16777216),
+	""vehicle_trailing"" NUMBER(38,0),
+	""vehicle_trailing_name"" VARCHAR(16777216),
+	""mcid_issuing_authority"" NUMBER(38,0),
+	""mcid_issuing_authority_name"" VARCHAR(16777216),
+	""mcid_identification_number"" VARCHAR(16777216),
+	""mcid_identification_number_name"" VARCHAR(16777216),
+	""motor_carrier_identification_number"" VARCHAR(16777216),
+	""motor_carrier_identification_number_name"" VARCHAR(16777216),
+	""gross_vehicle_weight_rating"" NUMBER(38,0),
+	""gross_vehicle_weight_rating_name"" VARCHAR(16777216),
+	""vehicle_configuration"" NUMBER(38,0),
+	""vehicle_configuration_name"" VARCHAR(16777216),
+	""cargo_body_type"" NUMBER(38,0),
+	""cargo_body_type_name"" VARCHAR(16777216),
+	""hazardous_material_involvement"" NUMBER(38,0),
+	""hazardous_material_involvement_name"" VARCHAR(16777216),
+	""hazardous_material_placard"" NUMBER(38,0),
+	""hazardous_material_placard_name"" VARCHAR(16777216),
+	""hazardous_material_identification_number"" NUMBER(38,0),
+	""hazardous_material_identification_number_name"" VARCHAR(16777216),
+	""hazardous_material_class_number"" NUMBER(38,0),
+	""hazardous_material_class_number_name"" VARCHAR(16777216),
+	""release_of_hazardous_material_from_the_cargo_compartment"" NUMBER(38,0),
+	""release_of_hazardous_material_from_the_cargo_compartment_name"" VARCHAR(16777216),
+	""bus_use"" NUMBER(38,0),
+	""bus_use_name"" VARCHAR(16777216),
+	""special_use"" NUMBER(38,0),
+	""special_use_name"" VARCHAR(16777216),
+	""emergency_motor_vehicle_use"" NUMBER(38,0),
+	""emergency_motor_vehicle_use_name"" VARCHAR(16777216),
+	""underride_override"" NUMBER(38,0),
+	""underride_override_name"" VARCHAR(16777216),
+	""initial_contact_point"" NUMBER(38,0),
+	""initial_contact_point_name"" VARCHAR(16777216),
+	""extent_of_damage"" NUMBER(38,0),
+	""extent_of_damage_name"" VARCHAR(16777216),
+	""vehicle_removal"" NUMBER(38,0),
+	""vehicle_removal_name"" VARCHAR(16777216),
+	""most_harmful_event"" NUMBER(38,0),
+	""most_harmful_event_name"" VARCHAR(16777216),
+	""related_factors_vehicle_level1"" NUMBER(38,0),
+	""related_factors_vehicle_level1_name"" VARCHAR(16777216),
+	""related_factors_vehicle_level2"" NUMBER(38,0),
+	""related_factors_vehicle_level2_name"" VARCHAR(16777216),
+	""fire_occurrence"" NUMBER(38,0),
+	""fire_occurrence_name"" VARCHAR(16777216),
+	""fatalities_in_vehicle"" NUMBER(38,0),
+	""ptrlr1vin"" VARCHAR(16777216),
+	""ptrlr1vinname"" VARCHAR(16777216),
+	""ptrlr2vin"" VARCHAR(16777216),
+	""ptrlr2vinname"" VARCHAR(16777216),
+	""ptrlr3vin"" VARCHAR(16777216),
+	""ptrlr3vinname"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['PARKWORK_2018', 'PARKWORK_2019', 'PARKWORK_2015', 'PARKWORK_2016', 'PARKWORK_2017', 'PARKWORK_2020']
+,6
+table_name,SAFETYEQ_2015
+description,
+DDL,"create or replace TABLE SAFETYEQ_2015 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""person_number"" NUMBER(38,0),
+	""non_motorist_safety_equipment_use"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['SAFETYEQ_2015', 'SAFETYEQ_2017', 'SAFETYEQ_2018', 'SAFETYEQ_2019', 'SAFETYEQ_2016', 'SAFETYEQ_2020']
+,7
+table_name,VEVENT_2015
+description,
+DDL,"create or replace TABLE VEVENT_2015 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""event_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""vehicle_event_number"" NUMBER(38,0),
+	""vehicle_number_this_vehicle"" NUMBER(38,0),
+	""area_of_impact_this_vehicle"" NUMBER(38,0),
+	""area_of_impact_this_vehicle_name"" VARCHAR(16777216),
+	""sequence_of_events"" NUMBER(38,0),
+	""sequence_of_events_name"" VARCHAR(16777216),
+	""vehicle_number_other_vehicle"" NUMBER(38,0),
+	""area_of_impact_other_vehicle"" NUMBER(38,0),
+	""area_of_impact_other_vehicle_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['VEVENT_2015', 'VEVENT_2019', 'VEVENT_2017', 'VEVENT_2016', 'VEVENT_2020', 'VEVENT_2018']
+,8
+table_name,DAMAGE_2017
+description,
+DDL,"create or replace TABLE DAMAGE_2017 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""damaged_areas"" NUMBER(38,0),
+	""damaged_areas_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['DAMAGE_2017', 'DAMAGE_2020', 'DAMAGE_2015', 'DAMAGE_2018', 'DAMAGE_2019', 'DAMAGE_2016']
+,9
+table_name,FACTOR_2020
+description,
+DDL,"create or replace TABLE FACTOR_2020 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""contributing_circumstances_motor_vehicle"" NUMBER(38,0),
+	""contributing_circumstances_motor_vehicle_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['FACTOR_2020', 'FACTOR_2019', 'FACTOR_2017', 'FACTOR_2015', 'FACTOR_2018', 'FACTOR_2016']
+,10
+table_name,NMCRASH_2020
+description,
+DDL,"create or replace TABLE NMCRASH_2020 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""person_number"" NUMBER(38,0),
+	""non_motorist_contributing_circumstances"" NUMBER(38,0),
+	""non_motorist_contributing_circumstances_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['NMCRASH_2020', 'NMCRASH_2017', 'NMCRASH_2019', 'NMCRASH_2015', 'NMCRASH_2018', 'NMCRASH_2016']
+,11
+table_name,VINDECODE_2016
+description,
+DDL,"create or replace TABLE VINDECODE_2016 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""vehicle_make"" VARCHAR(16777216),
+	""marketing_year"" NUMBER(38,0),
+	""vehicle_type_code"" VARCHAR(16777216),
+	""vehicle_type"" VARCHAR(16777216),
+	""make_name"" VARCHAR(16777216),
+	""model_code"" VARCHAR(16777216),
+	""vehicle_trim"" VARCHAR(16777216),
+	""vehicle_trim_1"" VARCHAR(16777216),
+	""vehicle_trim_2"" VARCHAR(16777216),
+	""vehicle_trim_3"" VARCHAR(16777216),
+	""vehicle_trim_4"" VARCHAR(16777216),
+	""body_style_code"" VARCHAR(16777216),
+	""body_style"" VARCHAR(16777216),
+	""num_of_doors"" NUMBER(38,0),
+	""number_of_wheels"" NUMBER(38,0),
+	""num_of_wheels_by_power_train"" NUMBER(38,0),
+	""vehicle_manufacturer_code"" VARCHAR(16777216),
+	""vehicle_manufacturer_name"" VARCHAR(16777216),
+	""displacement_cid"" NUMBER(38,0),
+	""displacement_cc"" NUMBER(38,0),
+	""cylinder_count_code"" VARCHAR(16777216),
+	""cycle_count"" NUMBER(38,0),
+	""fuel_code"" VARCHAR(16777216),
+	""fuel"" VARCHAR(16777216),
+	""type_of_fuel_code"" VARCHAR(16777216),
+	""type_of_fuel"" VARCHAR(16777216),
+	""carburetion_types_code"" VARCHAR(16777216),
+	""carburetion_types"" VARCHAR(16777216),
+	""num_of_barrels"" VARCHAR(16777216),
+	""gross_vehicle_weights_range_code"" NUMBER(38,0),
+	""gross_vehicle_weights_range"" VARCHAR(16777216),
+	""distance_between_axles_for_base_model"" FLOAT,
+	""distance_between_axles_for_particular_series"" VARCHAR(16777216),
+	""front_tire"" NUMBER(38,0),
+	""front_tire_pressure"" NUMBER(38,0),
+	""front_tire_size_code"" VARCHAR(16777216),
+	""front_tire_size"" VARCHAR(16777216),
+	""rear_tire"" NUMBER(38,0),
+	""rear_tire_pressure"" NUMBER(38,0),
+	""rear_tire_size_code"" VARCHAR(16777216),
+	""rear_tire_size"" VARCHAR(16777216),
+	""tonnage_rating"" VARCHAR(16777216),
+	""shipping_weight"" NUMBER(38,0),
+	""base_price"" VARCHAR(16777216),
+	""drive_type_1"" VARCHAR(16777216),
+	""drive_type_2"" VARCHAR(16777216),
+	""country_sold_code"" VARCHAR(16777216),
+	""country_sold"" VARCHAR(16777216),
+	""brakes_abs_code"" VARCHAR(16777216),
+	""brakes_abs_description"" VARCHAR(16777216),
+	""security_type_code"" VARCHAR(16777216),
+	""security_type"" VARCHAR(16777216),
+	""daytime_running_lights_1"" VARCHAR(16777216),
+	""daytime_running_lights_2"" VARCHAR(16777216),
+	""restraint_type_code"" VARCHAR(16777216),
+	""restraint_type"" VARCHAR(16777216),
+	""cab_configuration_code"" VARCHAR(16777216),
+	""cab_configuration"" VARCHAR(16777216),
+	""axle_type_front_axle_code"" VARCHAR(16777216),
+	""axle_type_front_axle"" VARCHAR(16777216),
+	""axle_type_rear_axle_code"" VARCHAR(16777216),
+	""axle_type_rear_axle"" VARCHAR(16777216),
+	""brake_type_code"" VARCHAR(16777216),
+	""brake_type"" VARCHAR(16777216),
+	""engine_manufacture_code"" VARCHAR(16777216),
+	""engine_manufacture"" VARCHAR(16777216),
+	""engine_model"" VARCHAR(16777216),
+	""duty_type_code"" VARCHAR(16777216),
+	""duty_type"" VARCHAR(16777216),
+	""bed_length_code"" VARCHAR(16777216),
+	""bed_length"" VARCHAR(16777216),
+	""standard_segmentation_code"" VARCHAR(16777216),
+	""standard_segmentation"" VARCHAR(16777216),
+	""plant_code"" VARCHAR(16777216),
+	""plant_country"" VARCHAR(16777216),
+	""plant_city"" VARCHAR(16777216),
+	""plant_country_code"" VARCHAR(16777216),
+	""plant_state_code"" VARCHAR(16777216),
+	""plant_state"" VARCHAR(16777216),
+	""origin_code"" VARCHAR(16777216),
+	""origin"" VARCHAR(16777216),
+	""displacement_liters"" FLOAT,
+	""block_type"" VARCHAR(16777216),
+	""head_configuration_1"" VARCHAR(16777216),
+	""head_configuration_2"" VARCHAR(16777216),
+	""valves_per_cylinder"" NUMBER(38,0),
+	""valves_total"" NUMBER(38,0),
+	""engine_code"" VARCHAR(16777216),
+	""is_incomplete"" VARCHAR(16777216),
+	""battery_type_code"" VARCHAR(16777216),
+	""battery_type"" VARCHAR(16777216),
+	""total_battery_power"" VARCHAR(16777216),
+	""battery_voltage"" VARCHAR(16777216),
+	""supercharge_flag"" VARCHAR(16777216),
+	""supercharge_flag_description"" VARCHAR(16777216),
+	""turbocharger_flag"" VARCHAR(16777216),
+	""turbocharger_flag_description"" VARCHAR(16777216),
+	""variable_valve_timing_flag"" VARCHAR(16777216),
+	""motorcycles_body_style_code"" VARCHAR(16777216),
+	""motorcycles_body_style"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['VINDECODE_2016', 'VINDECODE_2015']
+,12
+table_name,VIOLATN_2015
+description,
+DDL,"create or replace TABLE VIOLATN_2015 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""violations_charged"" VARCHAR(16777216),
+	""violations_charged_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['VIOLATN_2015', 'VIOLATN_2017', 'VIOLATN_2018', 'VIOLATN_2016', 'VIOLATN_2019', 'VIOLATN_2020']
+,13
+table_name,VISION_2018
+description,
+DDL,"create or replace TABLE VISION_2018 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""drivers_vision_obscured_by"" NUMBER(38,0),
+	""drivers_vision_obscured_by_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['VISION_2018', 'VISION_2019', 'VISION_2020', 'VISION_2016', 'VISION_2017', 'VISION_2015']
+,14
+table_name,VSOE_2015
+description,
+DDL,"create or replace TABLE VSOE_2015 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""vehicle_event_number"" NUMBER(38,0),
+	""sequence_of_events"" NUMBER(38,0),
+	""sequence_of_events_name"" VARCHAR(16777216),
+	""area_of_Impact_associated_with_the_event"" NUMBER(38,0),
+	""area_of_Impact_associated_with_the_event_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['VSOE_2015', 'VSOE_2020', 'VSOE_2016', 'VSOE_2019', 'VSOE_2018', 'VSOE_2017']
+,15
+table_name,MANEUVER_2016
+description,
+DDL,"create or replace TABLE MANEUVER_2016 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""driver_maneuvered_to_avoid"" NUMBER(38,0),
+	""driver_maneuvered_to_avoid_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['MANEUVER_2016', 'MANEUVER_2015', 'MANEUVER_2018', 'MANEUVER_2020', 'MANEUVER_2017', 'MANEUVER_2019']
+,16
+table_name,PERSON_2016
+description,
+DDL,"create or replace TABLE PERSON_2016 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""number_of_motor_vehicles_in_transport_mvit"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""person_number"" NUMBER(38,0),
+	""number_of_motor_vehicle_striking_non_motorist"" NUMBER(38,0),
+	""county"" NUMBER(38,0),
+	""day_of_crash"" NUMBER(38,0),
+	""month_of_crash"" NUMBER(38,0),
+	""hour_of_crash"" NUMBER(38,0),
+	""minute_of_crash"" NUMBER(38,0),
+	""land_use"" VARCHAR(16777216),
+	""land_use_name"" VARCHAR(16777216),
+	""functional_system"" VARCHAR(16777216),
+	""functional_system_name"" VARCHAR(16777216),
+	""first_harmful_event"" NUMBER(38,0),
+	""first_harmful_event_name"" VARCHAR(16777216),
+	""manner_of_collision"" NUMBER(38,0),
+	""manner_of_collision_name"" VARCHAR(16777216),
+	""school_bus_related"" VARCHAR(16777216),
+	""vehicle_make"" NUMBER(38,0),
+	""vehicle_make_name"" VARCHAR(16777216),
+	""make_model_combined"" NUMBER(38,0),
+	""body_type"" NUMBER(38,0),
+	""body_type_name"" VARCHAR(16777216),
+	""vehicle_trailing"" VARCHAR(16777216),
+	""special_use"" NUMBER(38,0),
+	""special_use_name"" VARCHAR(16777216),
+	""emergency_motor_vehicle_use"" VARCHAR(16777216),
+	""rollover"" VARCHAR(16777216),
+	""initial_contact_point"" NUMBER(38,0),
+	""initial_contact_point_name"" VARCHAR(16777216),
+	""fire_occurrence"" VARCHAR(16777216),
+	""age"" NUMBER(38,0),
+	""sex"" VARCHAR(16777216),
+	""person_type"" NUMBER(38,0),
+	""person_type_name"" VARCHAR(16777216),
+	""injury_severity"" NUMBER(38,0),
+	""injury_severity_name"" VARCHAR(16777216),
+	""seating_position"" NUMBER(38,0),
+	""seating_position_name"" VARCHAR(16777216),
+	""restraint_system_helmet_use"" NUMBER(38,0),
+	""restraint_system_helmet_use_name"" VARCHAR(16777216),
+	""indication_of_misuse_of_restraint_system_helmet"" VARCHAR(16777216),
+	""air_bag_deployed"" NUMBER(38,0),
+	""air_bag_deployed_name"" VARCHAR(16777216),
+	""ejection"" NUMBER(38,0),
+	""ejection_name"" VARCHAR(16777216),
+	""ejection_path"" NUMBER(38,0),
+	""ejection_path_name"" VARCHAR(16777216),
+	""extrication"" VARCHAR(16777216),
+	""police_reported_alcohol_involvement"" VARCHAR(16777216),
+	""method_of_alcohol_determination_by_police"" VARCHAR(16777216),
+	""alcohol_test_status1"" VARCHAR(16777216),
+	""alcohol_test_status2"" VARCHAR(16777216),
+	""alcohol_test_status3"" VARCHAR(16777216),
+	""alcohol_test_status3_name"" VARCHAR(16777216),
+	""police_reported_drug_involvement"" VARCHAR(16777216),
+	""method_of_drug_determination_by_police"" VARCHAR(16777216),
+	""drug_test_status"" VARCHAR(16777216),
+	""drug_test_type1"" VARCHAR(16777216),
+	""drug_test_type2"" VARCHAR(16777216),
+	""drug_test_type3"" VARCHAR(16777216),
+	""drug_test_type4"" NUMBER(38,0),
+	""drug_test_type4_name"" VARCHAR(16777216),
+	""drug_test_type5"" NUMBER(38,0),
+	""drug_test_type5_name"" VARCHAR(16777216),
+	""drug_test_type6"" NUMBER(38,0),
+	""drug_test_type6_name"" VARCHAR(16777216),
+	""transported_to_first_treatment_facility"" NUMBER(38,0),
+	""transported_to_first_treatment_facility_name"" VARCHAR(16777216),
+	""died_at_scene_en_route"" VARCHAR(16777216),
+	""day_of_death"" NUMBER(38,0),
+	""month_of_death"" NUMBER(38,0),
+	""year_of_death"" NUMBER(38,0),
+	""hour_of_death"" NUMBER(38,0),
+	""minute_of_death"" NUMBER(38,0),
+	""death_time"" NUMBER(38,0),
+	""lag_hours"" NUMBER(38,0),
+	""lag_minutes"" NUMBER(38,0),
+	""related_factors_person_level1"" NUMBER(38,0),
+	""related_factors_person_level2"" NUMBER(38,0),
+	""related_factors_person_level3"" NUMBER(38,0),
+	""fatal_injury_at_work"" VARCHAR(16777216),
+	""hispanic_origin"" NUMBER(38,0),
+	""hispanic_origin_name"" VARCHAR(16777216),
+	""race"" NUMBER(38,0),
+	""race_name"" VARCHAR(16777216),
+	""non_motorist_location_at_time_of_crash"" NUMBER(38,0),
+	""non_motorist_location_at_time_of_crash_name"" VARCHAR(16777216),
+	""timestamp_of_crash"" NUMBER(38,0)
+);"
+
+Some other tables have the similar structure: ['PERSON_2016', 'PERSON_2015']
+,17
+table_name,NMIMPAIR_2019
+description,
+DDL,"create or replace TABLE NMIMPAIR_2019 (
+	""state_number"" NUMBER(38,0),
+	""state_name"" VARCHAR(16777216),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""person_number"" NUMBER(38,0),
+	""condition_impairment_at_time_of_crash_non_motorist"" NUMBER(38,0),
+	""condition_impairment_at_time_of_crash_non_motorist_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['NMIMPAIR_2019', 'NMIMPAIR_2017', 'NMIMPAIR_2020', 'NMIMPAIR_2015', 'NMIMPAIR_2018', 'NMIMPAIR_2016']
+,18
+table_name,PBTYPE_2015
+description,
+DDL,"create or replace TABLE PBTYPE_2015 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""person_number"" NUMBER(38,0),
+	""person_type"" NUMBER(38,0),
+	""person_type_name"" VARCHAR(16777216),
+	""age"" NUMBER(38,0),
+	""sex"" VARCHAR(16777216),
+	""marked_crosswalk_present"" VARCHAR(16777216),
+	""sidewalk_present"" VARCHAR(16777216),
+	""school_zone"" VARCHAR(16777216),
+	""crash_type_pedestrian"" NUMBER(38,0),
+	""crash_type_pedestrian_name"" VARCHAR(16777216),
+	""crash_type_bicycle"" NUMBER(38,0),
+	""crash_type_bicycle_name"" VARCHAR(16777216),
+	""crash_location_pedestrian"" VARCHAR(16777216),
+	""crash_location_bicycle"" VARCHAR(16777216),
+	""pedestrian_position"" VARCHAR(16777216),
+	""bicyclist_position"" VARCHAR(16777216),
+	""pedestrian_initial_direction_of_travel"" VARCHAR(16777216),
+	""bicyclist_initial_direction_of_travel"" VARCHAR(16777216),
+	""motorist_initial_direction_of_travel"" VARCHAR(16777216),
+	""motorist_maneuver"" VARCHAR(16777216),
+	""intersection_leg"" VARCHAR(16777216),
+	""pedestrian_scenario"" VARCHAR(16777216),
+	""pedestrian_scenario_name"" VARCHAR(16777216),
+	""crash_group_pedestrian"" NUMBER(38,0),
+	""crash_group_pedestrian_name"" VARCHAR(16777216),
+	""crash_group_bicycle"" NUMBER(38,0),
+	""crash_group_bicycle_name"" VARCHAR(16777216)
+);"
+
+Some other tables have the similar structure: ['PBTYPE_2015', 'PBTYPE_2020', 'PBTYPE_2017', 'PBTYPE_2019', 'PBTYPE_2016', 'PBTYPE_2018']
+,19
+table_name,VEHICLE_2015
+description,
+DDL,"create or replace TABLE VEHICLE_2015 (
+	""state_number"" NUMBER(38,0),
+	""consecutive_number"" NUMBER(38,0),
+	""vehicle_number"" NUMBER(38,0),
+	""number_of_motor_vehicles_in_transport_mvit"" NUMBER(38,0),
+	""number_of_occupants"" NUMBER(38,0),
+	""day_of_crash"" NUMBER(38,0),
+	""month_of_crash"" NUMBER(38,0),
+	""hour_of_crash"" NUMBER(38,0),
+	""minute_of_crash"" NUMBER(38,0),
+	""first_harmful_event"" NUMBER(38,0),
+	""first_harmful_event_name"" VARCHAR(16777216),
+	""manner_of_collision"" NUMBER(38,0),
+	""unit_type"" VARCHAR(16777216),
+	""hit_and_run"" VARCHAR(16777216),
+	""registration_state"" NUMBER(38,0),
+	""registration_state_name"" VARCHAR(16777216),
+	""registered_vehicle_owner"" NUMBER(38,0),
+	""registered_vehicle_owner_name"" VARCHAR(16777216),
+	""vehicle_make"" NUMBER(38,0),
+	""vehicle_make_name"" VARCHAR(16777216),
+	""vehicle_model"" NUMBER(38,0),
+	""make_model_combined"" NUMBER(38,0),
+	""body_type"" NUMBER(38,0),
+	""body_type_name"" VARCHAR(16777216),
+	""vehicle_model_year"" NUMBER(38,0),
+	""vehicle_identification_number_vin"" VARCHAR(16777216),
+	""vin_character_1"" VARCHAR(16777216),
+	""vin_character_2"" VARCHAR(16777216),
+	""vin_character_3"" VARCHAR(16777216),
+	""vin_character_4"" VARCHAR(16777216),
+	""vin_character_5"" VARCHAR(16777216),
+	""vin_character_6"" VARCHAR(16777216),
+	""vin_character_7"" VARCHAR(16777216),
+	""vin_character_8"" VARCHAR(16777216),
+	""vin_character_9"" VARCHAR(16777216),
+	""vin_character_10"" VARCHAR(16777216),
+	""vin_character_11"" VARCHAR(16777216),
+	""vin_character_12"" VARCHAR(16777216),
+	""vehicle_trailing"" VARCHAR(16777216),
+	""jackknife"" VARCHAR(16777216),
+	""mcid_issuing_authority"" NUMBER(38,0),
+	""mcid_identification_number"" VARCHAR(16777216),
+	""motor_carrier_identification_number_mcid"" VARCHAR(16777216),
+	""gross_vehicle_weight_rating"" VARCHAR(16777216),
+	""vehicle_configuration"" NUMBER(38,0),
+	""vehicle_configuration_name"" VARCHAR(16777216),
+	""cargo_body_type"" NUMBER(38,0),
+	""cargo_body_type_name"" VARCHAR(16777216),
+	""hazardous_material_involvement"" VARCHAR(16777216),
+	""hazardous_material_placard"" NUMBER(38,0),
+	""hazardous_material_identification_number"" NUMBER(38,0),
+	""hazardous_material_class_number"" NUMBER(38,0),
+	""release_of_hazardous_material_from_the_cargo_compartment"" VARCHAR(16777216),
+	""bus_use"" VARCHAR(16777216),
+	""special_use"" NUMBER(38,0),
+	""special_use_name"" VARCHAR(16777216),
+	""emergency_motor_vehicle_use"" VARCHAR(16777216),
+	""travel_speed"" NUMBER(38,0),
+	""underride_override"" NUMBER(38,0),
+	""rollover"" VARCHAR(16777216),
+	""location_of_rollover"" VARCHAR(16777216),
+	""initial_contact_point"" NUMBER(38,0),
+	""extent_of_damage"" VARCHAR(16777216),
+	""vehicle_removal"" VARCHAR(16777216),
+	""most_harmful_event"" NUMBER(38,0),
+	""related_factors_vehicle_level_1"" NUMBER(38,0),
+	""related_factors_vehicle_level_2"" NUMBER(38,0),
+	""fire_occurrence"" VARCHAR(16777216),
+	""driver_presence"" VARCHAR(16777216),
+	""drivers_license_state"" NUMBER(38,0),
+	""drivers_zip_code"" NUMBER(38,0),
+	""non_cdl_license_status"" NUMBER(38,0),
+	""non_cdl_license_type"" VARCHAR(16777216),
+	""commercial_motor_vehicle_license_status"" NUMBER(38,0),
+	""compliance_with_cdl_endorsements"" VARCHAR(16777216),
+	""license_compliance_with_class_of_vehicle"" VARCHAR(16777216),
+	""compliance_with_license_restrictions"" NUMBER(38,0),
+	""driver_height"" NUMBER(38,0),
+	""driver_weight"" NUMBER(38,0),
+	""previous_recorded_crashes"" NUMBER(38,0),
+	""previous_recorded_suspensions_and_revocations"" NUMBER(38,0),
+	""previous_dwi_convictions"" NUMBER(38,0),
+	""previous_speeding_convictions"" NUMBER(38,0),
+	""previous_other_moving_violation_convictions"" NUMBER(38,0),
+	""month_of_first_crash_suspension_or_conviction"" NUMBER(38,0),
+	""year_of_first_crash_suspension_or_conviction"" NUMBER(38,0),
+	""month_of_last_crash_suspension_or_conviction"" NUMBER(38,0),
+	""year_of_last_crash_suspension_or_conviction"" NUMBER(38,0),
+	""speeding_related"" VARCHAR(16777216),
+	""related_factors_driver_level_1"" NUMBER(38,0),
+	""related_factors_driver_level_2"" NUMBER(38,0),
+	""related_factors_driver_level_3"" NUMBER(38,0),
+	""related_factors_driver_level_4"" NUMBER(38,0),
+	""trafficway_description"" VARCHAR(16777216),
+	""total_lanes_in_roadway"" NUMBER(38,0),
+	""speed_limit"" NUMBER(38,0),
+	""roadway_alignment"" VARCHAR(16777216),
+	""roadway_grade"" VARCHAR(16777216),
+	""roadway_surface_type"" VARCHAR(16777216),
+	""roadway_surface_condition"" NUMBER(38,0),
+	""roadway_surface_condition_name"" VARCHAR(16777216),
+	""traffic_control_device"" NUMBER(38,0),
+	""traffic_control_device_functioning"" VARCHAR(16777216),
+	""pre_event_movement_prior_to_recognition_of_critical_event"" NUMBER(38,0),
+	""critical_event_precrash"" NUMBER(38,0),
+	""critical_event_precrash_name"" VARCHAR(16777216),
+	""attempted_avoidance_maneuver"" NUMBER(38,0),
+	""attempted_avoidance_maneuver_name"" VARCHAR(16777216),
+	""pre_impact_stability"" VARCHAR(16777216),
+	""pre_impact_location"" NUMBER(38,0),
+	""crash_type"" NUMBER(38,0),
+	""crash_type_name"" VARCHAR(16777216),
+	""fatalities_in_vehicle"" NUMBER(38,0),
+	""driver_drinking"" VARCHAR(16777216),
+	""timestamp_of_crash"" NUMBER(38,0)
+);"
+
+Some other tables have the similar structure: ['VEHICLE_2015', 'VEHICLE_2016']
+External knowledge that might be helpful: 
+None
+The table structure information is ({database name: {schema name: {table name}}}): 
+{'NHTSA_TRAFFIC_FATALITIES': {'NHTSA_TRAFFIC_FATALITIES': ['ACCIDENT_2015', 'ACCIDENT_2016', 'ACCIDENT_2017', 'ACCIDENT_2018', 'ACCIDENT_2019', 'ACCIDENT_2020', 'CEVENT_2015', 'CEVENT_2016', 'CEVENT_2017', 'CEVENT_2018', 'CEVENT_2019', 'CEVENT_2020', 'DAMAGE_2015', 'DAMAGE_2016', 'DAMAGE_2017', 'DAMAGE_2018', 'DAMAGE_2019', 'DAMAGE_2020', 'DISTRACT_2015', 'DISTRACT_2016', 'DISTRACT_2017', 'DISTRACT_2018', 'DISTRACT_2019', 'DISTRACT_2020', 'DRIMPAIR_2015', 'DRIMPAIR_2016', 'DRIMPAIR_2017', 'DRIMPAIR_2018', 'DRIMPAIR_2019', 'DRIMPAIR_2020', 'FACTOR_2015', 'FACTOR_2016', 'FACTOR_2017', 'FACTOR_2018', 'FACTOR_2019', 'FACTOR_2020', 'MANEUVER_2015', 'MANEUVER_2016', 'MANEUVER_2017', 'MANEUVER_2018', 'MANEUVER_2019', 'MANEUVER_2020', 'NMCRASH_2015', 'NMCRASH_2016', 'NMCRASH_2017', 'NMCRASH_2018', 'NMCRASH_2019', 'NMCRASH_2020', 'NMIMPAIR_2015', 'NMIMPAIR_2016', 'NMIMPAIR_2017', 'NMIMPAIR_2018', 'NMIMPAIR_2019', 'NMIMPAIR_2020', 'NMPRIOR_2015', 'NMPRIOR_2016', 'NMPRIOR_2017', 'NMPRIOR_2018', 'NMPRIOR_2019', 'NMPRIOR_2020', 'PARKWORK_2015', 'PARKWORK_2016', 'PARKWORK_2017', 'PARKWORK_2018', 'PARKWORK_2019', 'PARKWORK_2020', 'PBTYPE_2015', 'PBTYPE_2016', 'PBTYPE_2017', 'PBTYPE_2018', 'PBTYPE_2019', 'PBTYPE_2020', 'PERSON_2015', 'PERSON_2016', 'SAFETYEQ_2015', 'SAFETYEQ_2016', 'SAFETYEQ_2017', 'SAFETYEQ_2018', 'SAFETYEQ_2019', 'SAFETYEQ_2020', 'VEHICLE_2015', 'VEHICLE_2016', 'VEVENT_2015', 'VEVENT_2016', 'VEVENT_2017', 'VEVENT_2018', 'VEVENT_2019', 'VEVENT_2020', 'VINDECODE_2015', 'VINDECODE_2016', 'VIOLATN_2015', 'VIOLATN_2016', 'VIOLATN_2017', 'VIOLATN_2018', 'VIOLATN_2019', 'VIOLATN_2020', 'VISION_2015', 'VISION_2016', 'VISION_2017', 'VISION_2018', 'VISION_2019', 'VISION_2020', 'VSOE_2015', 'VSOE_2016', 'VSOE_2017', 'VSOE_2018', 'VSOE_2019', 'VSOE_2020']}}
+Begin Exploring Related Columns
+To address the task, we need to identify the relevant tables, columns, and conditions that can help us calculate the differences in the number of traffic accidents between rainy and clear weather during weekends in 2016.
+
+**Relevant Table:**
+
+- **`ACCIDENT_2016`**
+
+**Relevant Columns and Potential Usage:**
+
+1. **`"state_name"`**: Identifies the state where the accident occurred.
+2. **`"day_of_week"`**: Numeric code representing the day of the week; used to determine if the accident occurred on a weekend.
+3. **`"atmospheric_conditions_1_name"`**: Describes the primary atmospheric condition (weather) during the accident; used to identify "Rainy" and "Clear" conditions.
+4. **`"atmospheric_conditions_2_name"`**: Describes any secondary atmospheric condition; may provide additional weather information.
+5. **`"year_of_crash"`**: Ensures we're using data from the correct year (2016).
+6. **`"number_of_fatalities"`**: Represents the number of fatalities in the accident; each record can be considered as one accident occurrence.
+
+**Conditions That May Be Used:**
+
+- **Weekend Filter**: Accidents where `"day_of_week"` corresponds to Saturday or Sunday.
+- **Weather Conditions**: Accidents where `"atmospheric_conditions_1_name"` is "Rainy" or "Clear".
+- **Year Filter**: Accidents that occurred in 2016.
+
+**SQL Queries to Explore the Data:**
+
+1. **Get distinct values of `"day_of_week"` to identify weekend codes:**
+
+   ```sql
+   SELECT DISTINCT "day_of_week"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+   ```
+
+2. **Retrieve mapping between `"day_of_week"` and actual days (if available):**
+
+   ```sql
+   SELECT DISTINCT "day_of_week", "day_of_week_name"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+   ```
+
+   *Note: If `"day_of_week_name"` is not available, we might refer to external resources to map numeric codes to actual days.*
+
+3. **Get distinct values of `"atmospheric_conditions_1_name"`:**
+
+   ```sql
+   SELECT DISTINCT "atmospheric_conditions_1_name"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+   ```
+
+4. **Get mapping between atmospheric condition codes and names:**
+
+   ```sql
+   SELECT DISTINCT "atmospheric_conditions_1", "atmospheric_conditions_1_name"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+   ```
+
+5. **Count accidents per `"state_name"`:**
+
+   ```sql
+   SELECT "state_name", COUNT(*) AS "accident_count"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   GROUP BY "state_name"
+   ORDER BY "accident_count" DESC
+   LIMIT 1000;
+   ```
+
+6. **Count accidents per `"day_of_week"` to understand daily distribution:**
+
+   ```sql
+   SELECT "day_of_week", COUNT(*) AS "accident_count"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   GROUP BY "day_of_week"
+   ORDER BY "day_of_week"
+   LIMIT 1000;
+   ```
+
+7. **Count total accidents that occurred on weekends (assuming codes for Saturday and Sunday):**
+
+   ```sql
+   SELECT COUNT(*) AS "weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7);
+   ```
+
+8. **Count weekend accidents per state:**
+
+   ```sql
+   SELECT "state_name", COUNT(*) AS "weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7)
+   GROUP BY "state_name"
+   ORDER BY "weekend_accidents" DESC
+   LIMIT 1000;
+   ```
+
+9. **Count weekend accidents with "Rainy" conditions per state:**
+
+   ```sql
+   SELECT "state_name", COUNT(*) AS "rainy_weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7)
+     AND LOWER("atmospheric_conditions_1_name") LIKE '%rain%'
+   GROUP BY "state_name"
+   ORDER BY "rainy_weekend_accidents" DESC
+   LIMIT 1000;
+   ```
+
+10. **Count weekend accidents with "Clear" conditions per state:**
+
+    ```sql
+    SELECT "state_name", COUNT(*) AS "clear_weekend_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+      AND LOWER("atmospheric_conditions_1_name") LIKE '%clear%'
+    GROUP BY "state_name"
+    ORDER BY "clear_weekend_accidents" DESC
+    LIMIT 1000;
+    ```
+
+11. **Retrieve both "Rainy" and "Clear" weekend accident counts per state:**
+
+    ```sql
+    SELECT "state_name",
+      SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) AS "rainy_accidents",
+      SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END) AS "clear_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    GROUP BY "state_name"
+    LIMIT 1000;
+    ```
+
+12. **Compute the absolute difference between "Rainy" and "Clear" weekend accidents per state:**
+
+    ```sql
+    SELECT "state_name",
+      ABS(
+        SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+        SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+      ) AS "difference_in_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    GROUP BY "state_name"
+    ORDER BY "difference_in_accidents" DESC
+    LIMIT 1000;
+    ```
+
+13. **List all atmospheric conditions reported during weekends:**
+
+    ```sql
+    SELECT DISTINCT "atmospheric_conditions_1_name"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    LIMIT 1000;
+    ```
+
+14. **Verify the `year_of_crash` to confirm all data is from 2016:**
+
+    ```sql
+    SELECT DISTINCT "year_of_crash"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    LIMIT 1000;
+    ```
+
+15. **Count total weekend accidents with "Rainy" conditions:**
+
+    ```sql
+    SELECT COUNT(*) AS "total_rainy_weekend_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+      AND LOWER("atmospheric_conditions_1_name") LIKE '%rain%'
+    LIMIT 1000;
+    ```
+
+These queries help us understand the data and extract the necessary information to determine the top 3 states with the largest differences in the number of traffic accidents between rainy and clear weather during weekends in 2016.Query:
+SELECT DISTINCT "day_of_week"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+Answer:
+day_of_week
+7
+6
+4
+1
+5
+2
+3
+Query:
+SELECT
+  "state_name",
+  ABS(
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+  ) AS "difference_in_accidents"
+FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+WHERE "day_of_week" IN (1, 7)
+GROUP BY "state_name"
+ORDER BY "difference_in_accidents" DESC
+LIMIT 3;
+Answer:
+state_name,difference_in_accidents
+California,924
+Texas,827
+Florida,750
+Query:
+SELECT DISTINCT "atmospheric_conditions_1_name"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+Answer:
+atmospheric_conditions_1_name
+"Sleet, Hail"
+Severe Crosswinds
+Other
+"Blowing Sand, Soil, Dirt"
+Blowing Snow
+Freezing Rain or Drizzle
+Unknown
+Clear
+Rain
+"Fog, Smog, Smoke"
+Cloudy
+Snow
+Not Reported
+Query:
+SELECT DISTINCT "atmospheric_conditions_1", "atmospheric_conditions_1_name"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   LIMIT 1000;
+Answer:
+atmospheric_conditions_1,atmospheric_conditions_1_name
+3,"Sleet, Hail"
+6,Severe Crosswinds
+8,Other
+7,"Blowing Sand, Soil, Dirt"
+11,Blowing Snow
+12,Freezing Rain or Drizzle
+99,Unknown
+1,Clear
+2,Rain
+5,"Fog, Smog, Smoke"
+10,Cloudy
+98,Not Reported
+4,Snow
+Query:
+SELECT "state_name", COUNT(*) AS "accident_count"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   GROUP BY "state_name"
+   ORDER BY "accident_count" DESC
+   LIMIT 1000;
+Answer:
+state_name,accident_count
+California,3540
+Texas,3427
+Florida,2935
+Georgia,1424
+North Carolina,1348
+Pennsylvania,1088
+Ohio,1053
+Illinois,1000
+Michigan,981
+New York,981
+Alabama,979
+Tennessee,962
+South Carolina,941
+Missouri,872
+Arizona,856
+Indiana,776
+Kentucky,763
+Virginia,722
+Louisiana,704
+Oklahoma,628
+Mississippi,625
+New Jersey,570
+Colorado,558
+Wisconsin,544
+Washington,504
+Arkansas,504
+Maryland,484
+Oregon,448
+Kansas,381
+New Mexico,361
+Minnesota,357
+Massachusetts,356
+Iowa,355
+Nevada,304
+Connecticut,292
+Utah,259
+West Virginia,250
+Idaho,232
+Nebraska,194
+Montana,171
+Maine,150
+New Hampshire,130
+Delaware,116
+Hawaii,109
+South Dakota,103
+North Dakota,102
+Wyoming,100
+Alaska,78
+Vermont,57
+Rhode Island,48
+District of Columbia,26
+Query:
+SELECT "day_of_week", COUNT(*) AS "accident_count"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   GROUP BY "day_of_week"
+   ORDER BY "day_of_week"
+   LIMIT 1000;
+Answer:
+day_of_week,accident_count
+1,5353
+2,4537
+3,4157
+4,4439
+5,4706
+6,5397
+7,6159
+Query:
+SELECT COUNT(*) AS "weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7);
+Answer:
+weekend_accidents
+11512
+Query:
+SELECT "state_name", COUNT(*) AS "weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7)
+   GROUP BY "state_name"
+   ORDER BY "weekend_accidents" DESC
+   LIMIT 1000;
+Answer:
+state_name,weekend_accidents
+California,1210
+Texas,1202
+Florida,1002
+Georgia,467
+North Carolina,425
+Illinois,368
+Ohio,347
+Tennessee,341
+Alabama,329
+Pennsylvania,329
+South Carolina,325
+Michigan,321
+New York,303
+Missouri,287
+Arizona,273
+Virginia,249
+Louisiana,244
+Indiana,244
+Kentucky,235
+Mississippi,213
+Oklahoma,206
+Wisconsin,192
+New Jersey,187
+Washington,170
+Colorado,168
+Maryland,165
+Arkansas,151
+Oregon,135
+Kansas,119
+Massachusetts,116
+Iowa,115
+New Mexico,111
+Minnesota,109
+Nevada,98
+Connecticut,90
+Utah,78
+Nebraska,69
+West Virginia,68
+Montana,65
+Idaho,61
+Maine,48
+Hawaii,44
+North Dakota,39
+Delaware,38
+South Dakota,35
+New Hampshire,34
+Wyoming,29
+Alaska,23
+Vermont,17
+Rhode Island,10
+District of Columbia,8
+Query:
+SELECT "state_name", COUNT(*) AS "rainy_weekend_accidents"
+   FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+   WHERE "day_of_week" IN (1, 7)
+     AND LOWER("atmospheric_conditions_1_name") LIKE '%rain%'
+   GROUP BY "state_name"
+   ORDER BY "rainy_weekend_accidents" DESC
+   LIMIT 1000;
+Answer:
+state_name,rainy_weekend_accidents
+Texas,68
+California,55
+Florida,49
+North Carolina,36
+Tennessee,29
+Kentucky,27
+Alabama,26
+Georgia,25
+Washington,24
+New York,23
+Indiana,21
+Michigan,21
+Pennsylvania,20
+Ohio,19
+Virginia,18
+South Carolina,18
+Illinois,17
+Oregon,16
+New Jersey,15
+Louisiana,14
+Mississippi,12
+Oklahoma,12
+Arkansas,11
+Maryland,10
+Massachusetts,9
+West Virginia,9
+Missouri,8
+Arizona,6
+Minnesota,6
+Hawaii,5
+Nebraska,5
+Alaska,5
+Kansas,5
+Wisconsin,4
+Maine,4
+Iowa,4
+New Mexico,3
+Montana,3
+Utah,3
+Nevada,2
+Connecticut,2
+Delaware,2
+Colorado,2
+Wyoming,2
+Idaho,2
+New Hampshire,1
+Query:
+SELECT "state_name", COUNT(*) AS "clear_weekend_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+      AND LOWER("atmospheric_conditions_1_name") LIKE '%clear%'
+    GROUP BY "state_name"
+    ORDER BY "clear_weekend_accidents" DESC
+    LIMIT 1000;
+Answer:
+state_name,clear_weekend_accidents
+California,979
+Texas,895
+Florida,799
+Georgia,360
+North Carolina,328
+Illinois,326
+South Carolina,285
+Pennsylvania,282
+Tennessee,275
+Alabama,251
+Arizona,226
+Ohio,219
+Missouri,218
+Michigan,210
+Louisiana,199
+New York,196
+Indiana,170
+Mississippi,170
+Kentucky,161
+New Jersey,158
+Oklahoma,131
+Maryland,127
+Wisconsin,121
+Arkansas,116
+Washington,113
+New Mexico,96
+Massachusetts,81
+Nevada,81
+Connecticut,80
+Iowa,79
+Oregon,76
+Minnesota,74
+Nebraska,52
+Utah,52
+West Virginia,50
+Idaho,42
+Montana,38
+Maine,36
+Hawaii,34
+Kansas,33
+South Dakota,32
+North Dakota,31
+Delaware,30
+Wyoming,23
+New Hampshire,23
+Colorado,16
+Vermont,11
+Alaska,11
+Rhode Island,8
+District of Columbia,7
+Query:
+SELECT "state_name",
+      SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) AS "rainy_accidents",
+      SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END) AS "clear_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    GROUP BY "state_name"
+    LIMIT 1000;
+Answer:
+state_name,rainy_accidents,clear_accidents
+Idaho,2,42
+Maryland,10,127
+Ohio,19,219
+California,55,979
+Kansas,5,33
+Maine,4,36
+Missouri,8,218
+Arkansas,11,116
+Georgia,25,360
+North Carolina,36,328
+Montana,3,38
+Oklahoma,12,131
+Washington,24,113
+Wisconsin,4,121
+South Carolina,18,285
+Iowa,4,79
+Virginia,18,0
+South Dakota,0,32
+Arizona,6,226
+North Dakota,0,31
+District of Columbia,0,7
+Michigan,21,210
+Delaware,2,30
+New Mexico,3,96
+Tennessee,29,275
+Illinois,17,326
+Minnesota,6,74
+New Hampshire,1,23
+Vermont,0,11
+Hawaii,5,34
+Nevada,2,81
+Massachusetts,9,81
+Indiana,21,170
+Texas,68,895
+West Virginia,9,50
+Pennsylvania,20,282
+Kentucky,27,161
+New York,23,196
+Florida,49,799
+Rhode Island,0,8
+Utah,3,52
+Connecticut,2,80
+Wyoming,2,23
+Louisiana,14,199
+New Jersey,15,158
+Oregon,16,76
+Alabama,26,251
+Mississippi,12,170
+Alaska,5,11
+Colorado,2,16
+Nebraska,5,52
+Query:
+SELECT "state_name",
+      ABS(
+        SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+        SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+      ) AS "difference_in_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    GROUP BY "state_name"
+    ORDER BY "difference_in_accidents" DESC
+    LIMIT 1000;
+Answer:
+state_name,difference_in_accidents
+California,924
+Texas,827
+Florida,750
+Georgia,335
+Illinois,309
+North Carolina,292
+South Carolina,267
+Pennsylvania,262
+Tennessee,246
+Alabama,225
+Arizona,220
+Missouri,210
+Ohio,200
+Michigan,189
+Louisiana,185
+New York,173
+Mississippi,158
+Indiana,149
+New Jersey,143
+Kentucky,134
+Oklahoma,119
+Wisconsin,117
+Maryland,117
+Arkansas,105
+New Mexico,93
+Washington,89
+Nevada,79
+Connecticut,78
+Iowa,75
+Massachusetts,72
+Minnesota,68
+Oregon,60
+Utah,49
+Nebraska,47
+West Virginia,41
+Idaho,40
+Montana,35
+Maine,32
+South Dakota,32
+North Dakota,31
+Hawaii,29
+Delaware,28
+Kansas,28
+New Hampshire,22
+Wyoming,21
+Virginia,18
+Colorado,14
+Vermont,11
+Rhode Island,8
+District of Columbia,7
+Alaska,6
+Query:
+SELECT DISTINCT "atmospheric_conditions_1_name"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+    LIMIT 1000;
+Answer:
+atmospheric_conditions_1_name
+"Sleet, Hail"
+Severe Crosswinds
+Other
+Unknown
+Blowing Snow
+Freezing Rain or Drizzle
+"Blowing Sand, Soil, Dirt"
+Clear
+Rain
+Snow
+Not Reported
+"Fog, Smog, Smoke"
+Cloudy
+Query:
+SELECT DISTINCT "year_of_crash"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    LIMIT 1000;
+Answer:
+year_of_crash
+2016
+Query:
+SELECT COUNT(*) AS "total_rainy_weekend_accidents"
+    FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+    WHERE "day_of_week" IN (1, 7)
+      AND LOWER("atmospheric_conditions_1_name") LIKE '%rain%'
+    LIMIT 1000;
+Answer:
+total_rainy_weekend_accidents
+678
+End Exploring Related Columns
+Task: Which top 3 states had the largest differences in the number of traffic accidents between rainy and clear weather during weekends in 2016? Please also provide the respective differences for each state.
+
+Please answer only one complete SQL in snowflake dialect in ```sql``` format.
+Usage example: SELECT S."Column_Name" FROM {Database Name}.{Schema Name}.{Table_name} (ensure all column names are enclosed in double quotations)
+Follow the answer format like: To determine the top 3 states with the largest differences in the number of traffic accidents between rainy and clear weather during weekends in 2016, we analyzed the `ACCIDENT_2016` table. The results are as follows:
+
+```csv
+state_name,difference_in_accidents
+state_name:str,num:int
+state_name:str,num:int
+state_name:str,num:int
+```
+
+**Explanation:** The `difference_in_accidents` column represents the absolute difference in the number of traffic accidents between rainy and clear weather during weekends for each state in 2016. The states are ranked in descending order based on this difference, with the top 3 states listed above..
+Here are some useful tips for answering:
+When calculating distances between two geometries, use `ST_MakePoint(x, y)` to make a point and `ST_Distance(geometry1 GEOMETRY, geometry2 GEOMETRY)` to compute. No need to convert from meters to miles unless requested. Don't use Haversine like 2 * 6371000 * ASIN(...), use ST_DISTANCE for more precise results.
+When performing a UNION operation on many tables, ensure that all table names are explicitly listed. Union first and then add condition and selection. e.g. SELECT "col1", "col2" FROM (TABLE1 UNION ALL TABLE2) WHERE ...; Don't write sqls as (SELECT col1, col2 FROM TABLE1 WHERE ...) UNION ALL (SELECT col1, col2 FROM TABLE2 WHERE ...); Don't use ['-- Include all', '-- Omit', '-- Continue', '-- Union all', '-- ...', '-- List all', '-- Replace this', '-- Each table', '-- Add other'] to omit any table. Table names here: ({database name: {schema name: {table name}}}): 
+{'NHTSA_TRAFFIC_FATALITIES': {'NHTSA_TRAFFIC_FATALITIES': ['ACCIDENT_2015', 'ACCIDENT_2016', 'ACCIDENT_2017', 'ACCIDENT_2018', 'ACCIDENT_2019', 'ACCIDENT_2020', 'CEVENT_2015', 'CEVENT_2016', 'CEVENT_2017', 'CEVENT_2018', 'CEVENT_2019', 'CEVENT_2020', 'DAMAGE_2015', 'DAMAGE_2016', 'DAMAGE_2017', 'DAMAGE_2018', 'DAMAGE_2019', 'DAMAGE_2020', 'DISTRACT_2015', 'DISTRACT_2016', 'DISTRACT_2017', 'DISTRACT_2018', 'DISTRACT_2019', 'DISTRACT_2020', 'DRIMPAIR_2015', 'DRIMPAIR_2016', 'DRIMPAIR_2017', 'DRIMPAIR_2018', 'DRIMPAIR_2019', 'DRIMPAIR_2020', 'FACTOR_2015', 'FACTOR_2016', 'FACTOR_2017', 'FACTOR_2018', 'FACTOR_2019', 'FACTOR_2020', 'MANEUVER_2015', 'MANEUVER_2016', 'MANEUVER_2017', 'MANEUVER_2018', 'MANEUVER_2019', 'MANEUVER_2020', 'NMCRASH_2015', 'NMCRASH_2016', 'NMCRASH_2017', 'NMCRASH_2018', 'NMCRASH_2019', 'NMCRASH_2020', 'NMIMPAIR_2015', 'NMIMPAIR_2016', 'NMIMPAIR_2017', 'NMIMPAIR_2018', 'NMIMPAIR_2019', 'NMIMPAIR_2020', 'NMPRIOR_2015', 'NMPRIOR_2016', 'NMPRIOR_2017', 'NMPRIOR_2018', 'NMPRIOR_2019', 'NMPRIOR_2020', 'PARKWORK_2015', 'PARKWORK_2016', 'PARKWORK_2017', 'PARKWORK_2018', 'PARKWORK_2019', 'PARKWORK_2020', 'PBTYPE_2015', 'PBTYPE_2016', 'PBTYPE_2017', 'PBTYPE_2018', 'PBTYPE_2019', 'PBTYPE_2020', 'PERSON_2015', 'PERSON_2016', 'SAFETYEQ_2015', 'SAFETYEQ_2016', 'SAFETYEQ_2017', 'SAFETYEQ_2018', 'SAFETYEQ_2019', 'SAFETYEQ_2020', 'VEHICLE_2015', 'VEHICLE_2016', 'VEVENT_2015', 'VEVENT_2016', 'VEVENT_2017', 'VEVENT_2018', 'VEVENT_2019', 'VEVENT_2020', 'VINDECODE_2015', 'VINDECODE_2016', 'VIOLATN_2015', 'VIOLATN_2016', 'VIOLATN_2017', 'VIOLATN_2018', 'VIOLATN_2019', 'VIOLATN_2020', 'VISION_2015', 'VISION_2016', 'VISION_2017', 'VISION_2018', 'VISION_2019', 'VISION_2020', 'VSOE_2015', 'VSOE_2016', 'VSOE_2017', 'VSOE_2018', 'VSOE_2019', 'VSOE_2020']}}
+
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book" SQL: WHERE "title" LIKE '%book%'
+However, if the string is not decided, you may use ILIKE and %. e.g. Get articles that mention "education": SQL: "body" ILIKE '%education%' OR "title" ILIKE '%education%'
+When handling TO_TIMESTAMP_NTZ conversions, use query like: SELECT CASE WHEN "date" >= 1e15 THEN TO_TIMESTAMP_NTZ("date" / 1000000) WHEN "date" >= 1e12 THEN TO_TIMESTAMP_NTZ("date" / 1000) ELSE TO_TIMESTAMP_NTZ("date") END AS parsed_timestamp FROM my_table;
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+Keep all decimals to four decimal places.
+
+2025-01-17 19:20:05 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-17 19:20:05 - root - INFO - ```sql
+SELECT "state_name",
+  ABS(
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+  ) AS "difference_in_accidents"
+FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+WHERE "day_of_week" IN (1, 7)
+GROUP BY "state_name"
+ORDER BY "difference_in_accidents" DESC
+LIMIT 3;
+```
+2025-01-17 19:20:05 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:20:05 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:20:05 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:20:07 - snowflake.connector.cursor - INFO - Number of results in first chunk: 3
+2025-01-17 19:20:07 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:20:07 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:20:07 - root - INFO - itercount: 1
+2025-01-17 19:20:07 - root - INFO - 0
+2025-01-17 19:20:07 - root - INFO - results: 
+state_name,difference_in_accidents
+California,924
+Texas,827
+Florida,750
+
+
+2025-01-17 19:20:07 - root - INFO - Please check the answer again by reviewing Which top 3 states had the largest differences in the number of traffic accidents between rainy and clear weather during weekends in 2016? Please also provide the respective differences for each state., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: To determine the top 3 states with the largest differences in the number of traffic accidents between rainy and clear weather during weekends in 2016, we analyzed the `ACCIDENT_2016` table. The results are as follows:
+
+```csv
+state_name,difference_in_accidents
+state_name:str,num:int
+state_name:str,num:int
+state_name:str,num:int
+```
+
+**Explanation:** The `difference_in_accidents` column represents the absolute difference in the number of traffic accidents between rainy and clear weather during weekends for each state in 2016. The states are ranked in descending order based on this difference, with the top 3 states listed above. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+state_name,difference_in_accidents
+California,924
+Texas,827
+Florida,750
+Current sql:
+SELECT "state_name",
+  ABS(
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+  ) AS "difference_in_accidents"
+FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+WHERE "day_of_week" IN (1, 7)
+GROUP BY "state_name"
+ORDER BY "difference_in_accidents" DESC
+LIMIT 3;When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+For day_of_week, 1=Sunday and 7=Saturday.
+
+2025-01-17 19:20:26 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-17 19:20:26 - root - INFO - To determine the top 3 states with the largest differences in the number of traffic accidents between rainy and clear weather during weekends in 2016, we analyzed the `ACCIDENT_2016` table. The results are as follows:
+
+```csv
+state_name,difference_in_accidents
+California,924
+Texas,827
+Florida,750
+```
+
+**Explanation:** The `difference_in_accidents` column represents the absolute difference in the number of traffic accidents between rainy and clear weather during weekends for each state in 2016. The states are ranked in descending order based on this difference, with the top 3 states listed above.
+
+Here is the SQL query used to obtain these results:
+
+```sql
+SELECT "state_name",
+  ABS(
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%rain%' THEN 1 ELSE 0 END) -
+    SUM(CASE WHEN LOWER("atmospheric_conditions_1_name") LIKE '%clear%' THEN 1 ELSE 0 END)
+  ) AS "difference_in_accidents"
+FROM NHTSA_TRAFFIC_FATALITIES.NHTSA_TRAFFIC_FATALITIES.ACCIDENT_2016
+WHERE "day_of_week" IN (1, 7)
+GROUP BY "state_name"
+ORDER BY "difference_in_accidents" DESC NULLS LAST
+LIMIT 3;
+```
+
+**Note:** In the query above, we added `NULLS LAST` to the `ORDER BY` clause to exclude any null records from affecting the sorting order. Also, for the `day_of_week` column, we used `IN (1, 7)` to filter for weekends, where `1` represents Sunday and `7` represents Saturday.
+
+**Data Source:** The data is sourced from the `ACCIDENT_2016` table in the `NHTSA_TRAFFIC_FATALITIES` database and schema.
+
+**Conditions Applied:**
+
+- **Weekend Filter:** Only accidents that occurred on Saturdays (`day_of_week` = 7) and Sundays (`day_of_week` = 1).
+- **Weather Conditions:** Accidents where the primary atmospheric condition (`atmospheric_conditions_1_name`) includes "rain" or "clear".
+- **Year Filter:** All data is from the year 2016, as specified by the table `ACCIDENT_2016`.
+
+**Calculations:**
+
+- We calculated the number of accidents during rainy weather and clear weather for each state on weekends.
+- Then, we computed the absolute difference between these two counts for each state.
+- Finally, we sorted the results in descending order of the difference and selected the top 3 states.
+
+**Additional Notes:**
+
+- All decimal values are kept to four decimal places as per the instructions.
+2025-01-17 19:20:26 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-17 19:20:26 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-17 19:20:26 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-17 19:20:27 - snowflake.connector.cursor - INFO - Number of results in first chunk: 3
+2025-01-17 19:20:27 - snowflake.connector.connection - INFO - closed
+2025-01-17 19:20:28 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-17 19:20:28 - root - INFO - itercount: 2
+2025-01-17 19:20:28 - root - INFO - 0
+2025-01-17 19:20:28 - root - INFO - Total iteration counts: 2
