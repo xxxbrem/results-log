@@ -1,32 +1,31 @@
-WITH AvgSalary AS (
-    SELECT "FacRank", AVG("FacSalary") AS "AverageSalary"
-    FROM EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY
+WITH avg_salary AS (
+    SELECT "FacRank", ROUND(AVG("FacSalary"), 4) AS "AvgSalary"
+    FROM "EDUCATION_BUSINESS"."EDUCATION_BUSINESS"."UNIVERSITY_FACULTY"
     GROUP BY "FacRank"
 ),
-SalaryDifferences AS (
+salary_diff AS (
     SELECT 
-        f."FacRank",
-        f."FacFirstName",
-        f."FacLastName",
-        f."FacSalary",
-        ABS(f."FacSalary" - a."AverageSalary") AS "SalaryDifference",
-        ROW_NUMBER() OVER (
-            PARTITION BY f."FacRank" 
-            ORDER BY ABS(f."FacSalary" - a."AverageSalary") ASC, f."FacLastName", f."FacFirstName"
-        ) AS rn
-    FROM EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY f
-    JOIN AvgSalary a ON f."FacRank" = a."FacRank"
+        uf."FacRank", 
+        uf."FacFirstName", 
+        uf."FacLastName", 
+        uf."FacSalary",
+        ROUND(ABS(uf."FacSalary" - avg_salary."AvgSalary"), 4) AS "SalaryDiff"
+    FROM "EDUCATION_BUSINESS"."EDUCATION_BUSINESS"."UNIVERSITY_FACULTY" uf
+    JOIN avg_salary 
+        ON uf."FacRank" = avg_salary."FacRank"
+),
+min_salary_diff AS (
+    SELECT "FacRank", MIN("SalaryDiff") AS "MinSalaryDiff"
+    FROM salary_diff
+    GROUP BY "FacRank"
 )
-SELECT
-    CASE 
-        WHEN sd."FacRank" = 'ASST' THEN 'Assistant Professor'
-        WHEN sd."FacRank" = 'ASSC' THEN 'Associate Professor'
-        WHEN sd."FacRank" = 'PROF' THEN 'Professor'
-        ELSE sd."FacRank"
-    END AS "Rank",
-    sd."FacFirstName" AS "FirstName",
-    sd."FacLastName" AS "LastName",
-    ROUND(sd."FacSalary", 4) AS "Salary"
-FROM SalaryDifferences sd
-WHERE sd.rn = 1
-ORDER BY 1;
+SELECT 
+    sd."FacRank" AS "Rank", 
+    sd."FacFirstName" AS "FirstName", 
+    sd."FacLastName" AS "LastName", 
+    sd."FacSalary" AS "Salary"
+FROM salary_diff sd
+JOIN min_salary_diff msd
+    ON sd."FacRank" = msd."FacRank" 
+    AND sd."SalaryDiff" = msd."MinSalaryDiff"
+ORDER BY sd."FacRank";

@@ -1,36 +1,47 @@
-WITH sales_data AS (
-    SELECT
-        "calendar_year",
-        TO_DATE("week_date_formatted", 'YYYY-MM-DD') AS week_date,
-        "sales"
-    FROM "BANK_SALES_TRADING"."BANK_SALES_TRADING"."CLEANED_WEEKLY_SALES"
-    WHERE "calendar_year" IN (2018, 2019, 2020)
+WITH date_ranges AS (
+  SELECT
+    '2018' AS "year",
+    TO_DATE('2018-06-15', 'YYYY-MM-DD') - INTERVAL '28 DAYS' AS "before_start",
+    TO_DATE('2018-06-15', 'YYYY-MM-DD') - INTERVAL '1 DAY' AS "before_end",
+    TO_DATE('2018-06-15', 'YYYY-MM-DD') AS "after_start",
+    TO_DATE('2018-06-15', 'YYYY-MM-DD') + INTERVAL '27 DAYS' AS "after_end"
+  UNION ALL
+  SELECT
+    '2019',
+    TO_DATE('2019-06-15', 'YYYY-MM-DD') - INTERVAL '28 DAYS',
+    TO_DATE('2019-06-15', 'YYYY-MM-DD') - INTERVAL '1 DAY',
+    TO_DATE('2019-06-15', 'YYYY-MM-DD'),
+    TO_DATE('2019-06-15', 'YYYY-MM-DD') + INTERVAL '27 DAYS'
+  UNION ALL
+  SELECT
+    '2020',
+    TO_DATE('2020-06-15', 'YYYY-MM-DD') - INTERVAL '28 DAYS',
+    TO_DATE('2020-06-15', 'YYYY-MM-DD') - INTERVAL '1 DAY',
+    TO_DATE('2020-06-15', 'YYYY-MM-DD'),
+    TO_DATE('2020-06-15', 'YYYY-MM-DD') + INTERVAL '27 DAYS'
 ),
-weeks_before_after AS (
-    SELECT
-        "calendar_year",
-        CASE
-            WHEN week_date >= DATE_FROM_PARTS("calendar_year", 5, 18) AND week_date < DATE_FROM_PARTS("calendar_year", 6, 15) THEN 'Before'
-            WHEN week_date >= DATE_FROM_PARTS("calendar_year", 6, 15) AND week_date <= DATE_FROM_PARTS("calendar_year", 7, 12) THEN 'After'
-            ELSE NULL
-        END AS period,
-        "sales"
-    FROM sales_data
-),
-sales_summary AS (
-    SELECT
-        "calendar_year",
-        period,
-        SUM("sales") AS total_sales
-    FROM weeks_before_after
-    WHERE period IS NOT NULL
-    GROUP BY "calendar_year", period
+sales_data AS (
+  SELECT
+    TO_DATE("week_date", 'YYYY-MM-DD') AS "week_date_parsed",
+    TO_CHAR("calendar_year") AS "year",
+    "sales"
+  FROM
+    BANK_SALES_TRADING.BANK_SALES_TRADING.CLEANED_WEEKLY_SALES
 )
 SELECT
-    s_before."calendar_year" AS "Year",
-    ROUND(((s_after.total_sales - s_before.total_sales) / s_before.total_sales) * 100, 4) AS "Percentage_Change"
+  dr."year",
+  SUM(CASE WHEN sd."week_date_parsed" BETWEEN dr."before_start" AND dr."before_end" THEN sd."sales" END) AS "sales_before",
+  SUM(CASE WHEN sd."week_date_parsed" BETWEEN dr."after_start" AND dr."after_end" THEN sd."sales" END) AS "sales_after",
+  ROUND(
+    (SUM(CASE WHEN sd."week_date_parsed" BETWEEN dr."after_start" AND dr."after_end" THEN sd."sales" END) - 
+     SUM(CASE WHEN sd."week_date_parsed" BETWEEN dr."before_start" AND dr."before_end" THEN sd."sales" END)) /
+    NULLIF(SUM(CASE WHEN sd."week_date_parsed" BETWEEN dr."before_start" AND dr."before_end" THEN sd."sales" END), 0) * 100, 4
+  ) AS "percent_change"
 FROM
-    (SELECT * FROM sales_summary WHERE period = 'Before') s_before
-JOIN
-    (SELECT * FROM sales_summary WHERE period = 'After') s_after
-    ON s_before."calendar_year" = s_after."calendar_year";
+  date_ranges dr
+LEFT JOIN
+  sales_data sd ON sd."year" = dr."year"
+GROUP BY
+  dr."year"
+ORDER BY
+  dr."year";

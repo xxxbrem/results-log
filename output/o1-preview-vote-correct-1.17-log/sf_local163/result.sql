@@ -1,28 +1,36 @@
-SELECT 
-    CASE
-        WHEN t."FacRank" = 'ASST' THEN 'Assistant Professor'
-        WHEN t."FacRank" = 'ASSC' THEN 'Associate Professor'
-        WHEN t."FacRank" = 'PROF' THEN 'Professor'
-        ELSE t."FacRank"
-    END AS "FacRank",
-    t."FacFirstName",
-    t."FacLastName",
-    ROUND(t."FacSalary", 4) AS "FacSalary"
-FROM (
+WITH AverageSalaries AS (
+    SELECT "FacRank", ROUND(AVG("FacSalary"), 4) AS "AvgSalary"
+    FROM EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY
+    GROUP BY "FacRank"
+),
+SalaryDifferences AS (
     SELECT 
-        f."FacRank",
-        f."FacFirstName",
+        f."FacRank", 
+        f."FacFirstName", 
         f."FacLastName",
         f."FacSalary",
-        ABS(f."FacSalary" - a.avg_salary) AS salary_diff,
-        RANK() OVER (PARTITION BY f."FacRank" ORDER BY ABS(f."FacSalary" - a.avg_salary)) AS rk
-    FROM EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY f
-    JOIN (
-        SELECT "FacRank", AVG("FacSalary") AS avg_salary
-        FROM EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY
-        WHERE "FacSalary" IS NOT NULL AND "FacRank" IS NOT NULL
-        GROUP BY "FacRank"
-    ) a ON f."FacRank" = a."FacRank"
-    WHERE f."FacSalary" IS NOT NULL AND f."FacRank" IS NOT NULL
-) t
-WHERE t.rk = 1;
+        ABS(f."FacSalary" - a."AvgSalary") AS "SalaryDiff"
+    FROM 
+        EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY f
+    JOIN 
+        AverageSalaries a
+    ON 
+        f."FacRank" = a."FacRank"
+),
+MinDifferences AS (
+    SELECT "FacRank", MIN("SalaryDiff") AS "MinSalaryDiff"
+    FROM SalaryDifferences
+    GROUP BY "FacRank"
+)
+SELECT 
+    s."FacRank" AS "Rank", 
+    s."FacFirstName" AS "FirstName", 
+    s."FacLastName" AS "LastName", 
+    s."FacSalary" AS "Salary"
+FROM 
+    SalaryDifferences s
+JOIN 
+    MinDifferences m
+ON 
+    s."FacRank" = m."FacRank" AND s."SalaryDiff" = m."MinSalaryDiff"
+ORDER BY s."FacRank";
