@@ -4113,3 +4113,45 @@ WHERE t."EVENT_NAME" = 'page_view'
 AND ep.value:"key"::STRING = 'page_location'
 AND ep.value:"value":"string_value" IS NOT NULL;Usage of ST_INTERSECTS: ST_INTERSECTS(geometry1, ST_GEOGFROMWKB(geometry2)) This function checks if the two geometries intersect. The first argument, geometry1, is compared with the second argument, geometry2, which is converted from its WKB (Well-Known Binary) representation to a geography type using ST_GEOGFROMWKB. If the two geometries share any portion of space, the function returns TRUE; otherwise, it returns FALSE. Usage of ST_CONTAINS: ST_CONTAINS(r1.geometry, r2.geometry) This function checks if the geometry r1.geometry completely contains the geometry r2.geometry. It returns TRUE if all points of r2.geometry are within r1.geometry and FALSE otherwise. This is useful for spatial containment queries, such as verifying whether one region is entirely within another. ARRAY_INTERSECTION(nodes1, nodes2): This function computes the intersection of the two arrays, returning a new array containing only the elements that are present in both nodes1 and nodes2. ARRAY_SIZE(...): This function then determines the size (or number of elements) in the resulting array from the intersection.
 
+2025-01-18 15:29:27 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-18 15:29:27 - root - INFO - To determine the percentage of page views on January 2, 2021, that were for PDP type pages, the result is:
+
+```csv
+Percentage_of_Page_Views_for_PDP
+17.4911
+```
+
+This percentage represents the proportion of total page views that were on Product Detail Pages (PDPs) according to the specified URL classification criteria.
+
+Here's the SQL query:
+
+```sql
+SELECT 
+  (
+    COUNT( 
+      CASE WHEN 
+        ARRAY_SIZE(SPLIT(SPLIT_PART(ep.value:"value":"string_value"::STRING, '?', 1), '/')) >= 5
+        AND POSITION('+' IN SPLIT_PART(SPLIT_PART(ep.value:"value":"string_value"::STRING, '?', 1), '/', -1)) > 0
+        AND (
+          LOWER(REPLACE(SPLIT_PART(SPLIT_PART(ep.value:"value":"string_value"::STRING, '?', 1), '/', 4), '+', ' ')) IN ('accessories', 'apparel', 'brands', 'campus collection', 'drinkware', 'electronics', 'google redesign', 'lifestyle', 'nest', 'new 2015 logo', 'notebooks journals', 'office', 'shop by brand', 'small goods', 'stationery', 'wearables')
+          OR
+          LOWER(REPLACE(SPLIT_PART(SPLIT_PART(ep.value:"value":"string_value"::STRING, '?', 1), '/', 5), '+', ' ')) IN ('accessories', 'apparel', 'brands', 'campus collection', 'drinkware', 'electronics', 'google redesign', 'lifestyle', 'nest', 'new 2015 logo', 'notebooks journals', 'office', 'shop by brand', 'small goods', 'stationery', 'wearables')
+        )
+      THEN 1 END
+    ) * 100.0 / COUNT(*)
+  ) AS "Percentage_of_Page_Views_for_PDP"
+FROM GA4.GA4_OBFUSCATED_SAMPLE_ECOMMERCE."EVENTS_20210102" t
+, LATERAL FLATTEN(input => t."EVENT_PARAMS") ep
+WHERE t."EVENT_NAME" = 'page_view'
+  AND ep.value:"key"::STRING = 'page_location'
+  AND ep.value:"value":"string_value" IS NOT NULL;
+```
+2025-01-18 15:29:27 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-18 15:29:27 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-18 15:29:27 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-18 15:29:29 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-18 15:29:29 - snowflake.connector.connection - INFO - closed
+2025-01-18 15:29:29 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-18 15:29:29 - root - INFO - itercount: 2
+2025-01-18 15:29:29 - root - INFO - 0
+2025-01-18 15:29:29 - root - INFO - Total iteration counts: 2
