@@ -1,27 +1,31 @@
-WITH Max_Wins_Per_Season AS (
-    SELECT
-        "season",
-        MAX("wins") AS "max_wins"
-    FROM NCAA_BASKETBALL.NCAA_BASKETBALL.MBB_HISTORICAL_TEAMS_SEASONS
-    WHERE "season" BETWEEN 1900 AND 2000
-    GROUP BY "season"
-),
-Teams_With_Max_Wins AS (
-    SELECT
-        S."team_id",
-        S."market",
-        S."name" AS "Team_Name",
-        S."season"
-    FROM NCAA_BASKETBALL.NCAA_BASKETBALL.MBB_HISTORICAL_TEAMS_SEASONS S
-    INNER JOIN Max_Wins_Per_Season M
-        ON S."season" = M."season" AND S."wins" = M."max_wins"
-    WHERE S."season" BETWEEN 1900 AND 2000 AND S."team_id" IS NOT NULL
-)
 SELECT
-    T."Team_Name",
-    T."market",
-    COUNT(*) AS "Max_Wins_Seasons"
-FROM Teams_With_Max_Wins T
-GROUP BY T."Team_Name", T."market"
-ORDER BY "Max_Wins_Seasons" DESC NULLS LAST
+    "name" AS "Team_Name",
+    COUNT(*) AS "Number_of_Times_Max_Wins"
+FROM
+    (
+        SELECT
+            ht."team_id",
+            ht."name",
+            ht."season",
+            ht."wins"
+        FROM
+            NCAA_BASKETBALL.NCAA_BASKETBALL.MBB_HISTORICAL_TEAMS_SEASONS ht
+            INNER JOIN (
+                SELECT
+                    "season",
+                    MAX("wins") AS "max_wins"
+                FROM
+                    NCAA_BASKETBALL.NCAA_BASKETBALL.MBB_HISTORICAL_TEAMS_SEASONS
+                WHERE
+                    "season" BETWEEN 1900 AND 2000
+                GROUP BY
+                    "season"
+            ) mw ON ht."season" = mw."season" AND ht."wins" = mw."max_wins"
+        WHERE
+            ht."season" BETWEEN 1900 AND 2000
+    ) max_win_teams
+GROUP BY
+    "Team_Name"
+ORDER BY
+    "Number_of_Times_Max_Wins" DESC NULLS LAST
 LIMIT 5;
