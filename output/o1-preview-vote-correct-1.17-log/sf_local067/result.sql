@@ -1,32 +1,48 @@
-WITH customer_profits AS (
-    SELECT s."cust_id",
-           ROUND(SUM(s."amount_sold" - (s."quantity_sold" * cost."unit_cost")), 4) AS "profit"
-    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
-    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c ON s."cust_id" = c."cust_id"
-    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co ON c."country_id" = co."country_id"
-    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t ON s."time_id" = t."time_id"
-    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COSTS" cost
-      ON s."prod_id" = cost."prod_id"
-     AND s."time_id" = cost."time_id"
-     AND s."promo_id" = cost."promo_id"
-     AND s."channel_id" = cost."channel_id"
-    WHERE co."country_name" = 'Italy'
-      AND t."calendar_month_name" = 'December'
-      AND t."calendar_year" = 2021
-    GROUP BY s."cust_id"
+WITH Italian_Customers AS (
+  SELECT CUST."cust_id"
+  FROM COMPLEX_ORACLE.COMPLEX_ORACLE.CUSTOMERS CUST
+  JOIN COMPLEX_ORACLE.COMPLEX_ORACLE.COUNTRIES COU
+    ON CUST."country_id" = COU."country_id"
+  WHERE COU."country_name" = 'Italy'
 ),
-customer_profits_with_tier AS (
-    SELECT "cust_id",
-           "profit",
-           NTILE(10) OVER (ORDER BY "profit") AS "tier_number"
-    FROM customer_profits
+December2021_Sales AS (
+  SELECT S.*
+  FROM COMPLEX_ORACLE.COMPLEX_ORACLE.SALES S
+  JOIN COMPLEX_ORACLE.COMPLEX_ORACLE.TIMES T
+    ON S."time_id" = T."time_id"
+  WHERE T."calendar_year" = 2021
+    AND T."calendar_month_number" = 12
+),
+Sales_To_Italian_Customers AS (
+  SELECT S.*
+  FROM December2021_Sales S
+  JOIN Italian_Customers IC
+    ON S."cust_id" = IC."cust_id"
+),
+Sales_With_Cost AS (
+  SELECT S.*, C."unit_cost"
+  FROM Sales_To_Italian_Customers S
+  JOIN COMPLEX_ORACLE.COMPLEX_ORACLE.COSTS C
+    ON S."prod_id" = C."prod_id"
+    AND S."time_id" = C."time_id"
+    AND S."promo_id" = C."promo_id"
+    AND S."channel_id" = C."channel_id"
+),
+Customer_Profits AS (
+  SELECT S."cust_id",
+         SUM(S."amount_sold" - (S."quantity_sold" * S."unit_cost")) AS "total_profit"
+  FROM Sales_With_Cost S
+  GROUP BY S."cust_id"
+),
+Ranked_Customers AS (
+  SELECT "cust_id",
+         "total_profit",
+         NTILE(10) OVER (ORDER BY "total_profit" DESC NULLS LAST) AS "Tier"
+  FROM Customer_Profits
 )
-SELECT 
-    "tier_number",
-    MIN("profit") AS "profit_range_lower",
-    MAX("profit") AS "profit_range_upper",
-    MIN("profit") AS "lowest_profit",
-    MAX("profit") AS "highest_profit"
-FROM customer_profits_with_tier
-GROUP BY "tier_number"
-ORDER BY "tier_number";
+SELECT "Tier",
+       ROUND(MIN("total_profit"), 4) AS "Lowest_Profit",
+       ROUND(MAX("total_profit"), 4) AS "Highest_Profit"
+FROM Ranked_Customers
+GROUP BY "Tier"
+ORDER BY "Tier";

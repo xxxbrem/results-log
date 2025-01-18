@@ -1,0 +1,11 @@
+SELECT
+    S."StyleName",
+    SUM(CASE WHEN P."PreferenceSeq" = 1 THEN 1 ELSE 0 END) AS "NumFirstPreference",
+    SUM(CASE WHEN P."PreferenceSeq" = 2 THEN 1 ELSE 0 END) AS "NumSecondPreference",
+    SUM(CASE WHEN P."PreferenceSeq" = 3 THEN 1 ELSE 0 END) AS "NumThirdPreference"
+FROM
+    "ENTERTAINMENTAGENCY"."ENTERTAINMENTAGENCY"."MUSICAL_STYLES" S
+    LEFT JOIN "ENTERTAINMENTAGENCY"."ENTERTAINMENTAGENCY"."MUSICAL_PREFERENCES" P
+        ON S."StyleID" = P."StyleID"
+GROUP BY
+    S."StyleName";

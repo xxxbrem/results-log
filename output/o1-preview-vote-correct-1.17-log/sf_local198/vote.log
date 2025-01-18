@@ -1,0 +1,50 @@
+```plain
+1result.sql
+```
+
+I chose **1result.sql** as the correct SQL because it accurately determines the countries with more than 4 customers by querying only the `CUSTOMERS` table before joining with the `INVOICES` table. This approach ensures that the customer count per country is precise and not inflated due to multiple invoices per customer, which can occur when counting after a join.
+
+Here's why **1result.sql** is the best choice:
+
+- **Accurate Customer Count**: By using a Common Table Expression (CTE) named `CountriesWithMoreThan4Customers`, the query counts customers per country solely from the `CUSTOMERS` table:
+
+  ```sql
+  WITH CountriesWithMoreThan4Customers AS (
+    SELECT "Country"
+    FROM "CHINOOK"."CHINOOK"."CUSTOMERS"
+    GROUP BY "Country"
+    HAVING COUNT(*) > 4
+  )
+  ```
+
+  This ensures that only countries with more than 4 unique customers are selected, unaffected by the number of invoices each customer may have.
+
+- **Correct Sales Aggregation**: The main query joins the `CUSTOMERS` and `INVOICES` tables to calculate the total sales per eligible country:
+
+  ```sql
+  SELECT ROUND(MEDIAN(total_sales), 4) AS median_total_sales
+  FROM (
+    SELECT C."Country", SUM(I."Total") AS total_sales
+    FROM "CHINOOK"."CHINOOK"."CUSTOMERS" C
+    JOIN "CHINOOK"."CHINOOK"."INVOICES" I ON C."CustomerId" = I."CustomerId"
+    WHERE C."Country" IN (SELECT "Country" FROM CountriesWithMoreThan4Customers)
+    GROUP BY C."Country"
+  )
+  ```
+
+  This method ensures that the total sales are aggregated correctly for each country identified in the first step.
+
+- **Median Calculation**: The query computes the median of the total sales from the selected countries and rounds it to four decimal places, meeting the requirement:
+
+  ```sql
+  SELECT ROUND(MEDIAN(total_sales), 4) AS median_total_sales
+  ```
+
+- **Avoids Potential Issues**: The other queries (`0result.sql` and `2result.sql`) calculate the customer count after joining the `CUSTOMERS` and `INVOICES` tables. This can lead to inflated customer counts due to multiple invoices per customer, as the join can create duplicate customer entries. By counting customers before the join, **1result.sql** avoids this problem.
+
+In conclusion, **1result.sql** provides a precise and accurate solution by:
+
+- Correctly identifying countries with more than 4 customers.
+- Accurately calculating total sales per country.
+- Properly computing the median of total sales among these countries.
+- Ensuring that float values are rounded to four decimal places as required.
