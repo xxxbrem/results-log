@@ -1,28 +1,31 @@
-WITH avg_salaries AS (
-    SELECT "FacRank", AVG("FacSalary") AS "AverageSalary"
-    FROM EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY
+WITH avg_salary AS (
+    SELECT "FacRank", ROUND(AVG("FacSalary"), 4) AS "AvgSalary"
+    FROM "EDUCATION_BUSINESS"."EDUCATION_BUSINESS"."UNIVERSITY_FACULTY"
     GROUP BY "FacRank"
 ),
-salary_differences AS (
-    SELECT
-        uf."FacRank",
-        uf."FacFirstName",
-        uf."FacLastName",
-        ROUND(uf."FacSalary", 4) AS "FacSalary",
-        ABS(uf."FacSalary" - avg_salaries."AverageSalary") AS "SalaryDifference"
-    FROM EDUCATION_BUSINESS.EDUCATION_BUSINESS.UNIVERSITY_FACULTY uf
-    JOIN avg_salaries ON uf."FacRank" = avg_salaries."FacRank"
+salary_diff AS (
+    SELECT 
+        uf."FacRank", 
+        uf."FacFirstName", 
+        uf."FacLastName", 
+        uf."FacSalary",
+        ROUND(ABS(uf."FacSalary" - avg_salary."AvgSalary"), 4) AS "SalaryDiff"
+    FROM "EDUCATION_BUSINESS"."EDUCATION_BUSINESS"."UNIVERSITY_FACULTY" uf
+    JOIN avg_salary 
+        ON uf."FacRank" = avg_salary."FacRank"
 ),
-ranked_salaries AS (
-    SELECT
-        sd.*,
-        RANK() OVER (
-            PARTITION BY sd."FacRank"
-            ORDER BY sd."SalaryDifference" ASC, sd."FacFirstName", sd."FacLastName"
-        ) AS "RankInGroup"
-    FROM salary_differences sd
+min_salary_diff AS (
+    SELECT "FacRank", MIN("SalaryDiff") AS "MinSalaryDiff"
+    FROM salary_diff
+    GROUP BY "FacRank"
 )
-SELECT "FacRank", "FacFirstName", "FacLastName", "FacSalary"
-FROM ranked_salaries
-WHERE "RankInGroup" = 1
-ORDER BY "FacRank";
+SELECT 
+    sd."FacRank" AS "Rank", 
+    sd."FacFirstName" AS "FirstName", 
+    sd."FacLastName" AS "LastName", 
+    sd."FacSalary" AS "Salary"
+FROM salary_diff sd
+JOIN min_salary_diff msd
+    ON sd."FacRank" = msd."FacRank" 
+    AND sd."SalaryDiff" = msd."MinSalaryDiff"
+ORDER BY sd."FacRank";
