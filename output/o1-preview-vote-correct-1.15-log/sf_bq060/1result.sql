@@ -1,7 +1,0 @@
-SELECT t1."country_name", ROUND(t2."net_migration", 4) AS "net_migration_rate"
-FROM CENSUS_BUREAU_INTERNATIONAL.CENSUS_BUREAU_INTERNATIONAL."COUNTRY_NAMES_AREA" t1
-JOIN CENSUS_BUREAU_INTERNATIONAL.CENSUS_BUREAU_INTERNATIONAL."BIRTH_DEATH_GROWTH_RATES" t2
-ON t1."country_code" = t2."country_code"
-WHERE t1."country_area" > 500 AND t2."year" = 2017 AND t2."net_migration" > 0
-ORDER BY t2."net_migration" DESC NULLS LAST
-LIMIT 3;

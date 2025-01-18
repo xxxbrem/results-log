@@ -16,7 +16,7 @@ correct_list = [
     "sf_bq161", "sf_bq172", "sf_bq176", "sf_bq210", "sf_bq211", "sf_bq213", "sf_bq214", "sf_bq216", "sf_bq224", "sf_bq227", "sf_bq228", "sf_bq235", "sf_bq252", "sf_bq255", "sf_bq279",
     "sf_bq280", "sf_bq281", "sf_bq282", "sf_bq285", "sf_bq286", "sf_bq289", "sf_bq300", "sf_bq302", "sf_bq310", "sf_bq327", "sf_bq328", "sf_bq330", "sf_bq341", "sf_bq345", "sf_bq352", 
     "sf_bq355", "sf_bq357", "sf_bq359", "sf_bq361", "sf_bq362", "sf_bq375", "sf_bq377", "sf_bq379", "sf_bq392", "sf_bq394", "sf_bq396", "sf_bq398", "sf_bq399", "sf_bq406", "sf_bq414", 
-    "sf_bq421", "sf_bq426", "sf_ga001", "sf_ga002", "sf_ga003", "sf_ga004", "sf_ga010", "sf_local017", "sf_local019", "sf_local022", "sf_local023", "sf_local028", "sf_local031", 
+    "sf_bq421", "sf_ga001", "sf_ga002", "sf_ga003", "sf_ga004", "sf_ga010", "sf_local017", "sf_local019", "sf_local022", "sf_local023", "sf_local028", "sf_local031", 
     "sf_local039", "sf_local041", "sf_local054", "sf_local056", "sf_local058", "sf_local065", "sf_local067", "sf_local071", "sf_local072", "sf_local074", "sf_local075", "sf_local078", 
     "sf_local131", "sf_local141", "sf_local163", "sf_local193", "sf_local197", "sf_local198", "sf_local199", "sf_local210", "sf_local212", "sf_local218", "sf_local221", "sf_local244", 
     "sf_local274", "sf_local284", "sf_local301", "sf_local309", "sf_local329", "sf001", "sf010", "sf014", "sf044"
