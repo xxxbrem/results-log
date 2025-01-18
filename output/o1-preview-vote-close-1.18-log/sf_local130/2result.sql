@@ -1,0 +1,15 @@
+SELECT s."StudLastName",
+       NTILE(5) OVER (ORDER BY ss."Grade" DESC NULLS LAST) AS "QuintileRank"
+FROM SCHOOL_SCHEDULING.SCHOOL_SCHEDULING."STUDENT_SCHEDULES" ss
+JOIN SCHOOL_SCHEDULING.SCHOOL_SCHEDULING."STUDENT_CLASS_STATUS" scs
+  ON ss."ClassStatus" = scs."ClassStatus"
+JOIN SCHOOL_SCHEDULING.SCHOOL_SCHEDULING."STUDENTS" s
+  ON ss."StudentID" = s."StudentID"
+JOIN SCHOOL_SCHEDULING.SCHOOL_SCHEDULING."CLASSES" c
+  ON ss."ClassID" = c."ClassID"
+JOIN SCHOOL_SCHEDULING.SCHOOL_SCHEDULING."SUBJECTS" sub
+  ON c."SubjectID" = sub."SubjectID"
+WHERE (sub."SubjectName" ILIKE '%English%' OR sub."SubjectName" ILIKE '%Composition%')
+  AND scs."ClassStatusDescription" = 'Completed'
+  AND ss."Grade" IS NOT NULL
+ORDER BY "QuintileRank" DESC NULLS LAST;
