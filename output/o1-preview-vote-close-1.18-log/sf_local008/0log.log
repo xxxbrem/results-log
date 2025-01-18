@@ -13192,3 +13192,61 @@ SELECT CONCAT(p."name_first", ' ', p."name_last") AS "GivenName", 'Home Runs' AS
 FROM "player_totals" t
 JOIN BASEBALL.BASEBALL.PLAYER p ON t."player_id" = p."player_id"
 WHERE t."Total_HomeRuns" = (SELECT "Max_HomeRuns" FROM "max_values");
+2025-01-18 16:29:54 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-18 16:29:54 - root - INFO - ```sql
+WITH "batting_numeric" AS (
+    SELECT
+        "player_id",
+        CASE WHEN REGEXP_LIKE(TRIM("g"), '^[0-9]+$') THEN TO_NUMBER(TRIM("g")) ELSE NULL END AS "g_num",
+        CASE WHEN REGEXP_LIKE(TRIM("r"), '^[0-9]+$') THEN TO_NUMBER(TRIM("r")) ELSE NULL END AS "r_num",
+        CASE WHEN REGEXP_LIKE(TRIM("h"), '^[0-9]+$') THEN TO_NUMBER(TRIM("h")) ELSE NULL END AS "h_num",
+        CASE WHEN REGEXP_LIKE(TRIM("hr"), '^[0-9]+$') THEN TO_NUMBER(TRIM("hr")) ELSE NULL END AS "hr_num"
+        FROM BASEBALL.BASEBALL.BATTING
+),
+"player_totals" AS (
+    SELECT
+        "player_id",
+        SUM("g_num") AS "Total_Games",
+        SUM("r_num") AS "Total_Runs",
+        SUM("h_num") AS "Total_Hits",
+        SUM("hr_num") AS "Total_HomeRuns"
+    FROM "batting_numeric"
+    GROUP BY "player_id"
+),
+"max_values" AS (
+    SELECT
+        MAX("Total_Games") AS "Max_Games",
+        MAX("Total_Runs") AS "Max_Runs",
+        MAX("Total_Hits") AS "Max_Hits",
+        MAX("Total_HomeRuns") AS "Max_HomeRuns"
+    FROM "player_totals"
+)
+SELECT CONCAT(p."name_first", ' ', p."name_last") AS "GivenName", 'Games Played' AS "Statistic", t."Total_Games" AS "Value"
+FROM "player_totals" t
+JOIN BASEBALL.BASEBALL.PLAYER p ON t."player_id" = p."player_id"
+WHERE t."Total_Games" = (SELECT "Max_Games" FROM "max_values")
+UNION ALL
+SELECT CONCAT(p."name_first", ' ', p."name_last") AS "GivenName", 'Runs' AS "Statistic", t."Total_Runs" AS "Value"
+FROM "player_totals" t
+JOIN BASEBALL.BASEBALL.PLAYER p ON t."player_id" = p."player_id"
+WHERE t."Total_Runs" = (SELECT "Max_Runs" FROM "max_values")
+UNION ALL
+SELECT CONCAT(p."name_first", ' ', p."name_last") AS "GivenName", 'Hits' AS "Statistic", t."Total_Hits" AS "Value"
+FROM "player_totals" t
+JOIN BASEBALL.BASEBALL.PLAYER p ON t."player_id" = p."player_id"
+WHERE t."Total_Hits" = (SELECT "Max_Hits" FROM "max_values")
+UNION ALL
+SELECT CONCAT(p."name_first", ' ', p."name_last") AS "GivenName", 'Home Runs' AS "Statistic", t."Total_HomeRuns" AS "Value"
+FROM "player_totals" t
+JOIN BASEBALL.BASEBALL.PLAYER p ON t."player_id" = p."player_id"
+WHERE t."Total_HomeRuns" = (SELECT "Max_HomeRuns" FROM "max_values");
+```
+2025-01-18 16:29:54 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-18 16:29:54 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-18 16:29:54 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-18 16:29:55 - snowflake.connector.cursor - INFO - Number of results in first chunk: 4
+2025-01-18 16:29:55 - snowflake.connector.connection - INFO - closed
+2025-01-18 16:29:55 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-18 16:29:56 - root - INFO - itercount: 5
+2025-01-18 16:29:56 - root - INFO - 0
+2025-01-18 16:29:56 - root - INFO - Total iteration counts: 5
