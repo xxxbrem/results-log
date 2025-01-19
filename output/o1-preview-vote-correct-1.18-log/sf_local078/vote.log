@@ -1,0 +1,47 @@
+After comparing the two SQL queries and their respective results, I conclude that **`0result.sql`** is the correct answer.
+
+**Reasoning:**
+
+1. **Objective Alignment:**
+   - Both SQL queries aim to identify the top 10 and bottom 10 interest categories based on their highest composition values across all months.
+   - They both select the time (`month_year`), interest name, and the composition value as required.
+
+2. **Handling Ties and Nulls:**
+   - **`0result.sql`** includes additional ordering clauses in the `ROW_NUMBER()` functions to handle potential ties and null values more effectively.
+     - In the `max_compositions` CTE, it uses:
+       ```sql
+       ROW_NUMBER() OVER (
+           PARTITION BY im."interest_id"
+           ORDER BY im."composition" DESC NULLS LAST, im."month_year" DESC
+       ) AS rn
+       ```
+       - This ensures that if there are ties in the `composition` values for an interest category, the most recent `month_year` is considered.
+       - `NULLS LAST` ensures that null composition values are ranked after valid numbers.
+     - In the final ranking, it uses:
+       ```sql
+       ROW_NUMBER() OVER (
+           ORDER BY "Composition_Value" DESC NULLS LAST, "interest_id"
+       ) AS desc_rank,
+       ROW_NUMBER() OVER (
+           ORDER BY "Composition_Value" ASC NULLS LAST, "interest_id"
+       ) AS asc_rank
+       ```
+       - Including `"interest_id"` in the `ORDER BY` clause ensures consistent ranking when `Composition_Value` ties occur across different interest categories.
+
+   - **`1result.sql`** lacks these additional ordering clauses:
+     - It does not consider `NULLS LAST` or secondary ordering columns in its `ROW_NUMBER()` functions.
+     - This might lead to inconsistent results if there are ties or null values in the `composition` column.
+
+3. **Robustness and Accuracy:**
+   - By accounting for ties and nulls, **`0result.sql`** is more robust and likely to produce accurate and consistent results.
+   - Ensuring that the most recent data is preferred in case of ties aligns with common data analysis practices.
+
+4. **Consistency of Output:**
+   - While both queries produce similar outputs, the method used in **`0result.sql`** provides more assurance that the correct records are selected when there are duplicate composition values.
+   - This could be crucial in datasets where ties are possible due to limited precision or discrete composition values.
+
+**Therefore, the correct SQL query is:**
+
+```plain
+0result.sql
+```
