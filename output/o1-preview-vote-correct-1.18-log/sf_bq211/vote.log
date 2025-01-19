@@ -1,0 +1,47 @@
+After comparing the three SQL queries and their results, the first SQL query (`0result.sql`) is the most appropriate choice.
+
+**Reasoning:**
+
+1. **Alignment with the Task:**
+   - The task is to count the number of *unique* patents granted between 2010 and 2023 in China (`'CN'`), which belong to families having more than one distinct application.
+   - The focus is on counting distinct patents without duplication.
+
+2. **Analysis of the Queries:**
+
+   - **`0result.sql`:**
+     - Uses `COUNT(DISTINCT "publication_number")` to count unique patents.
+     - Ensures that each patent is counted only once, avoiding duplicates.
+     - Correctly filters patents based on the `grant_date`, `country_code`, and `family_id` criteria.
+     - SQL Query:
+       ```sql
+       SELECT COUNT(DISTINCT "publication_number") AS "Number_of_Patents"
+       FROM PATENTS.PATENTS.PUBLICATIONS
+       WHERE "country_code" = 'CN'
+         AND "grant_date" BETWEEN 20100101 AND 20231231
+         AND "family_id" IN (
+           SELECT "family_id"
+           FROM PATENTS.PATENTS.PUBLICATIONS
+           GROUP BY "family_id"
+           HAVING COUNT(DISTINCT "application_number") > 1
+         );
+       ```
+
+   - **`1result.sql`:**
+     - Uses `COUNT(*)` without `DISTINCT`, which may include duplicate records.
+     - Potentially overcounts patents if there are multiple entries for the same `publication_number`.
+     - Does not ensure that only unique patents are counted.
+
+   - **`2result.sql`:**
+     - Also uses `COUNT(*)` without `DISTINCT`.
+     - Adds additional conditions (`"grant_date" IS NOT NULL` and `"grant_date" != 0`), which may or may not be necessary depending on data cleanliness.
+     - Still may overcount due to not using `DISTINCT`.
+
+3. **Conclusion:**
+   - The first query (`0result.sql`) accurately counts the number of unique patents that meet the specified criteria.
+   - Using `COUNT(DISTINCT "publication_number")` ensures that duplicates are not included in the count, providing a precise answer.
+
+**Selected SQL File:**
+
+```plain
+0result.sql
+```
