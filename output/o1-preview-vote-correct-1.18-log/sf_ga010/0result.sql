@@ -1,0 +1,105 @@
+WITH all_events AS (
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201201"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201202"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201203"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201204"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201205"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201206"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201207"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201208"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201209"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201210"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201211"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201212"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201213"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201214"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201215"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201216"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201217"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201218"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201219"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201220"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201221"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201222"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201223"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201224"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201225"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201226"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201227"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201228"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201229"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201230"
+    UNION ALL
+    SELECT * FROM "GA4"."GA4_OBFUSCATED_SAMPLE_ECOMMERCE"."EVENTS_20201231"
+),
+sessions AS (
+    SELECT
+        t."EVENT_DATE",
+        t."EVENT_NAME",
+        t."USER_PSEUDO_ID",
+        t."EVENT_TIMESTAMP",
+        t."TRAFFIC_SOURCE"::VARIANT:"source"::STRING AS "source",
+        t."TRAFFIC_SOURCE"::VARIANT:"medium"::STRING AS "medium",
+        t."TRAFFIC_SOURCE"::VARIANT:"campaign"::STRING AS "campaign"
+    FROM all_events t
+    WHERE t."EVENT_NAME" = 'session_start'
+      AND t."EVENT_DATE" BETWEEN '20201201' AND '20201231'
+),
+classified AS (
+    SELECT
+        t."USER_PSEUDO_ID",
+        t."EVENT_DATE",
+        t."EVENT_TIMESTAMP",
+        t."source",
+        t."medium",
+        t."campaign",
+        CASE
+            WHEN t."source" = '(direct)' AND t."medium" IN ('(not set)', '(none)') THEN 'Direct'
+            WHEN t."campaign" ILIKE '%cross-network%' THEN 'Cross-network'
+            WHEN (t."source" IN ('alibaba', 'amazon', 'google shopping', 'shopify', 'etsy', 'ebay', 'stripe', 'walmart') OR REGEXP_LIKE(t."campaign", '^(.*(([^a-df-z]|^)shop|shopping).*)$', 'i'))
+                 AND NOT REGEXP_LIKE(t."medium", '^(.*cp.*|ppc|retargeting|paid.*)$', 'i') THEN 'Organic Shopping'
+            WHEN t."source" IN ('baidu', 'bing', 'duckduckgo', 'ecosia', 'google', 'yahoo', 'yandex') OR t."medium" = 'organic' THEN 'Organic Search'
+            WHEN t."medium" = 'referral' THEN 'Referral'
+            WHEN REGEXP_LIKE(t."source", '^(badoo|facebook|fb|instagram|linkedin|pinterest|tiktok|twitter|whatsapp)$', 'i')
+                 OR t."medium" IN ('social', 'social-network', 'social-media', 'sm', 'social network', 'social media') THEN 'Organic Social'
+            WHEN t."source" IN ('email', 'e-mail', 'e_mail', 'e mail') OR t."medium" IN ('email', 'e-mail', 'e_mail', 'e mail') THEN 'Email'
+            ELSE 'Unassigned'
+        END AS "Channel"
+    FROM sessions t
+)
+SELECT
+    "Channel",
+    COUNT(*) AS "Number_of_Sessions"
+FROM classified
+GROUP BY "Channel"
+ORDER BY "Number_of_Sessions" DESC NULLS LAST
+LIMIT 1 OFFSET 3;

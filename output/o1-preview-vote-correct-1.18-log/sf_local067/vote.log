@@ -1,0 +1,172 @@
+**Analysis of the SQL Queries and Results:**
+
+The task is to **provide the highest and lowest profits for Italian customers segmented into ten evenly divided tiers based on their December 2021 sales profits**. This requires calculating the **total profit per customer** for December 2021 sales, then segmenting these customers into ten tiers based on their profits.
+
+Let's analyze each SQL query to determine which one correctly accomplishes this task.
+
+---
+
+### **1. 0result.sql**
+
+**Summary:**
+
+- Calculates **profit per sale transaction**.
+- Segments individual sale transactions into ten tiers based on their profits.
+- Uses `NTILE(10)` over individual profits.
+
+**SQL Highlights:**
+
+```sql
+SELECT
+  "Tier",
+  ROUND(MAX(profit), 4) AS "Highest_Profit",
+  ROUND(MIN(profit), 4) AS "Lowest_Profit"
+FROM (
+  SELECT
+    NTILE(10) OVER (ORDER BY profit DESC NULLS LAST) AS "Tier",
+    profit
+  FROM (
+    SELECT
+      s."cust_id",
+      ROUND(s."amount_sold" - cst."unit_cost" * s."quantity_sold", 4) AS profit
+    FROM "SALES" s
+    -- Joins and filters for Italian customers in December 2021
+  ) profit_data
+) tiered_profits
+GROUP BY "Tier"
+ORDER BY "Tier";
+```
+
+**Why It Doesn't Meet the Requirements:**
+
+- **Segments Sale Transactions Instead of Customers:** The query segments individual sales transactions, not customers. The task requires segmenting **customers** based on their total profits.
+- **Profit Calculated Per Transaction:** While profit per transaction is calculated, it isn't aggregated per customer.
+
+---
+
+### **2. 2result.sql**
+
+**Summary:**
+
+- Calculates **total profit per customer**.
+- Uses the **average unit cost** per product across all time to calculate profits.
+- Segments customers into ten tiers based on their total profits.
+
+**SQL Highlights:**
+
+```sql
+WITH Italian_Customers AS (
+  -- Retrieves Italian customers
+),
+December2021Sales AS (
+  -- Retrieves sales from December 2021
+),
+Italian_December2021Sales AS (
+  -- Joins to get sales of Italian customers in Dec 2021
+),
+Avg_Costs AS (
+  SELECT
+    "prod_id",
+    AVG("unit_cost") AS "avg_unit_cost"
+  FROM "COSTS"
+  GROUP BY "prod_id"
+),
+Sales_With_Profit AS (
+  SELECT
+    s."cust_id",
+    -- Calculates profit using average unit cost
+    (s."amount_sold" - s."quantity_sold" * ac."avg_unit_cost") AS "profit"
+  FROM Italian_December2021Sales s
+  LEFT JOIN Avg_Costs ac ON s."prod_id" = ac."prod_id"
+),
+Customer_Profit AS (
+  -- Sums profit per customer
+),
+Customer_Tiers AS (
+  -- Uses NTILE(10) over total profit per customer
+)
+SELECT
+  "profit_tier" AS "Profit_Tier",
+  ROUND(MIN("total_profit"), 4) AS "Lowest_Profit",
+  ROUND(MAX("total_profit"), 4) AS "Highest_Profit"
+FROM Customer_Tiers
+GROUP BY "profit_tier"
+ORDER BY "profit_tier";
+```
+
+**Why It's Not the Best Choice:**
+
+- **Uses Average Unit Cost:** The profit calculation uses the average unit cost per product across all time, not the actual unit cost at the time of each sale.
+- **Potentially Inaccurate Profits:** This method can lead to inaccurate profit calculations because it doesn't account for cost variations over time.
+
+---
+
+### **3. 1result.sql**
+
+**Summary:**
+
+- Calculates **total profit per customer** using the **actual unit cost at the time of each sale**.
+- Segments customers into ten tiers based on their total profits.
+- Accurately reflects profits for Italian customers in December 2021.
+
+**SQL Highlights:**
+
+```sql
+WITH italy_country_id AS (
+  -- Retrieves country_id for Italy
+),
+italian_customers AS (
+  -- Retrieves Italian customers
+),
+times_dec2021 AS (
+  -- Retrieves time_ids for December 2021
+),
+italian_sales_dec2021 AS (
+  -- Retrieves sales of Italian customers in Dec 2021
+),
+sales_with_costs AS (
+  SELECT S.*, C."unit_cost"
+  FROM italian_sales_dec2021 S
+  LEFT JOIN "COSTS" C
+    ON S."prod_id" = C."prod_id" AND S."time_id" = C."time_id"
+),
+sales_with_profit AS (
+  -- Calculates profit per sale using actual unit cost at time of sale
+  SELECT S.*, ROUND(S."amount_sold" - COALESCE(S."unit_cost", 0) * S."quantity_sold", 4) as profit
+  FROM sales_with_costs S
+),
+customer_profits AS (
+  -- Sums profit per customer
+),
+customer_profits_with_tier AS (
+  -- Uses NTILE(10) over total profit per customer
+)
+SELECT 
+  CPWT.Tier,
+  ROUND(MAX(CPWT.total_profit), 4) as Highest_Profit,
+  ROUND(MIN(CPWT.total_profit), 4) as Lowest_Profit
+FROM customer_profits_with_tier CPWT
+GROUP BY CPWT.Tier
+ORDER BY CPWT.Tier;
+```
+
+**Why It's the Correct Choice:**
+
+- **Calculates Total Profit Per Customer:** It sums up profits per customer, which aligns with the task requirement to segment customers.
+- **Uses Actual Unit Cost at Time of Sale:** By joining on both "prod_id" and "time_id", it ensures that the unit cost corresponds to the time of sale, leading to accurate profit calculations.
+- **Segments Customers into Tiers Based on Total Profit:** Uses `NTILE(10)` over the total profit per customer to segment them into ten evenly divided tiers.
+- **Meets All Task Requirements:** This query accurately calculates the highest and lowest profits for Italian customers in December 2021, segmented into ten tiers based on their total sales profits.
+
+---
+
+**Conclusion:**
+
+After analyzing all three SQL queries, **`1result.sql`** correctly fulfills the task requirements by calculating the total profits per customer using accurate unit costs and segmenting Italian customers into ten tiers based on their December 2021 sales profits.
+
+---
+
+**Answer:**
+
+```plain
+1result.sql
+```
