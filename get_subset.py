@@ -22,6 +22,26 @@ snow_correct_list = [
     "sf_local274", "sf_local284", "sf_local301", "sf_local309", "sf_local329", "sf001", "sf010", "sf014", "sf044"
 ]
 
+lite_close_list = [
+    "bq002", "sf_bq007", "sf_bq028", "sf_bq033", "bq039", "sf_bq062", "bq098", "bq112", "bq119", "bq123", 
+    "sf_bq160", "sf_bq166", "sf_bq175", "bq185", "bq198", "bq208", "sf_bq215", "sf_bq219", "bq229", "sf_bq283", "bq293", "sf_bq294", 
+    "sf_bq321", "bq330", "bq338", "bq350", "bq354", "bq356", "bq363", "bq374", "sf_bq380", "bq383", "bq400", 
+    "bq442", "sf_bq460", "bq461", "ga006", "ga008", "ga013", "ga017", "local004", "local032", 
+    "local049", "local059", "local066", "local068", "local081", "local085", "local114", "local130", "local132", "local152", 
+    "local195", "local196", "local201", "local212", "local219", "local220", "local264", "local272", "local300", "local311", "local330"
+]
+
+lite_correct_list = [
+    "bq001", "bq006", "bq010", "bq011", "bq018", "bq021", "bq025", "bq032", "bq034", "bq035", "sf_bq056", "bq059", "bq060", "bq061", "bq066", "bq076", 
+    "bq077", "bq081", "bq085", "bq090", "sf_bq091", "bq097", "sf_bq099", "bq103", "bq109", "bq113", "bq115", "sf_bq121", "bq126", "bq130", "sf_bq135", "bq143", "sf_bq150", "bq151", 
+    "sf_bq158", "bq161", "bq172", "sf_bq176", "sf_bq210", "sf_bq211", "sf_bq213", "sf_bq214", "sf_bq216", "bq218", "sf_bq224", "bq227", "bq228", "bq235", "sf_bq252", "sf_bq255", "bq268", "bq279",
+    "bq280", "bq281", "bq282", "bq284", "bq285", "bq286", "sf_bq289", "bq300", "bq302", "bq303", "bq308", "bq309", "bq310", "bq327", "bq328", "sf_bq341", "sf_bq345", "sf_bq346", "bq352", 
+    "bq355", "bq357", "sf_bq359", "sf_bq361", "bq362", "sf_bq375", "sf_bq377", "bq379", "bq389", "bq392", "bq394", "bq396", "bq398", "bq399", "bq406", "bq414", 
+    "sf_bq421", "sf_bq444", "ga001", "ga002", "ga003", "ga004", "ga007", "ga010", "ga020", "local008", "local017", "local019", "local022", "local023", "local026", "local028", "local031", 
+    "local038", "local039", "local041", "local054", "local056", "local058", "local065", "local067", "local071", "local072", "local074", "local075", "local078", "local099", 
+    "local131", "local141", "local163", "local193", "local197", "local198", "local199", "local202", "local210", "local218", "local221", "local244", 
+    "local274", "local284", "local301", "local309", "local329", "sf001", "sf010", "sf014", "sf044"
+]
 
 json_name = "spider2-snow.jsonl"
 def mv(all_path, target_path, sql_list):
@@ -38,8 +58,13 @@ snow_close_path = "../snow-spider-agent/methods/spider-self-refine/examples-clos
 snow_correct_path = "../snow-spider-agent/methods/spider-self-refine/examples-correct"
 snow_all_path = "../snow-spider-agent/methods/spider-self-refine/examples"
 
+lite_close_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-close"
+lite_correct_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-correct"
+lite_all_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite"
+
 
 mv(snow_all_path, snow_close_path, snow_close_list)
 mv(snow_all_path, snow_correct_path, snow_correct_list)
-
+mv(lite_all_path, lite_close_path, lite_close_list)
+mv(lite_all_path, lite_correct_path, lite_correct_list)
 
