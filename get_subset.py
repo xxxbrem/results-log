@@ -1,7 +1,7 @@
 import os
 import shutil
 
-close_list = [
+snow_close_list = [
     "sf_bq002", "sf_bq007", "sf_bq028", "sf_bq033", "sf_bq039", "sf_bq062", "sf_bq098", "sf_bq112", "sf_bq119", "sf_bq123", 
     "sf_bq160", "sf_bq166", "sf_bq175", "sf_bq185", "sf_bq198", "sf_bq208", "sf_bq215", "sf_bq219", "sf_bq229", "sf_bq283", "sf_bq293", "sf_bq294", 
     "sf_bq321", "sf_bq330", "sf_bq338", "sf_bq350", "sf_bq354", "sf_bq356", "sf_bq363", "sf_bq374", "sf_bq380", "sf_bq383", "sf_bq400", 
@@ -10,7 +10,7 @@ close_list = [
     "sf_local195", "sf_local196", "sf_local201", "sf_local212", "sf_local219", "sf_local220", "sf_local264", "sf_local272", "sf_local300", "sf_local311", "sf_local330"
 ]
 
-correct_list = [
+snow_correct_list = [
     "sf_bq001", "sf_bq006", "sf_bq010", "sf_bq011", "sf_bq018", "sf_bq021", "sf_bq025", "sf_bq032", "sf_bq034", "sf_bq035", "sf_bq056", "sf_bq059", "sf_bq060", "sf_bq061", "sf_bq066", "sf_bq076", 
     "sf_bq077", "sf_bq081", "sf_bq085", "sf_bq090", "sf_bq091", "sf_bq097", "sf_bq099", "sf_bq103", "sf_bq109", "sf_bq113", "sf_bq115", "sf_bq121", "sf_bq126", "sf_bq130", "sf_bq135", "sf_bq143", "sf_bq150", "sf_bq151", 
     "sf_bq158", "sf_bq161", "sf_bq172", "sf_bq176", "sf_bq210", "sf_bq211", "sf_bq213", "sf_bq214", "sf_bq216", "sf_bq218", "sf_bq224", "sf_bq227", "sf_bq228", "sf_bq235", "sf_bq252", "sf_bq255", "sf_bq268", "sf_bq279",
@@ -34,12 +34,12 @@ def mv(all_path, target_path, sql_list):
         shutil.copytree(source, sql_path)
     shutil.copy(os.path.join(all_path, json_name), os.path.join(target_path, json_name))
 
-close_path = "../snow-spider-agent/methods/spider-self-refine/examples-close"
-correct_path = "../snow-spider-agent/methods/spider-self-refine/examples-correct"
-all_path = "../snow-spider-agent/methods/spider-self-refine/examples"
+snow_close_path = "../snow-spider-agent/methods/spider-self-refine/examples-close"
+snow_correct_path = "../snow-spider-agent/methods/spider-self-refine/examples-correct"
+snow_all_path = "../snow-spider-agent/methods/spider-self-refine/examples"
 
 
-mv(all_path, close_path, close_list)
-mv(all_path, correct_path, correct_list)
+mv(snow_all_path, snow_close_path, snow_close_list)
+mv(snow_all_path, snow_correct_path, snow_correct_list)
 
 

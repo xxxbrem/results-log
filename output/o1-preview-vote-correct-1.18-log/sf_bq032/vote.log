@@ -1,0 +1,46 @@
+After comparing the SQL queries and their results, the correct SQL script is:
+
+```plain
+0result.sql
+```
+
+**Reason:**
+
+- **Handling Ties Properly:** The `0result.sql` script uses the `RANK()` function to assign ranks based on the total distance traveled by each hurricane. This function assigns the same rank to hurricanes that have the same total distance, which accurately reflects their positions in the ranking. This is important because if there are hurricanes that traveled the same distance, we need to consider them as tied for that rank.
+
+  ```sql
+  RANK() OVER (ORDER BY "total_distance" DESC NULLS LAST) AS "distance_rank"
+  ```
+
+- **Accurate Distance Calculation:** The script calculates the distance between consecutive hurricane points using the `ST_DISTANCE()` function with proper geospatial data types. It ensures that all segments are accounted for and distances are summed accurately.
+
+  ```sql
+  CASE 
+      WHEN "latitude" IS NOT NULL AND "longitude" IS NOT NULL 
+           AND "prev_latitude" IS NOT NULL AND "prev_longitude" IS NOT NULL
+      THEN ST_DISTANCE(
+          TO_GEOGRAPHY(ST_POINT("longitude", "latitude")),
+          TO_GEOGRAPHY(ST_POINT("prev_longitude", "prev_latitude"))
+      )
+      ELSE 0
+  END AS "segment_distance"
+  ```
+
+- **Final Position Retrieval:** The script correctly retrieves the final latitude of the hurricane by ordering the observations by `iso_time` in descending order and picking the first record (latest observation).
+
+  ```sql
+  SELECT
+      ROUND(fp."latitude", 4) AS "latitude"
+  FROM
+      ranked_hurricanes rh
+      JOIN final_positions fp ON rh."sid" = fp."sid"
+  WHERE
+      rh."distance_rank" = 2
+      AND fp.rn = 1;
+  ```
+
+- **Avoiding Potential Errors in Ordering:** Unlike the other scripts, `0result.sql` does not include the "sid" in the ordering criteria when determining the rank. Including "sid" in the ordering (as seen in `1result.sql`) could lead to incorrect ranking if two hurricanes have the same total distance. Also, using `LIMIT` with `OFFSET` (as in `2result.sql`) without handling ties properly might skip hurricanes that are tied for a rank.
+
+**Conclusion:**
+
+The `0result.sql` script accurately identifies the hurricane that traveled the second longest distance, properly handles any potential ties, and correctly retrieves the latitude of its final coordinates.

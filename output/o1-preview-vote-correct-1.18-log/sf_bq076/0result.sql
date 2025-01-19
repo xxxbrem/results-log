@@ -1,0 +1,15 @@
+SELECT 
+    EXTRACT(MONTH FROM TO_TIMESTAMP_LTZ("date", 6)) AS "Month_num",
+    TO_CHAR(TO_TIMESTAMP_LTZ("date", 6), 'Month') AS "Month",
+    COUNT(*) AS "Count"
+FROM 
+    CHICAGO.CHICAGO_CRIME.CRIME
+WHERE 
+    "primary_type" = 'MOTOR VEHICLE THEFT'
+    AND "year" = 2016
+GROUP BY 
+    EXTRACT(MONTH FROM TO_TIMESTAMP_LTZ("date", 6)), 
+    TO_CHAR(TO_TIMESTAMP_LTZ("date", 6), 'Month')
+ORDER BY 
+    "Count" DESC NULLS LAST
+LIMIT 1;
