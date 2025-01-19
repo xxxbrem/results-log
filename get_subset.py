@@ -43,8 +43,8 @@ lite_correct_list = [
     "local274", "local284", "local301", "local309", "local329", "sf001", "sf010", "sf014", "sf044"
 ]
 
-json_name = "spider2-snow.jsonl"
-def mv(all_path, target_path, sql_list):
+
+def mv(all_path, target_path, sql_list, json_name):
     if os.path.exists(target_path):
         shutil.rmtree(target_path)
     os.mkdir(target_path)
@@ -57,14 +57,15 @@ def mv(all_path, target_path, sql_list):
 snow_close_path = "../snow-spider-agent/methods/spider-self-refine/examples-close"
 snow_correct_path = "../snow-spider-agent/methods/spider-self-refine/examples-correct"
 snow_all_path = "../snow-spider-agent/methods/spider-self-refine/examples"
+snow_json_name = "spider2-snow.jsonl"
 
 lite_close_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-close"
 lite_correct_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-correct"
 lite_all_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite"
+lite_json_name = "spider2-lite.jsonl"
 
-
-mv(snow_all_path, snow_close_path, snow_close_list)
-mv(snow_all_path, snow_correct_path, snow_correct_list)
-mv(lite_all_path, lite_close_path, lite_close_list)
-mv(lite_all_path, lite_correct_path, lite_correct_list)
+mv(snow_all_path, snow_close_path, snow_close_list, snow_json_name)
+mv(snow_all_path, snow_correct_path, snow_correct_list, snow_json_name)
+mv(lite_all_path, lite_close_path, lite_close_list, lite_json_name)
+mv(lite_all_path, lite_correct_path, lite_correct_list, lite_json_name)
 
