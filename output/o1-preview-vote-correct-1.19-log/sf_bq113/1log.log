@@ -1,0 +1,3876 @@
+2025-01-20 03:20:10 - openai._base_client - INFO - Retrying request to /chat/completions in 0.479838 seconds
+2025-01-20 03:21:19 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 03:21:19 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:21:19 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:21:19 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:21:20 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:21:21 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:22:24 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 03:22:24 - root - INFO - It appears that the error you're encountering is due to the fact that the column `"state_name"` does not exist in the `BLS.GEO_US_BOUNDARIES."COUNTIES"` table. Based on the DDL provided, the `COUNTIES` table has the following columns:
+
+- `"geo_id"`
+- `"state_fips_code"`
+- `"county_fips_code"`
+- `"county_gnis_code"`
+- `"county_name"`
+- `"lsad_name"`
+- `"lsad_code"`
+- `"fips_class_code"`
+- `"mtfcc_feature_class_code"`
+- `"csa_fips_code"`
+- `"cbsa_fips_code"`
+- `"met_div_fips_code"`
+- `"functional_status"`
+- `"area_land_meters"`
+- `"area_water_meters"`
+- `"int_point_lat"`
+- `"int_point_lon"`
+- `"int_point_geom"`
+- `"county_geom"`
+
+As you can see, the `"state_name"` column is not present in this table.
+
+**Solution:**
+
+To resolve this issue, you can use the `BLS.GEO_US_BOUNDARIES."STATES"` table, which contains the `"state_name"` column. You can join the `COUNTIES` table with the `STATES` table using the `"state_fips_code"` column, which is common to both tables.
+
+Here is the corrected query:
+
+```sql
+SELECT DISTINCT s."state_name"
+FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+  ON c."state_fips_code" = s."state_fips_code"
+LIMIT 1000;
+```
+
+**Updated Queries with Corrections:**
+
+Below are the updated queries, incorporating the necessary corrections:
+
+---
+
+1. **List all state names to verify the states available:**
+
+   ```sql
+   SELECT DISTINCT "state_name"
+   FROM BLS.GEO_US_BOUNDARIES."STATES"
+   LIMIT 1000;
+   ```
+
+2. **Retrieve all counties in Utah with their `geo_id`s:**
+
+   ```sql
+   SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE s."state_name" = 'Utah'
+   LIMIT 1000;
+   ```
+
+3. **Get unique `geoid`s from the 2000 Q1 employment data:**
+
+   ```sql
+   SELECT DISTINCT "geoid"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   LIMIT 1000;
+   ```
+
+4. **List construction employment levels in Utah counties for 2000 Q1:**
+
+   ```sql
+   SELECT q."geoid", q."month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1" q
+   WHERE q."geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+5. **List construction employment levels in Utah counties for 2018 Q4:**
+
+   ```sql
+   SELECT q."geoid", q."month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4" q
+   WHERE q."geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+6. **Find counties with non-null construction employment data in 2000 Q1:**
+
+   ```sql
+   SELECT q."geoid", q."month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1" q
+   WHERE q."month3_emplvl_23_construction" IS NOT NULL
+     AND q."geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+7. **Find counties with non-null construction employment data in 2018 Q4:**
+
+   ```sql
+   SELECT q."geoid", q."month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4" q
+   WHERE q."month3_emplvl_23_construction" IS NOT NULL
+     AND q."geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+8. **Retrieve county names and IDs for Utah using the state FIPS code:**
+
+   ```sql
+   SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE c."state_fips_code" = '49'
+   LIMIT 1000;
+   ```
+
+9. **Check construction establishments in Utah counties for 2000 Q1:**
+
+   ```sql
+   SELECT q."geoid", q."qtrly_estabs_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1" q
+   WHERE q."geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+10. **Check construction establishments in Utah counties for 2018 Q4:**
+
+    ```sql
+    SELECT q."geoid", q."qtrly_estabs_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4" q
+    WHERE q."geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+11. **List average weekly wages in the construction sector for Utah counties in 2000 Q1:**
+
+    ```sql
+    SELECT q."geoid", q."avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1" q
+    WHERE q."geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+12. **List average weekly wages in the construction sector for Utah counties in 2018 Q4:**
+
+    ```sql
+    SELECT q."geoid", q."avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4" q
+    WHERE q."geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+13. **Retrieve employment levels in the construction sector for a specific county (e.g., `geoid` '49001') in 2000 Q1:**
+
+    ```sql
+    SELECT q."geoid", q."month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1" q
+    WHERE q."geoid" = '49001'
+    LIMIT 1000;
+    ```
+
+14. **Retrieve employment levels in the construction sector for the same county in 2018 Q4:**
+
+    ```sql
+    SELECT q."geoid", q."month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4" q
+    WHERE q."geoid" = '49001'
+    LIMIT 1000;
+    ```
+
+15. **List all `geoid`s starting with '49' to confirm they belong to Utah:**
+
+    ```sql
+    SELECT DISTINCT "geoid"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+---
+
+**Explanation:**
+
+- In the **original query**, the error occurred because `"state_name"` is not a column in the `COUNTIES` table.
+- The `"state_name"` column is available in the `STATES` table.
+- By joining the `COUNTIES` and `STATES` tables on `"state_fips_code"`, you can access `"state_name"`.
+
+**Additional Notes:**
+
+- **Utah's state FIPS code** is `'49'`. This code is used in the `geoid` to identify counties in Utah and can be used in string matching with `LIKE '49%'`.
+- **`geoid` Structure:** The `geoid` typically combines the state FIPS code and the county FIPS code.
+- Make sure to **alias** your tables (e.g., `c` for `COUNTIES`, `s` for `STATES`, `q` for quarterly employment tables) to enhance readability.
+- Ensure that all **column names are enclosed in double quotations** and that the table names are correctly specified.
+
+---
+
+**Steps to Resolve the Issue:**
+
+1. **Identify the Missing Column:**
+   - Check the DDL to confirm the columns present in the `COUNTIES` table.
+   - Realize that `"state_name"` is not present.
+
+2. **Locate the Correct Table:**
+   - Find that the `STATES` table contains the `"state_name"` column.
+
+3. **Adjust the Query:**
+   - Use a `JOIN` to combine the `COUNTIES` and `STATES` tables.
+   - Join on the `"state_fips_code"` column.
+
+4. **Test the Corrected Query:**
+   - Run the corrected query to ensure it works without errors.
+
+---
+
+**Example of Running the Corrected Query:**
+
+```sql
+SELECT DISTINCT s."state_name"
+FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+  ON c."state_fips_code" = s."state_fips_code"
+LIMIT 1000;
+```
+
+This should provide you with a list of state names without any SQL errors.
+
+---
+
+**Let me know** if you have any further questions or need assistance with anything else!
+2025-01-20 03:22:24 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:22:24 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:22:24 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:22:26 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:22:26 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:22:26 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:31 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 03:23:31 - root - INFO - SQL:
+SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE c."state_fips_code" = '49'
+   LIMIT 1000;
+Results:
+geo_id,county_name,state_name
+49017,Garfield,Utah
+49015,Emery,Utah
+49037,San Juan,Utah
+49055,Wayne,Utah
+49039,Sanpete,Utah
+49031,Piute,Utah
+49025,Kane,Utah
+49009,Daggett,Utah
+49033,Rich,Utah
+49001,Beaver,Utah
+49013,Duchesne,Utah
+49041,Sevier,Utah
+49027,Millard,Utah
+49019,Grand,Utah
+49021,Iron,Utah
+49043,Summit,Utah
+49051,Wasatch,Utah
+49005,Cache,Utah
+49057,Weber,Utah
+49029,Morgan,Utah
+49003,Box Elder,Utah
+49011,Davis,Utah
+49007,Carbon,Utah
+49049,Utah,Utah
+49023,Juab,Utah
+49053,Washington,Utah
+49045,Tooele,Utah
+49035,Salt Lake,Utah
+49047,Uintah,Utah
+
+2025-01-20 03:23:31 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:31 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:31 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:32 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:32 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:32 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:33 - root - INFO - SQL:
+SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE s."state_name" = 'Utah'
+   LIMIT 1000
+Results:
+geo_id,county_name,state_name
+49017,Garfield,Utah
+49015,Emery,Utah
+49037,San Juan,Utah
+49055,Wayne,Utah
+49039,Sanpete,Utah
+49031,Piute,Utah
+49025,Kane,Utah
+49009,Daggett,Utah
+49033,Rich,Utah
+49001,Beaver,Utah
+49013,Duchesne,Utah
+49041,Sevier,Utah
+49027,Millard,Utah
+49019,Grand,Utah
+49021,Iron,Utah
+49043,Summit,Utah
+49051,Wasatch,Utah
+49005,Cache,Utah
+49057,Weber,Utah
+49029,Morgan,Utah
+49003,Box Elder,Utah
+49011,Davis,Utah
+49007,Carbon,Utah
+49049,Utah,Utah
+49023,Juab,Utah
+49053,Washington,Utah
+49045,Tooele,Utah
+49035,Salt Lake,Utah
+49047,Uintah,Utah
+
+2025-01-20 03:23:33 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:33 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:33 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:34 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1000
+2025-01-20 03:23:34 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:34 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:34 - root - INFO - SQL:
+SELECT DISTINCT "geoid"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   LIMIT 1000
+Results:
+Too long, hard cut:
+geoid
+48227
+06031
+05069
+48491
+48245
+55079
+41039
+33009
+06067
+40017
+36013
+37183
+45075
+22105
+17099
+06079
+18089
+05093
+04005
+48029
+39085
+55025
+22051
+42071
+42091
+40119
+08077
+24031
+53063
+45083
+39049
+48121
+45051
+37159
+53057
+06059
+42125
+12033
+12105
+35001
+36029
+22019
+24001
+27053
+28121
+48215
+25003
+12031
+04019
+06111
+25023
+47157
+39061
+48027
+05131
+16055
+08001
+53053
+48303
+32003
+06085
+56021
+12021
+37051
+39157
+49035
+06077
+13121
+48453
+48441
+33011
+01003
+41017
+08013
+34003
+36071
+42063
+42049
+48209
+33015
+22033
+06071
+08031
+06061
+26161
+49057
+22073
+53067
+12083
+18105
+48375
+48329
+22017
+55063
+25009
+29095
+33001
+20091
+48451
+34041
+42029
+42081
+09003
+48183
+42019
+17167
+26115
+06081
+39017
+17037
+48039
+06073
+28081
+08101
+26163
+42107
+22071
+12097
+42035
+12113
+49011
+17163
+25021
+26125
+48157
+44007
+49049
+17031
+01117
+42001
+48423
+12071
+06097
+20173
+53041
+48167
+39151
+15003
+18051
+46103
+42043
+01097
+48309
+04015
+08069
+25027
+49053
+35045
+22103
+42129
+48091
+45003
+42133
+27037
+12011
+04013
+23009
+12055
+53033
+45007
+53073
+53077
+42013
+15009
+51153
+12101
+51143
+47065
+37191
+13089
+19061
+29213
+46099
+24027
+37129
+37161
+34035
+23019
+15001
+56025
+48053
+28003
+36103
+36093
+18039
+37001
+39103
+51550
+48049
+31157
+48381
+51031
+53035
+22015
+06053
+17197
+28035
+12069
+06065
+42011
+54081
+36027
+26055
+40109
+40143
+39099
+17001
+18163
+48479
+37031
+42079
+48085
+48339
+25005
+48141
+42021
+08123
+24033
+39153
+35049
+34027
+53061
+25013
+08005
+06101
+42027
+06019
+25017
+12099
+42085
+23031
+34029
+30111
+39167
+30029
+12057
+17089
+01125
+18057
+08059
+17043
+01073
+48201
+09001
+22097
+13067
+17119
+35015
+41019
+42051
+06083
+04025
+22005
+16001
+01101
+28049
+06013
+09009
+48113
+05119
+34039
+08041
+39113
+42017
+06037
+16083
+48061
+12081
+42041
+12127
+13185
+37125
+42069
+36067
+06107
+31055
+04003
+17097
+12005
+42055
+22079
+45041
+42075
+54011
+18081
+34007
+25025
+53007
+72061
+37151
+37147
+53029
+12103
+39093
+17203
+53031
+42037
+28151
+27013
+36091
+12115
+06045
+12015
+18167
+18157
+34025
+42077
+06055
+42095
+36119
+18005
+35013
+42045
+37133
+06035
+39095
+06017
+12109
+29183
+30049
+29165
+19113
+49043
+12117
+37071
+18019
+12085
+41051
+28033
+37025
+29031
+23003
+15007
+28075
+47155
+42007
+21111
+47093
+29071
+36089
+48041
+01069
+32031
+26103
+20177
+26137
+51095
+50001
+20155
+42073
+39109
+41029
+55039
+26081
+48485
+06001
+12019
+36065
+41005
+21227
+27145
+39169
+21067
+55073
+27163
+41047
+26151
+13153
+53011
+17111
+26045
+29189
+34005
+45047
+51087
+16019
+21093
+36113
+36005
+19181
+39023
+16005
+13021
+51061
+24013
+13215
+27147
+12061
+30063
+36015
+51069
+27123
+51085
+29077
+54107
+26025
+19013
+26075
+39057
+37057
+01089
+17073
+47001
+39139
+50007
+36007
+01077
+06041
+55059
+19163
+29187
+13069
+22045
+48467
+48337
+19015
+05015
+54055
+47043
+19045
+48043
+32023
+26101
+24019
+40101
+37149
+21107
+29167
+51155
+19059
+36023
+13297
+19127
+27067
+39127
+42109
+51191
+20057
+54109
+01013
+45023
+21013
+39097
+56015
+53001
+41001
+08097
+39155
+06099
+51041
+45045
+29097
+12091
+38017
+37021
+28047
+49005
+37135
+34021
+51177
+38035
+11001
+47037
+55035
+26077
+39133
+26099
+31019
+29099
+36045
+06095
+12086
+26051
+39147
+37089
+26121
+13285
+72127
+33005
+18113
+39003
+55055
+55101
+27003
+29021
+51121
+18083
+48203
+18027
+26031
+21101
+18037
+39119
+26105
+51165
+05057
+47131
+54019
+45031
+37045
+39073
+55095
+37163
+38099
+29159
+26117
+47011
+39137
+28113
+36053
+72013
+48415
+01019
+39071
+48117
+50017
+12079
+48493
+01025
+06011
+13211
+28109
+48331
+48291
+29201
+38105
+06113
+24003
+37155
+55077
+41011
+18141
+36077
+26021
+34037
+20035
+26063
+55071
+37023
+12087
+31109
+17019
+47119
+13077
+39063
+19103
+19179
+18091
+27153
+13261
+13113
+36021
+53015
+55129
+26069
+37113
+06093
+36017
+21195
+47143
+13137
+36035
+51099
+01045
+42087
+56043
+05061
+21043
+54103
+42033
+44009
+09015
+49047
+16017
+33007
+19167
+45055
+02090
+08075
+56007
+20021
+05111
+47071
+17183
+29163
+50011
+24047
+26129
+40123
+42065
+42111
+48213
+01083
+36049
+08043
+48481
+08085
+48013
+29083
+08099
+06009
+22115
+29069
+48021
+48171
+20009
+53003
+46011
+22069
+08015
+19109
+30047
+22009
+51169
+05133
+28091
+47103
+19121
+13227
+27149
+05037
+48249
+27015
+55007
+02130
+20121
+55033
+21035
+20103
+55113
+54067
+51125
+40081
+49041
+29215
+08051
+27159
+12065
+46091
+27089
+48411
+19005
+27117
+16047
+30017
+05073
+16009
+51017
+37005
+31039
+53051
+46083
+72023
+48469
+26147
+19033
+72069
+51019
+48097
+26059
+46005
+37181
+29147
+26155
+05121
+13163
+39011
+42005
+06015
+54039
+33013
+37081
+02020
+06029
+22057
+23001
+48439
+22055
+39035
+35035
+21019
+38015
+06007
+48355
+42003
+13051
+21015
+42101
+34023
+27035
+30013
+13247
+10003
+37119
+45085
+51059
+33003
+12009
+23005
+13139
+06089
+39045
+45019
+06103
+37097
+41033
+18063
+29047
+39025
+36063
+36059
+36047
+05051
+36037
+27139
+45079
+18003
+25015
+41071
+36009
+55105
+41067
+40027
+26139
+36061
+39041
+16027
+55133
+48143
+55087
+13115
+12073
+37107
+34031
+55131
+47009
+51760
+18085
+13045
+26145
+37167
+37179
+24025
+17113
+26049
+12001
+19169
+72137
+54061
+13059
+53005
+05031
+51810
+53021
+54003
+47163
+17201
+18127
+27019
+55089
+12111
+17143
+33017
+22001
+54079
+46013
+42061
+17081
+06025
+42009
+55137
+28083
+18059
+20055
+26109
+26019
+48473
+39143
+39161
+55115
+37087
+72005
+27133
+30083
+18149
+48365
+13293
+27115
+13107
+35029
+51023
+18087
+26073
+18071
+36101
+09005
+16069
+22109
+13057
+55127
+18097
+13135
+39173
+37049
+47187
+51003
+36079
+36055
+19153
+28089
+06075
+08035
+41003
+31079
+55117
+37127
+37063
+01015
+19193
+36117
+13313
+31119
+37035
+29019
+47149
+20161
+48241
+19155
+37189
+34001
+13245
+28011
+28
+
+2025-01-20 03:23:34 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:34 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:34 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:36 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:36 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:36 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:36 - root - INFO - SQL:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Results:
+geoid,month3_emplvl_23_construction
+49035,33012.0
+49057,5419.0
+49011,6711.0
+49053,3969.0
+49049,9981.0
+49005,2076.0
+49043,1264.0
+49013,247.0
+49047,451.0
+49019,260.0
+49041,382.0
+49039,319.0
+49023,145.0
+49021,825.0
+49003,897.0
+49007,239.0
+49045,532.0
+49027,65.0
+49037,217.0
+49015,254.0
+49001,107.0
+49029,271.0
+49051,593.0
+49033,27.0
+49025,113.0
+49055,88.0
+49017,58.0
+49009,
+49031,
+
+2025-01-20 03:23:36 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:36 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:36 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:37 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:37 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:38 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:38 - root - INFO - SQL:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Results:
+geoid,month3_emplvl_23_construction
+49053,7772.0
+49005,2829.0
+49011,10704.0
+49035,40043.0
+49057,6922.0
+49003,1685.0
+49021,1288.0
+49019,295.0
+49051,1398.0
+49043,1854.0
+49049,24427.0
+49039,509.0
+49045,943.0
+49047,825.0
+49029,566.0
+49013,409.0
+49025,130.0
+49007,323.0
+49023,291.0
+49041,399.0
+49037,230.0
+49055,142.0
+49031,0.0
+49009,0.0
+49017,35.0
+49033,66.0
+49027,86.0
+49015,393.0
+49001,132.0
+
+2025-01-20 03:23:38 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:38 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:38 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:39 - snowflake.connector.cursor - INFO - Number of results in first chunk: 27
+2025-01-20 03:23:39 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:39 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:39 - root - INFO - SQL:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "month3_emplvl_23_construction" IS NOT NULL
+     AND "geoid" LIKE '49%'
+   LIMIT 1000
+Results:
+geoid,month3_emplvl_23_construction
+49035,33012.0
+49057,5419.0
+49011,6711.0
+49053,3969.0
+49049,9981.0
+49005,2076.0
+49043,1264.0
+49013,247.0
+49047,451.0
+49019,260.0
+49041,382.0
+49039,319.0
+49023,145.0
+49021,825.0
+49003,897.0
+49007,239.0
+49045,532.0
+49027,65.0
+49037,217.0
+49015,254.0
+49001,107.0
+49029,271.0
+49051,593.0
+49033,27.0
+49025,113.0
+49055,88.0
+49017,58.0
+
+2025-01-20 03:23:39 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:39 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:39 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:41 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:41 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:41 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:41 - root - INFO - SQL:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "month3_emplvl_23_construction" IS NOT NULL
+     AND "geoid" LIKE '49%'
+   LIMIT 1000
+Results:
+geoid,month3_emplvl_23_construction
+49053,7772.0
+49005,2829.0
+49011,10704.0
+49035,40043.0
+49057,6922.0
+49003,1685.0
+49021,1288.0
+49019,295.0
+49051,1398.0
+49043,1854.0
+49049,24427.0
+49039,509.0
+49045,943.0
+49047,825.0
+49029,566.0
+49013,409.0
+49025,130.0
+49007,323.0
+49023,291.0
+49041,399.0
+49037,230.0
+49055,142.0
+49031,0.0
+49009,0.0
+49017,35.0
+49033,66.0
+49027,86.0
+49015,393.0
+49001,132.0
+
+2025-01-20 03:23:41 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:41 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:41 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:43 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:43 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:43 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:43 - root - INFO - SQL:
+SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE c."state_fips_code" = '49'
+   LIMIT 1000
+Results:
+geo_id,county_name,state_name
+49017,Garfield,Utah
+49015,Emery,Utah
+49037,San Juan,Utah
+49055,Wayne,Utah
+49039,Sanpete,Utah
+49031,Piute,Utah
+49025,Kane,Utah
+49009,Daggett,Utah
+49033,Rich,Utah
+49001,Beaver,Utah
+49013,Duchesne,Utah
+49041,Sevier,Utah
+49027,Millard,Utah
+49019,Grand,Utah
+49021,Iron,Utah
+49043,Summit,Utah
+49051,Wasatch,Utah
+49005,Cache,Utah
+49057,Weber,Utah
+49029,Morgan,Utah
+49003,Box Elder,Utah
+49011,Davis,Utah
+49007,Carbon,Utah
+49049,Utah,Utah
+49023,Juab,Utah
+49053,Washington,Utah
+49045,Tooele,Utah
+49035,Salt Lake,Utah
+49047,Uintah,Utah
+
+2025-01-20 03:23:43 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:43 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:43 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:45 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:45 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:45 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:45 - root - INFO - SQL:
+SELECT "geoid", "qtrly_estabs_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Results:
+geoid,qtrly_estabs_23_construction
+49035,3929.0
+49057,781.0
+49011,861.0
+49053,624.0
+49049,1636.0
+49005,446.0
+49043,306.0
+49013,60.0
+49047,93.0
+49019,45.0
+49041,75.0
+49039,80.0
+49023,29.0
+49021,184.0
+49003,147.0
+49007,53.0
+49045,92.0
+49027,28.0
+49037,33.0
+49015,31.0
+49001,24.0
+49029,49.0
+49051,163.0
+49033,11.0
+49025,32.0
+49055,15.0
+49017,17.0
+49009,
+49031,
+
+2025-01-20 03:23:45 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:45 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:45 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:46 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:46 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:47 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:47 - root - INFO - SQL:
+SELECT "geoid", "qtrly_estabs_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Results:
+geoid,qtrly_estabs_23_construction
+49053,1045.0
+49005,514.0
+49011,1080.0
+49035,4329.0
+49057,857.0
+49003,202.0
+49021,245.0
+49019,58.0
+49051,219.0
+49043,359.0
+49049,2107.0
+49039,85.0
+49045,149.0
+49047,132.0
+49029,83.0
+49013,86.0
+49025,41.0
+49007,47.0
+49023,48.0
+49041,77.0
+49037,32.0
+49055,24.0
+49031,3.0
+49009,3.0
+49017,10.0
+49033,14.0
+49027,36.0
+49015,17.0
+49001,28.0
+
+2025-01-20 03:23:47 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:47 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:47 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:48 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:48 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:48 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:48 - root - INFO - SQL:
+SELECT "geoid", "avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000
+Results:
+geoid,avg_wkly_wage_23_construction
+49035,613.0
+49057,529.0
+49011,542.0
+49053,420.0
+49049,497.0
+49005,389.0
+49043,574.0
+49013,418.0
+49047,416.0
+49019,421.0
+49041,319.0
+49039,373.0
+49023,424.0
+49021,373.0
+49003,511.0
+49007,496.0
+49045,539.0
+49027,305.0
+49037,520.0
+49015,524.0
+49001,352.0
+49029,429.0
+49051,466.0
+49033,340.0
+49025,338.0
+49055,350.0
+49017,331.0
+49009,
+49031,
+
+2025-01-20 03:23:48 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:48 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:48 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:50 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:50 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:50 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:51 - root - INFO - SQL:
+SELECT "geoid", "avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000
+Results:
+geoid,avg_wkly_wage_23_construction
+49053,786.0
+49005,764.0
+49011,1090.0
+49035,1193.0
+49057,1051.0
+49003,998.0
+49021,729.0
+49019,794.0
+49051,1329.0
+49043,1073.0
+49049,1033.0
+49039,696.0
+49045,850.0
+49047,971.0
+49029,911.0
+49013,860.0
+49025,685.0
+49007,1369.0
+49023,708.0
+49041,636.0
+49037,704.0
+49055,908.0
+49031,0.0
+49009,0.0
+49017,659.0
+49033,593.0
+49027,575.0
+49015,899.0
+49001,727.0
+
+2025-01-20 03:23:51 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:51 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:51 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:52 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-20 03:23:52 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:52 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:52 - root - INFO - SQL:
+SELECT "geoid", "month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" = '49001'
+    LIMIT 1000
+Results:
+geoid,month3_emplvl_23_construction
+49001,107.0
+
+2025-01-20 03:23:52 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:52 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:52 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:54 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-20 03:23:54 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:54 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:54 - root - INFO - SQL:
+SELECT "geoid", "month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4"
+    WHERE "geoid" = '49001'
+    LIMIT 1000
+Results:
+geoid,month3_emplvl_23_construction
+49001,132.0
+
+2025-01-20 03:23:54 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:23:54 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:23:54 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:23:55 - snowflake.connector.cursor - INFO - Number of results in first chunk: 29
+2025-01-20 03:23:55 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:23:55 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:23:56 - root - INFO - SQL:
+SELECT DISTINCT "geoid"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000
+Results:
+geoid
+49035
+49057
+49011
+49053
+49049
+49005
+49013
+49047
+49019
+49041
+49039
+49023
+49003
+49007
+49045
+49027
+49037
+49001
+49029
+49051
+49033
+49025
+49009
+49031
+49055
+49017
+49043
+49021
+49015
+
+2025-01-20 03:23:56 - root - INFO - itercount: 0
+2025-01-20 03:23:56 - root - INFO - Database Name: BLS
+Schema Name: BLS
+DDL describes table information.
+,0
+table_name,CPI_U
+description,
+DDL,"create or replace TABLE CPI_U (
+	""series_id"" VARCHAR(16777216),
+	""year"" NUMBER(38,0),
+	""period"" VARCHAR(16777216),
+	""value"" FLOAT,
+	""footnote_codes"" VARCHAR(16777216),
+	""survey_abbreviation"" VARCHAR(16777216),
+	""seasonal_code"" VARCHAR(16777216),
+	""periodicity_code"" VARCHAR(16777216),
+	""area_code"" VARCHAR(16777216),
+	""area_name"" VARCHAR(16777216),
+	""item_code"" VARCHAR(16777216),
+	""item_name"" VARCHAR(16777216),
+	""date"" DATE
+);"
+
+,1
+table_name,UNEMPLOYMENT_CPS_SERIES
+description,
+DDL,"create or replace TABLE UNEMPLOYMENT_CPS_SERIES (
+	""series_id"" VARCHAR(16777216),
+	""lfst_code"" NUMBER(38,0),
+	""periodicity_code"" VARCHAR(16777216),
+	""series_title"" VARCHAR(16777216),
+	""absn_code"" NUMBER(38,0),
+	""activity_code"" NUMBER(38,0),
+	""ages_code"" NUMBER(38,0),
+	""class_code"" NUMBER(38,0),
+	""duration_code"" NUMBER(38,0),
+	""education_code"" NUMBER(38,0),
+	""entr_code"" NUMBER(38,0),
+	""expr_code"" NUMBER(38,0),
+	""hheader_code"" NUMBER(38,0),
+	""hour_code"" NUMBER(38,0),
+	""indy_code"" NUMBER(38,0),
+	""jdes_code"" NUMBER(38,0),
+	""look_code"" NUMBER(38,0),
+	""mari_code"" NUMBER(38,0),
+	""mjhs_code"" NUMBER(38,0),
+	""occupation_code"" NUMBER(38,0),
+	""orig_code"" NUMBER(38,0),
+	""pcts_code"" NUMBER(38,0),
+	""race_code"" NUMBER(38,0),
+	""rjnw_code"" NUMBER(38,0),
+	""rnlf_code"" NUMBER(38,0),
+	""rwns_code"" NUMBER(38,0),
+	""seek_code"" NUMBER(38,0),
+	""sexs_code"" NUMBER(38,0),
+	""tdat_code"" NUMBER(38,0),
+	""vets_code"" NUMBER(38,0),
+	""wkst_code"" NUMBER(38,0),
+	""born_code"" NUMBER(38,0),
+	""chld_code"" NUMBER(38,0),
+	""disa_code"" NUMBER(38,0),
+	""seasonal"" VARCHAR(16777216),
+	""footnote_codes"" VARCHAR(16777216),
+	""begin_year"" NUMBER(38,0),
+	""begin_period"" VARCHAR(16777216),
+	""end_year"" NUMBER(38,0),
+	""end_period"" VARCHAR(16777216),
+	""cert_code"" NUMBER(38,0)
+);"
+
+,2
+table_name,C_CPI_U
+description,
+DDL,"create or replace TABLE C_CPI_U (
+	""series_id"" VARCHAR(16777216),
+	""year"" NUMBER(38,0),
+	""period"" VARCHAR(16777216),
+	""value"" FLOAT,
+	""footnote_codes"" VARCHAR(16777216),
+	""survey_abbreviation"" VARCHAR(16777216),
+	""seasonal_code"" VARCHAR(16777216),
+	""periodicity_code"" VARCHAR(16777216),
+	""area_code"" VARCHAR(16777216),
+	""area_name"" VARCHAR(16777216),
+	""item_code"" VARCHAR(16777216),
+	""item_name"" VARCHAR(16777216),
+	""date"" DATE
+);"
+
+,3
+table_name,EMPLOYMENT_HOURS_EARNINGS
+description,
+DDL,"create or replace TABLE EMPLOYMENT_HOURS_EARNINGS (
+	""series_id"" VARCHAR(16777216),
+	""year"" NUMBER(38,0),
+	""period"" VARCHAR(16777216),
+	""value"" FLOAT,
+	""footnote_codes"" VARCHAR(16777216),
+	""date"" DATE,
+	""series_title"" VARCHAR(16777216)
+);"
+
+,4
+table_name,CPSAAT18
+description,
+DDL,"create or replace TABLE CPSAAT18 (
+	""year"" NUMBER(38,0),
+	""sector"" VARCHAR(16777216),
+	""subsector"" VARCHAR(16777216),
+	""industry_group"" VARCHAR(16777216),
+	""industry"" VARCHAR(16777216),
+	""total_employed_in_thousands"" NUMBER(38,0),
+	""percent_women"" FLOAT,
+	""percent_white"" FLOAT,
+	""percent_black_or_african_american"" FLOAT,
+	""percent_asian"" FLOAT,
+	""percent_hispanic_or_latino"" FLOAT
+);"
+
+,5
+table_name,EMPLOYMENT_HOURS_EARNINGS_SERIES
+description,
+DDL,"create or replace TABLE EMPLOYMENT_HOURS_EARNINGS_SERIES (
+	""series_id"" VARCHAR(16777216),
+	""supersector_code"" NUMBER(38,0),
+	""industry_code"" NUMBER(38,0),
+	""data_type_code"" NUMBER(38,0),
+	""seasonal"" VARCHAR(16777216),
+	""series_title"" VARCHAR(16777216),
+	""footnote_codes"" VARCHAR(16777216),
+	""begin_year"" NUMBER(38,0),
+	""begin_period"" VARCHAR(16777216),
+	""end_year"" NUMBER(38,0),
+	""end_period"" VARCHAR(16777216)
+);"
+
+,6
+table_name,UNEMPLOYMENT_CPS
+description,
+DDL,"create or replace TABLE UNEMPLOYMENT_CPS (
+	""series_id"" VARCHAR(16777216),
+	""year"" NUMBER(38,0),
+	""period"" VARCHAR(16777216),
+	""value"" FLOAT,
+	""footnote_codes"" VARCHAR(16777216),
+	""date"" DATE,
+	""series_title"" VARCHAR(16777216)
+);"
+
+,7
+table_name,WM
+description,
+DDL,"create or replace TABLE WM (
+	""series_id"" VARCHAR(16777216),
+	""year"" NUMBER(38,0),
+	""period"" VARCHAR(16777216),
+	""value"" FLOAT,
+	""footnote_codes"" VARCHAR(16777216),
+	""date"" DATE,
+	""series_title"" VARCHAR(16777216)
+);"
+
+,8
+table_name,WM_SERIES
+description,
+DDL,"create or replace TABLE WM_SERIES (
+	""series_id"" VARCHAR(16777216),
+	""seasonal"" VARCHAR(16777216),
+	""area_code"" NUMBER(38,0),
+	""ownership_code"" NUMBER(38,0),
+	""estimate_code"" NUMBER(38,0),
+	""industry_code"" NUMBER(38,0),
+	""occupation_code"" NUMBER(38,0),
+	""subcell_code"" NUMBER(38,0),
+	""datatype_code"" NUMBER(38,0),
+	""level_code"" NUMBER(38,0),
+	""series_title"" VARCHAR(16777216),
+	""footnote_codes"" VARCHAR(16777216),
+	""begin_year"" NUMBER(38,0),
+	""begin_period"" VARCHAR(16777216),
+	""end_year"" NUMBER(38,0),
+	""end_period"" VARCHAR(16777216)
+);"
+
+Database Name: BLS
+Schema Name: BLS_QCEW
+DDL describes table information.
+,0
+table_name,_1990_Q2
+description,
+DDL,"create or replace TABLE _1990_Q2 (
+	""geoid"" VARCHAR(16777216),
+	""area_fips"" VARCHAR(16777216),
+	""qtrly_estabs_11_agriculture_forestry_fishing_and_hunting"" FLOAT,
+	""avg_wkly_wage_11_agriculture_forestry_fishing_and_hunting"" FLOAT,
+	""month3_emplvl_11_agriculture_forestry_fishing_and_hunting"" FLOAT,
+	""lq_avg_wkly_wage_11_agriculture_forestry_fishing_and_hunting"" FLOAT,
+	""lq_qtrly_estabs_11_agriculture_forestry_fishing_and_hunting"" FLOAT,
+	""lq_month3_emplvl_11_agriculture_forestry_fishing_and_hunting"" FLOAT,
+	""qtrly_estabs_1024_professional_and_business_services"" FLOAT,
+	""avg_wkly_wage_1024_professional_and_business_services"" FLOAT,
+	""month3_emplvl_1024_professional_and_business_services"" FLOAT,
+	""lq_avg_wkly_wage_1024_professional_and_business_services"" FLOAT,
+	""lq_qtrly_estabs_1024_professional_and_business_services"" FLOAT,
+	""lq_month3_emplvl_1024_professional_and_business_services"" FLOAT,
+	""qtrly_estabs_61_educational_services"" FLOAT,
+	""avg_wkly_wage_61_educational_services"" FLOAT,
+	""month3_emplvl_61_educational_services"" FLOAT,
+	""lq_avg_wkly_wage_61_educational_services"" FLOAT,
+	""lq_qtrly_estabs_61_educational_services"" FLOAT,
+	""lq_month3_emplvl_61_educational_services"" FLOAT,
+	""qtrly_estabs_53_real_estate_and_rental_and_leasing"" FLOAT,
+	""avg_wkly_wage_53_real_estate_and_rental_and_leasing"" FLOAT,
+	""month3_emplvl_53_real_estate_and_rental_and_leasing"" FLOAT,
+	""lq_avg_wkly_wage_53_real_estate_and_rental_and_leasing"" FLOAT,
+	""lq_qtrly_estabs_53_real_estate_and_rental_and_leasing"" FLOAT,
+	""lq_month3_emplvl_53_real_estate_and_rental_and_leasing"" FLOAT,
+	""qtrly_estabs_1023_financial_activities"" FLOAT,
+	""avg_wkly_wage_1023_financial_activities"" FLOAT,
+	""month3_emplvl_1023_financial_activities"" FLOAT,
+	""lq_avg_wkly_wage_1023_financial_activities"" FLOAT,
+	""lq_qtrly_estabs_1023_financial_activities"" FLOAT,
+	""lq_month3_emplvl_1023_financial_activities"" FLOAT,
+	""qtrly_estabs_31_33_manufacturing"" FLOAT,
+	""avg_wkly_wage_31_33_manufacturing"" FLOAT,
+	""month3_emplvl_31_33_manufacturing"" FLOAT,
+	""lq_avg_wkly_wage_31_33_manufacturing"" FLOAT,
+	""lq_qtrly_estabs_31_33_manufacturing"" FLOAT,
+	""lq_month3_emplvl_31_33_manufacturing"" FLOAT,
+	""qtrly_estabs_23_construction"" FLOAT,
+	""avg_wkly_wage_23_construction"" FLOAT,
+	""month3_emplvl_23_construction"" FLOAT,
+	""lq_avg_wkly_wage_23_construction"" FLOAT,
+	""lq_qtrly_estabs_23_construction"" FLOAT,
+	""lq_month3_emplvl_23_construction"" FLOAT,
+	""qtrly_estabs_1029_unclassified"" FLOAT,
+	""avg_wkly_wage_1029_unclassified"" FLOAT,
+	""month3_emplvl_1029_unclassified"" FLOAT,
+	""lq_avg_wkly_wage_1029_unclassified"" FLOAT,
+	""lq_qtrly_estabs_1029_unclassified"" FLOAT,
+	""lq_month3_emplvl_1029_unclassified"" FLOAT,
+	""qtrly_estabs_71_arts_entertainment_and_recreation"" FLOAT,
+	""avg_wkly_wage_71_arts_entertainment_and_recreation"" FLOAT,
+	""month3_emplvl_71_arts_entertainment_and_recreation"" FLOAT,
+	""lq_avg_wkly_wage_71_arts_entertainment_and_recreation"" FLOAT,
+	""lq_qtrly_estabs_71_arts_entertainment_and_recreation"" FLOAT,
+	""lq_month3_emplvl_71_arts_entertainment_and_recreation"" FLOAT,
+	""qtrly_estabs_1011_natural_resources_and_mining"" FLOAT,
+	""avg_wkly_wage_1011_natural_resources_and_mining"" FLOAT,
+	""month3_emplvl_1011_natural_resources_and_mining"" FLOAT,
+	""lq_avg_wkly_wage_1011_natural_resources_and_mining"" FLOAT,
+	""lq_qtrly_estabs_1011_natural_resources_and_mining"" FLOAT,
+	""lq_month3_emplvl_1011_natural_resources_and_mining"" FLOAT,
+	""qtrly_estabs_54_professional_and_technical_services"" FLOAT,
+	""avg_wkly_wage_54_professional_and_technical_services"" FLOAT,
+	""month3_emplvl_54_professional_and_technical_services"" FLOAT,
+	""lq_avg_wkly_wage_54_professional_and_technical_services"" FLOAT,
+	""lq_qtrly_estabs_54_professional_and_technical_services"" FLOAT,
+	""lq_month3_emplvl_54_professional_and_technical_services"" FLOAT,
+	""qtrly_estabs_1026_leisure_and_hospitality"" FLOAT,
+	""avg_wkly_wage_1026_leisure_and_hospitality"" FLOAT,
+	""month3_emplvl_1026_leisure_and_hospitality"" FLOAT,
+	""lq_avg_wkly_wage_1026_leisure_and_hospitality"" FLOAT,
+	""lq_qtrly_estabs_1026_leisure_and_hospitality"" FLOAT,
+	""lq_month3_emplvl_1026_leisure_and_hospitality"" FLOAT,
+	""qtrly_estabs_1022_information"" FLOAT,
+	""avg_wkly_wage_1022_information"" FLOAT,
+	""month3_emplvl_1022_information"" FLOAT,
+	""lq_avg_wkly_wage_1022_information"" FLOAT,
+	""lq_qtrly_estabs_1022_information"" FLOAT,
+	""lq_month3_emplvl_1022_information"" FLOAT,
+	""qtrly_estabs_72_accommodation_and_food_services"" FLOAT,
+	""avg_wkly_wage_72_accommodation_and_food_services"" FLOAT,
+	""month3_emplvl_72_accommodation_and_food_services"" FLOAT,
+	""lq_avg_wkly_wage_72_accommodation_and_food_services"" FLOAT,
+	""lq_qtrly_estabs_72_accommodation_and_food_services"" FLOAT,
+	""lq_month3_emplvl_72_accommodation_and_food_services"" FLOAT,
+	""qtrly_estabs_22_utilities"" FLOAT,
+	""avg_wkly_wage_22_utilities"" FLOAT,
+	""month3_emplvl_22_utilities"" FLOAT,
+	""lq_avg_wkly_wage_22_utilities"" FLOAT,
+	""lq_qtrly_estabs_22_utilities"" FLOAT,
+	""lq_month3_emplvl_22_utilities"" FLOAT,
+	""qtrly_estabs_42_wholesale_trade"" FLOAT,
+	""avg_wkly_wage_42_wholesale_trade"" FLOAT,
+	""month3_emplvl_42_wholesale_trade"" FLOAT,
+	""lq_avg_wkly_wage_42_wholesale_trade"" FLOAT,
+	""lq_qtrly_estabs_42_wholesale_trade"" FLOAT,
+	""lq_month3_emplvl_42_wholesale_trade"" FLOAT,
+	""qtrly_estabs_10_total_all_industries"" FLOAT,
+	""avg_wkly_wage_10_total_all_industries"" FLOAT,
+	""month3_emplvl_10_total_all_industries"" FLOAT,
+	""lq_avg_wkly_wage_10_total_all_industries"" FLOAT,
+	""lq_qtrly_estabs_10_total_all_industries"" FLOAT,
+	""lq_month3_emplvl_10_total_all_industries"" FLOAT,
+	""qtrly_estabs_81_other_services_except_public_administration"" FLOAT,
+	""avg_wkly_wage_81_other_services_except_public_administration"" FLOAT,
+	""month3_emplvl_81_other_services_except_public_administration"" FLOAT,
+	""lq_avg_wkly_wage_81_other_services_except_public_administration"" FLOAT,
+	""lq_qtrly_estabs_81_other_services_except_public_administration"" FLOAT,
+	""lq_month3_emplvl_81_other_services_except_public_administration"" FLOAT,
+	""qtrly_estabs_52_finance_and_insurance"" FLOAT,
+	""avg_wkly_wage_52_finance_and_insurance"" FLOAT,
+	""month3_emplvl_52_finance_and_insurance"" FLOAT,
+	""lq_avg_wkly_wage_52_finance_and_insurance"" FLOAT,
+	""lq_qtrly_estabs_52_finance_and_insurance"" FLOAT,
+	""lq_month3_emplvl_52_finance_and_insurance"" FLOAT,
+	""qtrly_estabs_44_45_retail_trade"" FLOAT,
+	""avg_wkly_wage_44_45_retail_trade"" FLOAT,
+	""month3_emplvl_44_45_retail_trade"" FLOAT,
+	""lq_avg_wkly_wage_44_45_retail_trade"" FLOAT,
+	""lq_qtrly_estabs_44_45_retail_trade"" FLOAT,
+	""lq_month3_emplvl_44_45_retail_trade"" FLOAT,
+	""qtrly_estabs_1013_manufacturing"" FLOAT,
+	""avg_wkly_wage_1013_manufacturing"" FLOAT,
+	""month3_emplvl_1013_manufacturing"" FLOAT,
+	""lq_avg_wkly_wage_1013_manufacturing"" FLOAT,
+	""lq_qtrly_estabs_1013_manufacturing"" FLOAT,
+	""lq_month3_emplvl_1013_manufacturing"" FLOAT,
+	""qtrly_estabs_1027_other_services"" FLOAT,
+	""avg_wkly_wage_1027_other_services"" FLOAT,
+	""month3_emplvl_1027_other_services"" FLOAT,
+	""lq_avg_wkly_wage_1027_other_services"" FLOAT,
+	""lq_qtrly_estabs_1027_other_services"" FLOAT,
+	""lq_month3_emplvl_1027_other_services"" FLOAT,
+	""qtrly_estabs_1025_education_and_health_services"" FLOAT,
+	""avg_wkly_wage_1025_education_and_health_services"" FLOAT,
+	""month3_emplvl_1025_education_and_health_services"" FLOAT,
+	""lq_avg_wkly_wage_1025_education_and_health_services"" FLOAT,
+	""lq_qtrly_estabs_1025_education_and_health_services"" FLOAT,
+	""lq_month3_emplvl_1025_education_and_health_services"" FLOAT,
+	""qtrly_estabs_51_information"" FLOAT,
+	""avg_wkly_wage_51_information"" FLOAT,
+	""month3_emplvl_51_information"" FLOAT,
+	""lq_avg_wkly_wage_51_information"" FLOAT,
+	""lq_qtrly_estabs_51_information"" FLOAT,
+	""lq_month3_emplvl_51_information"" FLOAT,
+	""qtrly_estabs_62_health_care_and_social_assistance"" FLOAT,
+	""avg_wkly_wage_62_health_care_and_social_assistance"" FLOAT,
+	""month3_emplvl_62_health_care_and_social_assistance"" FLOAT,
+	""lq_avg_wkly_wage_62_health_care_and_social_assistance"" FLOAT,
+	""lq_qtrly_estabs_62_health_care_and_social_assistance"" FLOAT,
+	""lq_month3_emplvl_62_health_care_and_social_assistance"" FLOAT,
+	""qtrly_estabs_21_mining_quarrying_and_oil_and_gas_extraction"" FLOAT,
+	""avg_wkly_wage_21_mining_quarrying_and_oil_and_gas_extraction"" FLOAT,
+	""month3_emplvl_21_mining_quarrying_and_oil_and_gas_extraction"" FLOAT,
+	""lq_avg_wkly_wage_21_mining_quarrying_and_oil_and_gas_extraction"" FLOAT,
+	""lq_qtrly_estabs_21_mining_quarrying_and_oil_and_gas_extraction"" FLOAT,
+	""lq_month3_emplvl_21_mining_quarrying_and_oil_and_gas_extraction"" FLOAT,
+	""qtrly_estabs_55_management_of_companies_and_enterprises"" FLOAT,
+	""avg_wkly_wage_55_management_of_companies_and_enterprises"" FLOAT,
+	""month3_emplvl_55_management_of_companies_and_enterprises"" FLOAT,
+	""lq_avg_wkly_wage_55_management_of_companies_and_enterprises"" FLOAT,
+	""lq_qtrly_estabs_55_management_of_companies_and_enterprises"" FLOAT,
+	""lq_month3_emplvl_55_management_of_companies_and_enterprises"" FLOAT,
+	""qtrly_estabs_1012_construction"" FLOAT,
+	""avg_wkly_wage_1012_construction"" FLOAT,
+	""month3_emplvl_1012_construction"" FLOAT,
+	""lq_avg_wkly_wage_1012_construction"" FLOAT,
+	""lq_qtrly_estabs_1012_construction"" FLOAT,
+	""lq_month3_emplvl_1012_construction"" FLOAT,
+	""qtrly_estabs_56_administrative_and_waste_services"" FLOAT,
+	""avg_wkly_wage_56_administrative_and_waste_services"" FLOAT,
+	""month3_emplvl_56_administrative_and_waste_services"" FLOAT,
+	""lq_avg_wkly_wage_56_administrative_and_waste_services"" FLOAT,
+	""lq_qtrly_estabs_56_administrative_and_waste_services"" FLOAT,
+	""lq_month3_emplvl_56_administrative_and_waste_services"" FLOAT,
+	""qtrly_estabs_1021_trade_transportation_and_utilities"" FLOAT,
+	""avg_wkly_wage_1021_trade_transportation_and_utilities"" FLOAT,
+	""month3_emplvl_1021_trade_transportation_and_utilities"" FLOAT,
+	""lq_avg_wkly_wage_1021_trade_transportation_and_utilities"" FLOAT,
+	""lq_qtrly_estabs_1021_trade_transportation_and_utilities"" FLOAT,
+	""lq_month3_emplvl_1021_trade_transportation_and_utilities"" FLOAT,
+	""qtrly_estabs_99_unclassified"" FLOAT,
+	""avg_wkly_wage_99_unclassified"" FLOAT,
+	""month3_emplvl_99_unclassified"" FLOAT,
+	""lq_avg_wkly_wage_99_unclassified"" FLOAT,
+	""lq_qtrly_estabs_99_unclassified"" FLOAT,
+	""lq_month3_emplvl_99_unclassified"" FLOAT,
+	""qtrly_estabs_48_49_transportation_and_warehousing"" FLOAT,
+	""avg_wkly_wage_48_49_transportation_and_warehousing"" FLOAT,
+	""month3_emplvl_48_49_transportation_and_warehousing"" FLOAT,
+	""lq_avg_wkly_wage_48_49_transportation_and_warehousing"" FLOAT,
+	""lq_qtrly_estabs_48_49_transportation_and_warehousing"" FLOAT,
+	""lq_month3_emplvl_48_49_transportation_and_warehousing"" FLOAT
+);"
+
+Some other tables have the similar structure: ['_1990_Q2', '_1992_Q1', '_1992_Q3', '_1993_Q1', '_1995_Q4', '_1996_Q4', '_1999_Q1', '_2002_Q1', '_2007_Q3', '_2009_Q4', '_2014_Q1', '_1994_Q1', '_1994_Q4', '_1998_Q4', '_2004_Q4', '_2005_Q2', '_2007_Q4', '_2010_Q3', '_2011_Q4', '_2013_Q2', '_2017_Q1', '_2017_Q2', '_2018_Q1', '_2008_Q2', '_2009_Q1', '_2016_Q3', '_2016_Q4', '_2019_Q2', '_2000_Q2', '_2003_Q3', '_1997_Q1', '_2010_Q4', '_2005_Q4', '_2006_Q4', '_1990_Q3', '_1991_Q1', '_1991_Q3', '_1991_Q4', '_1993_Q3', '_1995_Q2', '_1996_Q3', '_1997_Q4', '_1999_Q3', '_2000_Q4', '_2002_Q3', '_2003_Q4', '_2005_Q3', '_2007_Q1', '_2008_Q4', '_2011_Q1', '_2011_Q2', '_1994_Q2', '_1994_Q3', '_1999_Q2', '_2011_Q3', '_2012_Q1', '_2015_Q3', '_2015_Q4', '_2016_Q1', '_2018_Q3', '_2005_Q1', '_2000_Q1', '_2001_Q4', '_2018_Q4', '_2006_Q1', '_2010_Q1', '_2015_Q1', '_2018_Q2', '_1990_Q1', '_1990_Q4', '_1992_Q2', '_1992_Q4', '_1993_Q2', '_1996_Q2', '_2010_Q2', '_2013_Q1', '_2014_Q2', '_2016_Q2', '_1996_Q1', '_1998_Q2', '_2003_Q1', '_2006_Q2', '_2007_Q2', '_2014_Q4', '_2017_Q3', '_2019_Q1', '_1999_Q4', '_2012_Q2', '_2012_Q3', '_2014_Q3', '_2017_Q4', '_2000_Q3', '_2009_Q2', '_2013_Q3', '_1997_Q3', '_2004_Q1', '_2012_Q4', '_2008_Q3', '_1991_Q2', '_1995_Q3', '_1997_Q2', '_1998_Q1', '_1998_Q3', '_2001_Q2', '_2002_Q2', '_2004_Q3', '_2008_Q1', '_1993_Q4', '_1995_Q1', '_2001_Q1', '_2002_Q4', '_2003_Q2', '_2004_Q2', '_2006_Q3', '_2001_Q3', '_2013_Q4', '_2009_Q3', '_2015_Q2']
+Database Name: BLS
+Schema Name: GEO_US_BOUNDARIES
+DDL describes table information.
+,0
+table_name,ADJACENT_COUNTIES
+description,
+DDL,"create or replace TABLE ADJACENT_COUNTIES (
+	""county"" VARCHAR(16777216),
+	""state"" VARCHAR(16777216),
+	""county_fips_code"" VARCHAR(16777216),
+	""neighbors"" VARIANT,
+	""neighbors_state"" VARIANT,
+	""neighbors_fips_code"" VARIANT
+);"
+
+,1
+table_name,NWS_FORECAST_REGIONS
+description,
+DDL,"create or replace TABLE NWS_FORECAST_REGIONS (
+	""state"" VARCHAR(16777216),
+	""cwa"" VARCHAR(16777216),
+	""time_zone"" VARCHAR(16777216),
+	""fe_area"" VARCHAR(16777216),
+	""zone"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216),
+	""state_zone"" VARCHAR(16777216),
+	""lon"" FLOAT,
+	""lat"" FLOAT,
+	""shortname"" VARCHAR(16777216),
+	""shape_geometry"" BINARY(8388608)
+);"
+
+,2
+table_name,CSA
+description,
+DDL,"create or replace TABLE CSA (
+	""geo_id"" VARCHAR(16777216),
+	""csa_code"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216),
+	""lsad_name"" VARCHAR(16777216),
+	""msa_lsad_code"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""area_land_meters"" FLOAT,
+	""area_water_meters"" FLOAT,
+	""internal_point_lon"" FLOAT,
+	""internal_point_lat"" FLOAT,
+	""internal_point_geom"" BINARY(8388608),
+	""csa_geom"" BINARY(8388608)
+);"
+
+,3
+table_name,URBAN_AREAS
+description,
+DDL,"create or replace TABLE URBAN_AREAS (
+	""geo_id"" VARCHAR(16777216),
+	""urban_area_code"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216),
+	""lsad_name"" VARCHAR(16777216),
+	""area_lsad_code"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""type"" VARCHAR(16777216),
+	""functional_status"" VARCHAR(16777216),
+	""area_land_meters"" FLOAT,
+	""area_water_meters"" FLOAT,
+	""internal_point_lon"" FLOAT,
+	""internal_point_lat"" FLOAT,
+	""internal_point_geom"" BINARY(8388608),
+	""urban_area_geom"" BINARY(8388608)
+);"
+
+,4
+table_name,ADJACENT_STATES
+description,
+DDL,"create or replace TABLE ADJACENT_STATES (
+	""state"" VARCHAR(16777216),
+	""state_name"" VARCHAR(16777216),
+	""state_fips_code"" VARCHAR(16777216),
+	""neighbors_state"" VARIANT,
+	""neighbors_fips_code"" VARIANT
+);"
+
+,5
+table_name,CBSA
+description,
+DDL,"create or replace TABLE CBSA (
+	""geo_id"" VARCHAR(16777216),
+	""csa_geo_id"" VARCHAR(16777216),
+	""cbsa_fips_code"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216),
+	""lsad_name"" VARCHAR(16777216),
+	""lsad_code"" VARCHAR(16777216),
+	""msa_indicator"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""area_land_meters"" FLOAT,
+	""area_water_meters"" FLOAT,
+	""internal_point_latitude"" FLOAT,
+	""internal_point_longitude"" FLOAT,
+	""internal_point_geom"" BINARY(8388608),
+	""cbsa_geom"" BINARY(8388608)
+);"
+
+,6
+table_name,COUNTIES
+description,
+DDL,"create or replace TABLE COUNTIES (
+	""geo_id"" VARCHAR(16777216),
+	""state_fips_code"" VARCHAR(16777216),
+	""county_fips_code"" VARCHAR(16777216),
+	""county_gnis_code"" VARCHAR(16777216),
+	""county_name"" VARCHAR(16777216),
+	""lsad_name"" VARCHAR(16777216),
+	""lsad_code"" VARCHAR(16777216),
+	""fips_class_code"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""csa_fips_code"" VARCHAR(16777216),
+	""cbsa_fips_code"" VARCHAR(16777216),
+	""met_div_fips_code"" VARCHAR(16777216),
+	""functional_status"" VARCHAR(16777216),
+	""area_land_meters"" NUMBER(38,0),
+	""area_water_meters"" NUMBER(38,0),
+	""int_point_lat"" FLOAT,
+	""int_point_lon"" FLOAT,
+	""int_point_geom"" BINARY(8388608),
+	""county_geom"" BINARY(8388608)
+);"
+
+,7
+table_name,STATES
+description,
+DDL,"create or replace TABLE STATES (
+	""geo_id"" VARCHAR(16777216),
+	""region_code"" VARCHAR(16777216),
+	""division_code"" VARCHAR(16777216),
+	""state_fips_code"" VARCHAR(16777216),
+	""state_gnis_code"" VARCHAR(16777216),
+	""state"" VARCHAR(16777216),
+	""state_name"" VARCHAR(16777216),
+	""lsad_code"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""functional_status"" VARCHAR(16777216),
+	""area_land_meters"" NUMBER(38,0),
+	""area_water_meters"" NUMBER(38,0),
+	""int_point_lat"" FLOAT,
+	""int_point_lon"" FLOAT,
+	""int_point_geom"" BINARY(8388608),
+	""state_geom"" BINARY(8388608)
+);"
+
+,8
+table_name,ZIP_CODES
+description,
+DDL,"create or replace TABLE ZIP_CODES (
+	""zip_code"" VARCHAR(16777216),
+	""city"" VARCHAR(16777216),
+	""county"" VARCHAR(16777216),
+	""state_fips_code"" VARCHAR(16777216),
+	""state_code"" VARCHAR(16777216),
+	""state_name"" VARCHAR(16777216),
+	""fips_class_code"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""functional_status"" VARCHAR(16777216),
+	""area_land_meters"" FLOAT,
+	""area_water_meters"" FLOAT,
+	""internal_point_lat"" FLOAT,
+	""internal_point_lon"" FLOAT,
+	""internal_point_geom"" BINARY(8388608),
+	""zip_code_geom"" BINARY(8388608)
+);"
+
+,9
+table_name,CONGRESS_DISTRICT_116
+description,
+DDL,"create or replace TABLE CONGRESS_DISTRICT_116 (
+	""geo_id"" VARCHAR(16777216),
+	""state_fips_code"" VARCHAR(16777216),
+	""district_fips_code"" VARCHAR(16777216),
+	""lsad_name"" VARCHAR(16777216),
+	""lsad_code"" VARCHAR(16777216),
+	""congress_session"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""functional_status"" BOOLEAN,
+	""area_land_meters"" NUMBER(38,0),
+	""area_water_meters"" NUMBER(38,0),
+	""int_point_lat"" FLOAT,
+	""int_point_lon"" FLOAT,
+	""int_point_geom"" BINARY(8388608),
+	""district_geom"" BINARY(8388608)
+);"
+
+Some other tables have the similar structure: ['CONGRESS_DISTRICT_116', 'CONGRESS_DISTRICT_115']
+,10
+table_name,NATIONAL_OUTLINE
+description,
+DDL,"create or replace TABLE NATIONAL_OUTLINE (
+	""us_outline_geom"" BINARY(8388608),
+	""aff_geo_id"" VARCHAR(16777216),
+	""geo_id"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216)
+);"
+
+,11
+table_name,RAILWAYS
+description,
+DDL,"create or replace TABLE RAILWAYS (
+	""geo_id"" NUMBER(38,0),
+	""full_name"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""railway_geom"" VARCHAR(16777216)
+);"
+
+,12
+table_name,CNECTA
+description,
+DDL,"create or replace TABLE CNECTA (
+	""geo_id"" VARCHAR(16777216),
+	""cnecta_fips_code"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216),
+	""name_lsad"" VARCHAR(16777216),
+	""lsad"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""area_land_meters"" NUMBER(38,0),
+	""area_water_meters"" NUMBER(38,0),
+	""int_point_lat"" FLOAT,
+	""int_point_lon"" FLOAT,
+	""cnecta_geom"" BINARY(8388608)
+);"
+
+,13
+table_name,COASTLINE
+description,
+DDL,"create or replace TABLE COASTLINE (
+	""name"" VARCHAR(16777216),
+	""coastline_geom"" BINARY(8388608)
+);"
+
+,14
+table_name,METROPOLITAN_DIVISIONS
+description,
+DDL,"create or replace TABLE METROPOLITAN_DIVISIONS (
+	""geo_id"" VARCHAR(16777216),
+	""csa_code"" VARCHAR(16777216),
+	""cbsa_code"" VARCHAR(16777216),
+	""metdiv_code"" VARCHAR(16777216),
+	""name"" VARCHAR(16777216),
+	""lsad_name"" VARCHAR(16777216),
+	""lsad_code"" VARCHAR(16777216),
+	""mtfcc_feature_class_code"" VARCHAR(16777216),
+	""area_land_meters"" FLOAT,
+	""area_water_meters"" FLOAT,
+	""internal_point_latitude"" FLOAT,
+	""internal_point_longitude"" FLOAT,
+	""internal_point_geom"" BINARY(8388608),
+	""metdiv_geom"" BINARY(8388608)
+);"
+
+External knowledge that might be helpful: 
+None
+The table structure information is ({database name: {schema name: {table name}}}): 
+{'BLS': {'BLS': ['CPI_U', 'CPSAAT18', 'C_CPI_U', 'EMPLOYMENT_HOURS_EARNINGS', 'EMPLOYMENT_HOURS_EARNINGS_SERIES', 'UNEMPLOYMENT_CPS', 'UNEMPLOYMENT_CPS_SERIES', 'WM', 'WM_SERIES'], 'BLS_QCEW': ['_1990_Q1', '_1990_Q2', '_1990_Q3', '_1990_Q4', '_1991_Q1', '_1991_Q2', '_1991_Q3', '_1991_Q4', '_1992_Q1', '_1992_Q2', '_1992_Q3', '_1992_Q4', '_1993_Q1', '_1993_Q2', '_1993_Q3', '_1993_Q4', '_1994_Q1', '_1994_Q2', '_1994_Q3', '_1994_Q4', '_1995_Q1', '_1995_Q2', '_1995_Q3', '_1995_Q4', '_1996_Q1', '_1996_Q2', '_1996_Q3', '_1996_Q4', '_1997_Q1', '_1997_Q2', '_1997_Q3', '_1997_Q4', '_1998_Q1', '_1998_Q2', '_1998_Q3', '_1998_Q4', '_1999_Q1', '_1999_Q2', '_1999_Q3', '_1999_Q4', '_2000_Q1', '_2000_Q2', '_2000_Q3', '_2000_Q4', '_2001_Q1', '_2001_Q2', '_2001_Q3', '_2001_Q4', '_2002_Q1', '_2002_Q2', '_2002_Q3', '_2002_Q4', '_2003_Q1', '_2003_Q2', '_2003_Q3', '_2003_Q4', '_2004_Q1', '_2004_Q2', '_2004_Q3', '_2004_Q4', '_2005_Q1', '_2005_Q2', '_2005_Q3', '_2005_Q4', '_2006_Q1', '_2006_Q2', '_2006_Q3', '_2006_Q4', '_2007_Q1', '_2007_Q2', '_2007_Q3', '_2007_Q4', '_2008_Q1', '_2008_Q2', '_2008_Q3', '_2008_Q4', '_2009_Q1', '_2009_Q2', '_2009_Q3', '_2009_Q4', '_2010_Q1', '_2010_Q2', '_2010_Q3', '_2010_Q4', '_2011_Q1', '_2011_Q2', '_2011_Q3', '_2011_Q4', '_2012_Q1', '_2012_Q2', '_2012_Q3', '_2012_Q4', '_2013_Q1', '_2013_Q2', '_2013_Q3', '_2013_Q4', '_2014_Q1', '_2014_Q2', '_2014_Q3', '_2014_Q4', '_2015_Q1', '_2015_Q2', '_2015_Q3', '_2015_Q4', '_2016_Q1', '_2016_Q2', '_2016_Q3', '_2016_Q4', '_2017_Q1', '_2017_Q2', '_2017_Q3', '_2017_Q4', '_2018_Q1', '_2018_Q2', '_2018_Q3', '_2018_Q4', '_2019_Q1', '_2019_Q2'], 'GEO_US_BOUNDARIES': ['ADJACENT_COUNTIES', 'ADJACENT_STATES', 'CBSA', 'CNECTA', 'COASTLINE', 'CONGRESS_DISTRICT_115', 'CONGRESS_DISTRICT_116', 'COUNTIES', 'CSA', 'METROPOLITAN_DIVISIONS', 'NATIONAL_OUTLINE', 'NWS_FORECAST_REGIONS', 'RAILWAYS', 'STATES', 'URBAN_AREAS', 'ZIP_CODES']}}
+Begin Exploring Related Columns
+**Relevant Tables and Columns:**
+
+- **Table**: `BLS.BLS_QCEW._2000_Q1` to `BLS.BLS_QCEW._2018_Q4`
+  - **Column**: `"geoid"` - *Potential usage*: Unique identifier for each county, used to link employment data to specific counties.
+  - **Column**: `"month3_emplvl_23_construction"` - *Potential usage*: Employment level in the construction sector during the third month of the quarter.
+
+- **Table**: `BLS.GEO_US_BOUNDARIES.COUNTIES`
+  - **Column**: `"geo_id"` - *Potential usage*: Unique identifier for each county, used to link with `"geoid"` in employment tables.
+  - **Column**: `"county_name"` - *Potential usage*: Name of the county.
+  - **Column**: `"state_name"` - *Potential usage*: To filter for counties in the state of Utah.
+  - **Column**: `"state_fips_code"` - *Potential usage*: To filter for counties in Utah (Utah's FIPS code is '49').
+
+**Conditions that may be used:**
+
+- Filter data for **Utah counties**: `"state_name" = 'Utah'` or `"state_fips_code" = '49'`.
+- Filter data for the **years 2000 and 2018** by selecting the appropriate quarterly tables.
+- Filter for counties with **non-null construction employment data**: `"month3_emplvl_23_construction" IS NOT NULL`.
+- Match the county identifiers between the employment data and county information: `"geoid" = "geo_id"`.
+
+---
+
+**SQL Queries:**
+
+1. **List all state names to verify the state names available:**
+   ```sql
+   SELECT DISTINCT "state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES"
+   LIMIT 1000;
+   ```
+
+2. **Retrieve all counties in Utah with their `geo_id`s:**
+   ```sql
+   SELECT "geo_id", "county_name", "state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES"
+   WHERE "state_name" = 'Utah'
+   LIMIT 1000;
+   ```
+
+3. **Get unique `geoid`s from the 2000 Q1 employment data:**
+   ```sql
+   SELECT DISTINCT "geoid"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   LIMIT 1000;
+   ```
+
+4. **List construction employment levels in Utah counties for 2000 Q1:**
+   ```sql
+   SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+5. **List construction employment levels in Utah counties for 2018 Q4:**
+   ```sql
+   SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+6. **Find counties with non-null construction employment data in 2000 Q1:**
+   ```sql
+   SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "month3_emplvl_23_construction" IS NOT NULL
+   LIMIT 1000;
+   ```
+
+7. **Find counties with non-null construction employment data in 2018 Q4:**
+   ```sql
+   SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "month3_emplvl_23_construction" IS NOT NULL
+   LIMIT 1000;
+   ```
+
+8. **Retrieve county names and IDs for Utah using the state FIPS code:**
+   ```sql
+   SELECT "geo_id", "county_name", "state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES"
+   WHERE "state_fips_code" = '49'
+   LIMIT 1000;
+   ```
+
+9. **Check construction establishments in Utah counties for 2000 Q1:**
+   ```sql
+   SELECT "geoid", "qtrly_estabs_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000;
+   ```
+
+10. **Check construction establishments in Utah counties for 2018 Q4:**
+    ```sql
+    SELECT "geoid", "qtrly_estabs_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+11. **List average weekly wages in the construction sector for Utah counties in 2000 Q1:**
+    ```sql
+    SELECT "geoid", "avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+12. **List average weekly wages in the construction sector for Utah counties in 2018 Q4:**
+    ```sql
+    SELECT "geoid", "avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+13. **Retrieve employment levels in the construction sector for a specific county (e.g., `geoid` '49001') in 2000 Q1:**
+    ```sql
+    SELECT "geoid", "month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" = '49001'
+    LIMIT 1000;
+    ```
+
+14. **Retrieve employment levels in the construction sector for the same county in 2018 Q4:**
+    ```sql
+    SELECT "geoid", "month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4"
+    WHERE "geoid" = '49001'
+    LIMIT 1000;
+    ```
+
+15. **List all `geoid`s starting with '49' to confirm they belong to Utah:**
+    ```sql
+    SELECT DISTINCT "geoid"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000;
+    ```
+
+These queries aim to explore the relevant data for analyzing the percentage increase of construction jobs in Utah counties between the years 2000 and 2018. By examining the employment levels, number of establishments, and wages in the construction sector, we can gather the necessary information to perform further calculations.
+
+**Note:** Ensure that all column names are enclosed in double quotations and that the table names are correctly specified according to the database structure provided.Query:
+SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE c."state_fips_code" = '49'
+   LIMIT 1000;
+Answer:
+geo_id,county_name,state_name
+49017,Garfield,Utah
+49015,Emery,Utah
+49037,San Juan,Utah
+49055,Wayne,Utah
+49039,Sanpete,Utah
+49031,Piute,Utah
+49025,Kane,Utah
+49009,Daggett,Utah
+49033,Rich,Utah
+49001,Beaver,Utah
+49013,Duchesne,Utah
+49041,Sevier,Utah
+49027,Millard,Utah
+49019,Grand,Utah
+49021,Iron,Utah
+49043,Summit,Utah
+49051,Wasatch,Utah
+49005,Cache,Utah
+49057,Weber,Utah
+49029,Morgan,Utah
+49003,Box Elder,Utah
+49011,Davis,Utah
+49007,Carbon,Utah
+49049,Utah,Utah
+49023,Juab,Utah
+49053,Washington,Utah
+49045,Tooele,Utah
+49035,Salt Lake,Utah
+49047,Uintah,Utah
+Query:
+SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE s."state_name" = 'Utah'
+   LIMIT 1000
+Answer:
+geo_id,county_name,state_name
+49017,Garfield,Utah
+49015,Emery,Utah
+49037,San Juan,Utah
+49055,Wayne,Utah
+49039,Sanpete,Utah
+49031,Piute,Utah
+49025,Kane,Utah
+49009,Daggett,Utah
+49033,Rich,Utah
+49001,Beaver,Utah
+49013,Duchesne,Utah
+49041,Sevier,Utah
+49027,Millard,Utah
+49019,Grand,Utah
+49021,Iron,Utah
+49043,Summit,Utah
+49051,Wasatch,Utah
+49005,Cache,Utah
+49057,Weber,Utah
+49029,Morgan,Utah
+49003,Box Elder,Utah
+49011,Davis,Utah
+49007,Carbon,Utah
+49049,Utah,Utah
+49023,Juab,Utah
+49053,Washington,Utah
+49045,Tooele,Utah
+49035,Salt Lake,Utah
+49047,Uintah,Utah
+Query:
+SELECT DISTINCT "geoid"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   LIMIT 1000
+Answer:
+Too long, hard cut:
+geoid
+48227
+06031
+05069
+48491
+48245
+55079
+41039
+33009
+06067
+40017
+36013
+37183
+45075
+22105
+17099
+06079
+18089
+05093
+04005
+48029
+39085
+55025
+22051
+42071
+42091
+40119
+08077
+24031
+53063
+45083
+39049
+48121
+45051
+37159
+53057
+06059
+42125
+12033
+12105
+35001
+36029
+22019
+24001
+27053
+28121
+48215
+25003
+12031
+04019
+06111
+25023
+47157
+39061
+48027
+05131
+16055
+08001
+53053
+48303
+32003
+06085
+56021
+12021
+37051
+39157
+49035
+06077
+13121
+48453
+48441
+33011
+01003
+41017
+08013
+34003
+36071
+42063
+42049
+48209
+33015
+22033
+06071
+08031
+06061
+26161
+49057
+22073
+53067
+12083
+18105
+48375
+48329
+22017
+55063
+25009
+29095
+33001
+20091
+48451
+34041
+42029
+42081
+09003
+48183
+42019
+17167
+26115
+06081
+39017
+17037
+48039
+06073
+28081
+08101
+26163
+42107
+22071
+12097
+42035
+12113
+49011
+17163
+25021
+26125
+48157
+44007
+49049
+17031
+01117
+42001
+48423
+12071
+06097
+20173
+53041
+48167
+39151
+15003
+18051
+46103
+42043
+01097
+48309
+04015
+08069
+25027
+49053
+35045
+22103
+42129
+48091
+45003
+42133
+27037
+12011
+04013
+23009
+12055
+53033
+45007
+53073
+53077
+42013
+15009
+51153
+12101
+51143
+47065
+37191
+13089
+19061
+29213
+46099
+24027
+37129
+37161
+34035
+23019
+15001
+56025
+48053
+28003
+36103
+36093
+18039
+37001
+39103
+51550
+48049
+31157
+48381
+51031
+53035
+22015
+06053
+17197
+28035
+12069
+06065
+42011
+54081
+36027
+26055
+40109
+40143
+39099
+17001
+18163
+48479
+37031
+42079
+48085
+48339
+25005
+48141
+42021
+08123
+24033
+39153
+35049
+34027
+53061
+25013
+08005
+06101
+42027
+06019
+25017
+12099
+42085
+23031
+34029
+30111
+39167
+30029
+12057
+17089
+01125
+18057
+08059
+17043
+01073
+48201
+09001
+22097
+13067
+17119
+35015
+41019
+42051
+06083
+04025
+22005
+16001
+01101
+28049
+06013
+09009
+48113
+05119
+34039
+08041
+39113
+42017
+06037
+16083
+48061
+12081
+42041
+12127
+13185
+37125
+42069
+36067
+06107
+31055
+04003
+17097
+12005
+42055
+22079
+45041
+42075
+54011
+18081
+34007
+25025
+53007
+72061
+37151
+37147
+53029
+12103
+39093
+17203
+53031
+42037
+28151
+27013
+36091
+12115
+06045
+12015
+18167
+18157
+34025
+42077
+06055
+42095
+36119
+18005
+35013
+42045
+37133
+06035
+39095
+06017
+12109
+29183
+30049
+29165
+19113
+49043
+12117
+37071
+18019
+12085
+41051
+28033
+37025
+29031
+23003
+15007
+28075
+47155
+42007
+21111
+47093
+29071
+36089
+48041
+01069
+32031
+26103
+20177
+26137
+51095
+50001
+20155
+42073
+39109
+41029
+55039
+26081
+48485
+06001
+12019
+36065
+41005
+21227
+27145
+39169
+21067
+55073
+27163
+41047
+26151
+13153
+53011
+17111
+26045
+29189
+34005
+45047
+51087
+16019
+21093
+36113
+36005
+19181
+39023
+16005
+13021
+51061
+24013
+13215
+27147
+12061
+30063
+36015
+51069
+27123
+51085
+29077
+54107
+26025
+19013
+26075
+39057
+37057
+01089
+17073
+47001
+39139
+50007
+36007
+01077
+06041
+55059
+19163
+29187
+13069
+22045
+48467
+48337
+19015
+05015
+54055
+47043
+19045
+48043
+32023
+26101
+24019
+40101
+37149
+21107
+29167
+51155
+19059
+36023
+13297
+19127
+27067
+39127
+42109
+51191
+20057
+54109
+01013
+45023
+21013
+39097
+56015
+53001
+41001
+08097
+39155
+06099
+51041
+45045
+29097
+12091
+38017
+37021
+28047
+49005
+37135
+34021
+51177
+38035
+11001
+47037
+55035
+26077
+39133
+26099
+31019
+29099
+36045
+06095
+12086
+26051
+39147
+37089
+26121
+13285
+72127
+33005
+18113
+39003
+55055
+55101
+27003
+29021
+51121
+18083
+48203
+18027
+26031
+21101
+18037
+39119
+26105
+51165
+05057
+47131
+54019
+45031
+37045
+39073
+55095
+37163
+38099
+29159
+26117
+47011
+39137
+28113
+36053
+72013
+48415
+01019
+39071
+48117
+50017
+12079
+48493
+01025
+06011
+13211
+28109
+48331
+48291
+29201
+38105
+06113
+24003
+37155
+55077
+41011
+18141
+36077
+26021
+34037
+20035
+26063
+55071
+37023
+12087
+31109
+17019
+47119
+13077
+39063
+19103
+19179
+18091
+27153
+13261
+13113
+36021
+53015
+55129
+26069
+37113
+06093
+36017
+21195
+47143
+13137
+36035
+51099
+01045
+42087
+56043
+05061
+21043
+54103
+42033
+44009
+09015
+49047
+16017
+33007
+19167
+45055
+02090
+08075
+56007
+20021
+05111
+47071
+17183
+29163
+50011
+24047
+26129
+40123
+42065
+42111
+48213
+01083
+36049
+08043
+48481
+08085
+48013
+29083
+08099
+06009
+22115
+29069
+48021
+48171
+20009
+53003
+46011
+22069
+08015
+19109
+30047
+22009
+51169
+05133
+28091
+47103
+19121
+13227
+27149
+05037
+48249
+27015
+55007
+02130
+20121
+55033
+21035
+20103
+55113
+54067
+51125
+40081
+49041
+29215
+08051
+27159
+12065
+46091
+27089
+48411
+19005
+27117
+16047
+30017
+05073
+16009
+51017
+37005
+31039
+53051
+46083
+72023
+48469
+26147
+19033
+72069
+51019
+48097
+26059
+46005
+37181
+29147
+26155
+05121
+13163
+39011
+42005
+06015
+54039
+33013
+37081
+02020
+06029
+22057
+23001
+48439
+22055
+39035
+35035
+21019
+38015
+06007
+48355
+42003
+13051
+21015
+42101
+34023
+27035
+30013
+13247
+10003
+37119
+45085
+51059
+33003
+12009
+23005
+13139
+06089
+39045
+45019
+06103
+37097
+41033
+18063
+29047
+39025
+36063
+36059
+36047
+05051
+36037
+27139
+45079
+18003
+25015
+41071
+36009
+55105
+41067
+40027
+26139
+36061
+39041
+16027
+55133
+48143
+55087
+13115
+12073
+37107
+34031
+55131
+47009
+51760
+18085
+13045
+26145
+37167
+37179
+24025
+17113
+26049
+12001
+19169
+72137
+54061
+13059
+53005
+05031
+51810
+53021
+54003
+47163
+17201
+18127
+27019
+55089
+12111
+17143
+33017
+22001
+54079
+46013
+42061
+17081
+06025
+42009
+55137
+28083
+18059
+20055
+26109
+26019
+48473
+39143
+39161
+55115
+37087
+72005
+27133
+30083
+18149
+48365
+13293
+27115
+13107
+35029
+51023
+18087
+26073
+18071
+36101
+09005
+16069
+22109
+13057
+55127
+18097
+13135
+39173
+37049
+47187
+51003
+36079
+36055
+19153
+28089
+06075
+08035
+41003
+31079
+55117
+37127
+37063
+01015
+19193
+36117
+13313
+31119
+37035
+29019
+47149
+20161
+48241
+19155
+37189
+34001
+13245
+28011
+28
+Query:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Answer:
+geoid,month3_emplvl_23_construction
+49035,33012.0
+49057,5419.0
+49011,6711.0
+49053,3969.0
+49049,9981.0
+49005,2076.0
+49043,1264.0
+49013,247.0
+49047,451.0
+49019,260.0
+49041,382.0
+49039,319.0
+49023,145.0
+49021,825.0
+49003,897.0
+49007,239.0
+49045,532.0
+49027,65.0
+49037,217.0
+49015,254.0
+49001,107.0
+49029,271.0
+49051,593.0
+49033,27.0
+49025,113.0
+49055,88.0
+49017,58.0
+49009,
+49031,
+Query:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Answer:
+geoid,month3_emplvl_23_construction
+49053,7772.0
+49005,2829.0
+49011,10704.0
+49035,40043.0
+49057,6922.0
+49003,1685.0
+49021,1288.0
+49019,295.0
+49051,1398.0
+49043,1854.0
+49049,24427.0
+49039,509.0
+49045,943.0
+49047,825.0
+49029,566.0
+49013,409.0
+49025,130.0
+49007,323.0
+49023,291.0
+49041,399.0
+49037,230.0
+49055,142.0
+49031,0.0
+49009,0.0
+49017,35.0
+49033,66.0
+49027,86.0
+49015,393.0
+49001,132.0
+Query:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "month3_emplvl_23_construction" IS NOT NULL
+     AND "geoid" LIKE '49%'
+   LIMIT 1000
+Answer:
+geoid,month3_emplvl_23_construction
+49035,33012.0
+49057,5419.0
+49011,6711.0
+49053,3969.0
+49049,9981.0
+49005,2076.0
+49043,1264.0
+49013,247.0
+49047,451.0
+49019,260.0
+49041,382.0
+49039,319.0
+49023,145.0
+49021,825.0
+49003,897.0
+49007,239.0
+49045,532.0
+49027,65.0
+49037,217.0
+49015,254.0
+49001,107.0
+49029,271.0
+49051,593.0
+49033,27.0
+49025,113.0
+49055,88.0
+49017,58.0
+Query:
+SELECT "geoid", "month3_emplvl_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "month3_emplvl_23_construction" IS NOT NULL
+     AND "geoid" LIKE '49%'
+   LIMIT 1000
+Answer:
+geoid,month3_emplvl_23_construction
+49053,7772.0
+49005,2829.0
+49011,10704.0
+49035,40043.0
+49057,6922.0
+49003,1685.0
+49021,1288.0
+49019,295.0
+49051,1398.0
+49043,1854.0
+49049,24427.0
+49039,509.0
+49045,943.0
+49047,825.0
+49029,566.0
+49013,409.0
+49025,130.0
+49007,323.0
+49023,291.0
+49041,399.0
+49037,230.0
+49055,142.0
+49031,0.0
+49009,0.0
+49017,35.0
+49033,66.0
+49027,86.0
+49015,393.0
+49001,132.0
+Query:
+SELECT c."geo_id", c."county_name", s."state_name"
+   FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+   JOIN BLS.GEO_US_BOUNDARIES."STATES" s
+     ON c."state_fips_code" = s."state_fips_code"
+   WHERE c."state_fips_code" = '49'
+   LIMIT 1000
+Answer:
+geo_id,county_name,state_name
+49017,Garfield,Utah
+49015,Emery,Utah
+49037,San Juan,Utah
+49055,Wayne,Utah
+49039,Sanpete,Utah
+49031,Piute,Utah
+49025,Kane,Utah
+49009,Daggett,Utah
+49033,Rich,Utah
+49001,Beaver,Utah
+49013,Duchesne,Utah
+49041,Sevier,Utah
+49027,Millard,Utah
+49019,Grand,Utah
+49021,Iron,Utah
+49043,Summit,Utah
+49051,Wasatch,Utah
+49005,Cache,Utah
+49057,Weber,Utah
+49029,Morgan,Utah
+49003,Box Elder,Utah
+49011,Davis,Utah
+49007,Carbon,Utah
+49049,Utah,Utah
+49023,Juab,Utah
+49053,Washington,Utah
+49045,Tooele,Utah
+49035,Salt Lake,Utah
+49047,Uintah,Utah
+Query:
+SELECT "geoid", "qtrly_estabs_23_construction"
+   FROM BLS.BLS_QCEW."_2000_Q1"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Answer:
+geoid,qtrly_estabs_23_construction
+49035,3929.0
+49057,781.0
+49011,861.0
+49053,624.0
+49049,1636.0
+49005,446.0
+49043,306.0
+49013,60.0
+49047,93.0
+49019,45.0
+49041,75.0
+49039,80.0
+49023,29.0
+49021,184.0
+49003,147.0
+49007,53.0
+49045,92.0
+49027,28.0
+49037,33.0
+49015,31.0
+49001,24.0
+49029,49.0
+49051,163.0
+49033,11.0
+49025,32.0
+49055,15.0
+49017,17.0
+49009,
+49031,
+Query:
+SELECT "geoid", "qtrly_estabs_23_construction"
+   FROM BLS.BLS_QCEW."_2018_Q4"
+   WHERE "geoid" LIKE '49%'
+   LIMIT 1000
+Answer:
+geoid,qtrly_estabs_23_construction
+49053,1045.0
+49005,514.0
+49011,1080.0
+49035,4329.0
+49057,857.0
+49003,202.0
+49021,245.0
+49019,58.0
+49051,219.0
+49043,359.0
+49049,2107.0
+49039,85.0
+49045,149.0
+49047,132.0
+49029,83.0
+49013,86.0
+49025,41.0
+49007,47.0
+49023,48.0
+49041,77.0
+49037,32.0
+49055,24.0
+49031,3.0
+49009,3.0
+49017,10.0
+49033,14.0
+49027,36.0
+49015,17.0
+49001,28.0
+Query:
+SELECT "geoid", "avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000
+Answer:
+geoid,avg_wkly_wage_23_construction
+49035,613.0
+49057,529.0
+49011,542.0
+49053,420.0
+49049,497.0
+49005,389.0
+49043,574.0
+49013,418.0
+49047,416.0
+49019,421.0
+49041,319.0
+49039,373.0
+49023,424.0
+49021,373.0
+49003,511.0
+49007,496.0
+49045,539.0
+49027,305.0
+49037,520.0
+49015,524.0
+49001,352.0
+49029,429.0
+49051,466.0
+49033,340.0
+49025,338.0
+49055,350.0
+49017,331.0
+49009,
+49031,
+Query:
+SELECT "geoid", "avg_wkly_wage_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000
+Answer:
+geoid,avg_wkly_wage_23_construction
+49053,786.0
+49005,764.0
+49011,1090.0
+49035,1193.0
+49057,1051.0
+49003,998.0
+49021,729.0
+49019,794.0
+49051,1329.0
+49043,1073.0
+49049,1033.0
+49039,696.0
+49045,850.0
+49047,971.0
+49029,911.0
+49013,860.0
+49025,685.0
+49007,1369.0
+49023,708.0
+49041,636.0
+49037,704.0
+49055,908.0
+49031,0.0
+49009,0.0
+49017,659.0
+49033,593.0
+49027,575.0
+49015,899.0
+49001,727.0
+Query:
+SELECT "geoid", "month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" = '49001'
+    LIMIT 1000
+Answer:
+geoid,month3_emplvl_23_construction
+49001,107.0
+Query:
+SELECT "geoid", "month3_emplvl_23_construction"
+    FROM BLS.BLS_QCEW."_2018_Q4"
+    WHERE "geoid" = '49001'
+    LIMIT 1000
+Answer:
+geoid,month3_emplvl_23_construction
+49001,132.0
+Query:
+SELECT DISTINCT "geoid"
+    FROM BLS.BLS_QCEW."_2000_Q1"
+    WHERE "geoid" LIKE '49%'
+    LIMIT 1000
+Answer:
+geoid
+49035
+49057
+49011
+49053
+49049
+49005
+49013
+49047
+49019
+49041
+49039
+49023
+49003
+49007
+49045
+49027
+49037
+49001
+49029
+49051
+49033
+49025
+49009
+49031
+49055
+49017
+49043
+49021
+49015
+End Exploring Related Columns
+Task: Which Utah county has witnessed the greatest percentage increase of construction jobs from 2000 to 2018? And what is the corresponding increase rate?
+
+Please answer only one complete SQL in snowflake dialect in ```sql``` format.
+Usage example: ```sql
+SELECT "COLUMN_NAME" FROM DATABASE.SCHEMA.TABLE WHERE ... ``` (Adjust "DATABASE", "SCHEMA", and "TABLE" to match actual names, ensure all column names are enclosed in double quotations)
+Follow the answer format like: Unfortunately, I do not have access to the specific employment data required to determine which Utah county experienced the greatest percentage increase of construction jobs from 2000 to 2018, nor can I provide the corresponding increase rate..
+Here are some useful tips for answering:
+When performing a UNION operation on many tables, ensure that all table names are explicitly listed. Union first and then add condition and selection. e.g. SELECT "col1", "col2" FROM (TABLE1 UNION ALL TABLE2) WHERE ...; Don't write sqls as (SELECT col1, col2 FROM TABLE1 WHERE ...) UNION ALL (SELECT col1, col2 FROM TABLE2 WHERE ...); Don't use ['-- Include all', '-- Omit', '-- Continue', '-- Union all', '-- ...', '-- List all', '-- Replace this', '-- Each table', '-- Add other'] to omit any table. Table names here: ({database name: {schema name: {table name}}}): 
+{'BLS': {'BLS': ['CPI_U', 'CPSAAT18', 'C_CPI_U', 'EMPLOYMENT_HOURS_EARNINGS', 'EMPLOYMENT_HOURS_EARNINGS_SERIES', 'UNEMPLOYMENT_CPS', 'UNEMPLOYMENT_CPS_SERIES', 'WM', 'WM_SERIES'], 'BLS_QCEW': ['_1990_Q1', '_1990_Q2', '_1990_Q3', '_1990_Q4', '_1991_Q1', '_1991_Q2', '_1991_Q3', '_1991_Q4', '_1992_Q1', '_1992_Q2', '_1992_Q3', '_1992_Q4', '_1993_Q1', '_1993_Q2', '_1993_Q3', '_1993_Q4', '_1994_Q1', '_1994_Q2', '_1994_Q3', '_1994_Q4', '_1995_Q1', '_1995_Q2', '_1995_Q3', '_1995_Q4', '_1996_Q1', '_1996_Q2', '_1996_Q3', '_1996_Q4', '_1997_Q1', '_1997_Q2', '_1997_Q3', '_1997_Q4', '_1998_Q1', '_1998_Q2', '_1998_Q3', '_1998_Q4', '_1999_Q1', '_1999_Q2', '_1999_Q3', '_1999_Q4', '_2000_Q1', '_2000_Q2', '_2000_Q3', '_2000_Q4', '_2001_Q1', '_2001_Q2', '_2001_Q3', '_2001_Q4', '_2002_Q1', '_2002_Q2', '_2002_Q3', '_2002_Q4', '_2003_Q1', '_2003_Q2', '_2003_Q3', '_2003_Q4', '_2004_Q1', '_2004_Q2', '_2004_Q3', '_2004_Q4', '_2005_Q1', '_2005_Q2', '_2005_Q3', '_2005_Q4', '_2006_Q1', '_2006_Q2', '_2006_Q3', '_2006_Q4', '_2007_Q1', '_2007_Q2', '_2007_Q3', '_2007_Q4', '_2008_Q1', '_2008_Q2', '_2008_Q3', '_2008_Q4', '_2009_Q1', '_2009_Q2', '_2009_Q3', '_2009_Q4', '_2010_Q1', '_2010_Q2', '_2010_Q3', '_2010_Q4', '_2011_Q1', '_2011_Q2', '_2011_Q3', '_2011_Q4', '_2012_Q1', '_2012_Q2', '_2012_Q3', '_2012_Q4', '_2013_Q1', '_2013_Q2', '_2013_Q3', '_2013_Q4', '_2014_Q1', '_2014_Q2', '_2014_Q3', '_2014_Q4', '_2015_Q1', '_2015_Q2', '_2015_Q3', '_2015_Q4', '_2016_Q1', '_2016_Q2', '_2016_Q3', '_2016_Q4', '_2017_Q1', '_2017_Q2', '_2017_Q3', '_2017_Q4', '_2018_Q1', '_2018_Q2', '_2018_Q3', '_2018_Q4', '_2019_Q1', '_2019_Q2'], 'GEO_US_BOUNDARIES': ['ADJACENT_COUNTIES', 'ADJACENT_STATES', 'CBSA', 'CNECTA', 'COASTLINE', 'CONGRESS_DISTRICT_115', 'CONGRESS_DISTRICT_116', 'COUNTIES', 'CSA', 'METROPOLITAN_DIVISIONS', 'NATIONAL_OUTLINE', 'NWS_FORECAST_REGIONS', 'RAILWAYS', 'STATES', 'URBAN_AREAS', 'ZIP_CODES']}}
+
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book"
+However, if the string is not decided, you may use fuzzy query and ignore upper or lower case. e.g. Get articles that mention "education".
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+When using ORDER BY, if there are duplicate values in the primary sort column, sort by an additional column as a secondary criterion.Keep all decimals to four decimal places.
+
+2025-01-20 03:24:24 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 03:24:24 - root - INFO - ```sql
+WITH employment_2000 AS (
+    SELECT
+        c."geo_id",
+        c."county_name",
+        e."month3_emplvl_23_construction" AS "employment_2000"
+    FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+    JOIN BLS.BLS_QCEW."_2000_Q1" e
+        ON c."geo_id" = e."geoid"
+    WHERE c."state_fips_code" = '49'
+      AND e."month3_emplvl_23_construction" IS NOT NULL
+),
+employment_2018 AS (
+    SELECT
+        c."geo_id",
+        c."county_name",
+        e."month3_emplvl_23_construction" AS "employment_2018"
+    FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+    JOIN BLS.BLS_QCEW."_2018_Q4" e
+        ON c."geo_id" = e."geoid"
+    WHERE c."state_fips_code" = '49'
+      AND e."month3_emplvl_23_construction" IS NOT NULL
+)
+SELECT
+    e18."county_name",
+    e18."employment_2018",
+    e00."employment_2000",
+    ROUND(((e18."employment_2018" - e00."employment_2000") / e00."employment_2000") * 100, 4) AS "percentage_increase"
+FROM employment_2000 e00
+JOIN employment_2018 e18
+    ON e00."geo_id" = e18."geo_id"
+WHERE e00."employment_2000" > 0
+ORDER BY "percentage_increase" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-20 03:24:24 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:24:24 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:24:24 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:24:26 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-20 03:24:26 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:24:26 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:24:26 - root - INFO - itercount: 1
+2025-01-20 03:24:26 - root - INFO - 0
+2025-01-20 03:24:26 - root - INFO - results: 
+county_name,employment_2018,employment_2000,percentage_increase
+Utah,24427.0,9981.0,144.735
+
+
+2025-01-20 03:24:26 - root - INFO - Please check the answer again by reviewing Which Utah county has witnessed the greatest percentage increase of construction jobs from 2000 to 2018? And what is the corresponding increase rate?, reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: Unfortunately, I do not have access to the specific employment data required to determine which Utah county experienced the greatest percentage increase of construction jobs from 2000 to 2018, nor can I provide the corresponding increase rate. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+county_name,employment_2018,employment_2000,percentage_increase
+Utah,24427.0,9981.0,144.735
+Current sql:
+WITH employment_2000 AS (
+    SELECT
+        c."geo_id",
+        c."county_name",
+        e."month3_emplvl_23_construction" AS "employment_2000"
+    FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+    JOIN BLS.BLS_QCEW."_2000_Q1" e
+        ON c."geo_id" = e."geoid"
+    WHERE c."state_fips_code" = '49'
+      AND e."month3_emplvl_23_construction" IS NOT NULL
+),
+employment_2018 AS (
+    SELECT
+        c."geo_id",
+        c."county_name",
+        e."month3_emplvl_23_construction" AS "employment_2018"
+    FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+    JOIN BLS.BLS_QCEW."_2018_Q4" e
+        ON c."geo_id" = e."geoid"
+    WHERE c."state_fips_code" = '49'
+      AND e."month3_emplvl_23_construction" IS NOT NULL
+)
+SELECT
+    e18."county_name",
+    e18."employment_2018",
+    e00."employment_2000",
+    ROUND(((e18."employment_2018" - e00."employment_2000") / e00."employment_2000") * 100, 4) AS "percentage_increase"
+FROM employment_2000 e00
+JOIN employment_2018 e18
+    ON e00."geo_id" = e18."geo_id"
+WHERE e00."employment_2000" > 0
+ORDER BY "percentage_increase" DESC NULLS LAST
+LIMIT 1;
+2025-01-20 03:25:09 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 03:25:09 - root - INFO - ```sql
+WITH employment_2000 AS (
+    SELECT
+        c."geo_id",
+        c."county_name",
+        e."month3_emplvl_23_construction" AS "employment_2000"
+    FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+    JOIN BLS.BLS_QCEW."_2000_Q1" e
+        ON c."geo_id" = e."geoid"
+    WHERE c."state_fips_code" = '49'
+      AND e."month3_emplvl_23_construction" IS NOT NULL
+),
+employment_2018 AS (
+    SELECT
+        c."geo_id",
+        c."county_name",
+        e."month3_emplvl_23_construction" AS "employment_2018"
+    FROM BLS.GEO_US_BOUNDARIES."COUNTIES" c
+    JOIN BLS.BLS_QCEW."_2018_Q4" e
+        ON c."geo_id" = e."geoid"
+    WHERE c."state_fips_code" = '49'
+      AND e."month3_emplvl_23_construction" IS NOT NULL
+)
+SELECT
+    e18."county_name",
+    e18."employment_2018",
+    e00."employment_2000",
+    ROUND(((e18."employment_2018" - e00."employment_2000") / e00."employment_2000") * 100, 4) AS "percentage_increase"
+FROM employment_2000 e00
+JOIN employment_2018 e18
+    ON e00."geo_id" = e18."geo_id"
+WHERE e00."employment_2000" > 0
+ORDER BY "percentage_increase" DESC NULLS LAST
+LIMIT 1;
+```
+2025-01-20 03:25:09 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-20 03:25:09 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-20 03:25:09 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-20 03:25:11 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-20 03:25:11 - snowflake.connector.connection - INFO - closed
+2025-01-20 03:25:11 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-20 03:25:11 - root - INFO - itercount: 2
+2025-01-20 03:25:11 - root - INFO - 0
+2025-01-20 03:25:11 - root - INFO - Total iteration counts: 2
