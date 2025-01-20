@@ -1,27 +1,26 @@
-SELECT 
-    c."Country",
-    c."Total_Confirmed_Cases",
-    ROUND((c."Total_Confirmed_Cases" / p."year_2018") * 100000, 4) AS "Cases_per_100000"
-FROM
-    (
-        SELECT 
-            CASE 
-                WHEN "country_region" = 'US' THEN 'United States'
-                WHEN "country_region" = 'Iran' THEN 'Iran, Islamic Rep.'
-                WHEN "country_region" IN ('China', 'Mainland China') THEN 'China'
-                ELSE "country_region"
-            END AS "Country",
-            SUM("confirmed") AS "Total_Confirmed_Cases"
-        FROM "COVID19_JHU_WORLD_BANK"."COVID19_JHU_CSSE"."SUMMARY"
-        WHERE "date" = '2020-04-20'
-          AND "country_region" IN ('US', 'France', 'China', 'Mainland China', 'Italy', 'Spain', 'Germany', 'Iran')
-        GROUP BY "Country"
-    ) c
-JOIN
-    (
-        SELECT "country", "year_2018"
-        FROM "COVID19_JHU_WORLD_BANK"."WORLD_BANK_GLOBAL_POPULATION"."POPULATION_BY_COUNTRY"
-        WHERE "country" IN ('United States', 'France', 'China', 'Italy', 'Spain', 'Germany', 'Iran, Islamic Rep.')
-    ) p
-ON c."Country" = p."country"
-ORDER BY c."Country";
+SELECT
+  s."country_region" AS "Country",
+  SUM(s."confirmed") AS "Total_Confirmed_Cases",
+  ROUND((SUM(s."confirmed") / p."population") * 100000, 4) AS "Cases_Per_100k"
+FROM "COVID19_JHU_WORLD_BANK"."COVID19_JHU_CSSE"."SUMMARY" s
+JOIN (
+    SELECT
+        "country_name",
+        MAX("value") AS "population"
+    FROM "COVID19_JHU_WORLD_BANK"."WORLD_BANK_WDI"."INDICATORS_DATA"
+    WHERE "indicator_code" = 'SP.POP.TOTL'
+      AND "year" = (
+        SELECT MAX("year")
+        FROM "COVID19_JHU_WORLD_BANK"."WORLD_BANK_WDI"."INDICATORS_DATA"
+        WHERE "indicator_code" = 'SP.POP.TOTL'
+      )
+    GROUP BY "country_name"
+) p ON
+    CASE s."country_region"
+        WHEN 'US' THEN 'United States'
+        WHEN 'Iran' THEN 'Iran, Islamic Rep.'
+        ELSE s."country_region"
+    END = p."country_name"
+WHERE s."date" = '2020-04-20' AND s."country_region" IN ('US', 'France', 'China', 'Italy', 'Spain', 'Germany', 'Iran')
+GROUP BY s."country_region", p."population"
+ORDER BY s."country_region";

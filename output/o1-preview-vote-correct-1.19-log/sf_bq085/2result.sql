@@ -1,38 +1,37 @@
-SELECT
-    c."country_or_region" AS "Country",
-    SUM(TRY_TO_NUMBER(c."_4_20_20")) AS "Total_Confirmed_Cases",
-    ROUND((SUM(TRY_TO_NUMBER(c."_4_20_20")) / p."Population") * 100000, 4) AS "Cases_per_100000"
-FROM
-    COVID19_JHU_WORLD_BANK.COVID19_JHU_CSSE.CONFIRMED_CASES c
-JOIN
-    (
-        SELECT
-            CASE
-                WHEN "country" = 'United States' THEN 'US'
-                WHEN "country" = 'Iran, Islamic Rep.' THEN 'Iran'
-                ELSE "country"
-            END AS "country_or_region",
-            COALESCE(
-                "year_2019",
-                "year_2018",
-                "year_2017",
-                "year_2016",
-                "year_2015",
-                "year_2014",
-                "year_2013",
-                "year_2012",
-                "year_2011",
-                "year_2010"
-            ) AS "Population"
-        FROM
-            COVID19_JHU_WORLD_BANK.WORLD_BANK_GLOBAL_POPULATION.POPULATION_BY_COUNTRY
-        WHERE
-            "country" IN ('United States', 'France', 'China', 'Italy', 'Spain', 'Germany', 'Iran, Islamic Rep.')
-    ) p
-ON c."country_or_region" = p."country_or_region"
-WHERE
-    c."country_or_region" IN ('US', 'France', 'China', 'Italy', 'Spain', 'Germany', 'Iran')
-GROUP BY
-    c."country_or_region", p."Population"
-ORDER BY
-    c."country_or_region";
+WITH CountryMapping AS (
+  SELECT 'US' AS "country_region", 'United States' AS "country_name"
+  UNION ALL
+  SELECT 'China' AS "country_region", 'China' AS "country_name"
+  UNION ALL
+  SELECT 'France' AS "country_region", 'France' AS "country_name"
+  UNION ALL
+  SELECT 'Germany' AS "country_region", 'Germany' AS "country_name"
+  UNION ALL
+  SELECT 'Iran' AS "country_region", 'Iran' AS "country_name"
+  UNION ALL
+  SELECT 'Italy' AS "country_region", 'Italy' AS "country_name"
+  UNION ALL
+  SELECT 'Spain' AS "country_region", 'Spain' AS "country_name"
+),
+CovidData AS (
+  SELECT s."country_region", SUM(s."confirmed") AS "Total_Confirmed_Cases"
+  FROM "COVID19_JHU_WORLD_BANK"."COVID19_JHU_CSSE"."SUMMARY" s
+  WHERE s."date" = '2020-04-20' AND s."country_region" IN ('US', 'China', 'France', 'Germany', 'Iran', 'Italy', 'Spain')
+  GROUP BY s."country_region"
+),
+PopulationData AS (
+  SELECT 
+    CASE WHEN id."country_name" = 'Iran, Islamic Rep.' THEN 'Iran' ELSE id."country_name" END AS "country_name",
+    id."value" AS "population"
+  FROM "COVID19_JHU_WORLD_BANK"."WORLD_BANK_WDI"."INDICATORS_DATA" id
+  WHERE id."indicator_code" = 'SP.POP.TOTL' 
+    AND id."year" = 2019
+    AND id."country_name" IN ('United States', 'France', 'China', 'Italy', 'Spain', 'Germany', 'Iran, Islamic Rep.')
+)
+SELECT cm."country_name" AS "Country",
+       cd."Total_Confirmed_Cases",
+       ROUND( (cd."Total_Confirmed_Cases" / pd."population") * 100000, 4) AS "Cases_Per_100k"
+FROM CovidData cd
+INNER JOIN CountryMapping cm ON cd."country_region" = cm."country_region"
+INNER JOIN PopulationData pd ON cm."country_name" = pd."country_name"
+ORDER BY cm."country_name";

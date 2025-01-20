@@ -1,31 +1,21 @@
-WITH trips_by_year AS (
-    SELECT
-        TRY_TO_NUMBER("start_station_id") AS station_id,
-        YEAR(TO_TIMESTAMP("start_time" / 1000000)) AS year
-    FROM AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_TRIPS
-    WHERE "start_station_id" IS NOT NULL
-        AND YEAR(TO_TIMESTAMP("start_time" / 1000000)) IN (2013, 2014)
-
-    UNION ALL
-
-    SELECT
-        TRY_TO_NUMBER("end_station_id") AS station_id,
-        YEAR(TO_TIMESTAMP("start_time" / 1000000)) AS year
-    FROM AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_TRIPS
-    WHERE "end_station_id" IS NOT NULL
-        AND YEAR(TO_TIMESTAMP("start_time" / 1000000)) IN (2013, 2014)
-),
-stations_with_status AS (
-    SELECT
-        "station_id",
-        UPPER("status") AS "status"
-    FROM AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_STATIONS
-)
 SELECT
-    t.year AS "Year",
-    s."status" AS "Status",
-    COUNT(DISTINCT t.station_id) AS "Number_of_Stations"
-FROM trips_by_year t
-INNER JOIN stations_with_status s ON t.station_id = s."station_id"
-GROUP BY t.year, s."status"
-ORDER BY t.year, s."status";
+    YEAR,
+    COUNT(DISTINCT CASE WHEN bs."status" = 'active' THEN stations_used."station_id" END) AS "Number_of_Stations_active",
+    COUNT(DISTINCT CASE WHEN bs."status" = 'closed' THEN stations_used."station_id" END) AS "Number_of_Stations_closed"
+FROM (
+    SELECT
+        DATE_PART(year, TO_TIMESTAMP(bt."start_time" / 1000000)) AS YEAR,
+        bt."start_station_id" AS "station_id"
+    FROM AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_TRIPS bt
+    WHERE DATE_PART(year, TO_TIMESTAMP(bt."start_time" / 1000000)) IN (2013, 2014)
+    UNION
+    SELECT
+        DATE_PART(year, TO_TIMESTAMP(bt."start_time" / 1000000)) AS YEAR,
+        TRY_TO_NUMBER(bt."end_station_id") AS "station_id"
+    FROM AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_TRIPS bt
+    WHERE DATE_PART(year, TO_TIMESTAMP(bt."start_time" / 1000000)) IN (2013, 2014)
+) AS stations_used
+LEFT JOIN AUSTIN.AUSTIN_BIKESHARE.BIKESHARE_STATIONS bs
+    ON stations_used."station_id" = bs."station_id"
+GROUP BY YEAR
+ORDER BY YEAR;

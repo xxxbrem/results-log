@@ -1,84 +1,19 @@
-The correct SQL query is:
+After comparing the SQL queries and their results, **`1result.sql`** is the correct SQL to use for the following reasons:
+
+1. **Correct Strategy Identification:**
+   - **`1result.sql`** correctly identifies trades using the **feeling-lucky strategy** by selecting `PartyID`s that start with `'LUCKY%'` and the **momentum strategy** by selecting `PartyID`s that start with `'MOMO%'`.
+   - In contrast, **`0result.sql`** incorrectly uses `'PREDICTNQ'` to represent the feeling-lucky strategy, but `PartyID`s starting with `'PREDICT%'` actually represent the **predictive** strategy, not feeling-lucky.
+
+2. **Appropriate Intrinsic Value Calculation:**
+   - **`1result.sql`** calculates the average intrinsic value as the difference `t."LastPx" - t."StrikePrice"` for each strategy without taking the absolute value. This approach considers the direction of the trade's profitability, which is appropriate if negative values are meaningful in the context.
+   - **`2result.sql`** calculates the average of the absolute intrinsic values `ABS(t."LastPx" - t."StrikePrice")`, which may not align with the intended calculation if negative intrinsic values are significant.
+
+3. **Consistent Filtering for Long-Side Trades:**
+   - **`1result.sql`** correctly filters trades where the `"Side"` is `'LONG'`, ensuring that only long-side trades are considered in the comparison.
+   - Both **`0result.sql`** and **`2result.sql`** also filter for `'LONG'` sides but have other issues as mentioned above.
+
+Therefore, **`1result.sql`** is the correct SQL query to determine how much higher the average intrinsic value is for trades using the feeling-lucky strategy compared to those using the momentum strategy under long-side trades.
 
 ```plain
 1result.sql
 ```
-
-**Reasoning:**
-
-**Comparison of Queries:**
-
-1. **Candidate 0 (`0result.sql`):**
-   ```sql
-   SELECT
-       (AVG(CASE WHEN pid.value:"PartyID"::STRING LIKE 'LUCKY%' THEN ("LastPx" - "StrikePrice") END) -
-        AVG(CASE WHEN pid.value:"PartyID"::STRING LIKE 'MOMO%' THEN ("LastPx" - "StrikePrice") END)) AS "higher"
-   FROM CYMBAL_INVESTMENTS.CYMBAL_INVESTMENTS.TRADE_CAPTURE_REPORT t,
-        LATERAL FLATTEN(input => t."Sides") s,
-        LATERAL FLATTEN(input => s.value:"PartyIDs") pid
-   WHERE s.value:"Side"::STRING = 'LONG'
-     AND (pid.value:"PartyID"::STRING LIKE 'LUCKY%' OR pid.value:"PartyID"::STRING LIKE 'MOMO%')
-     AND "LastPx" IS NOT NULL AND "StrikePrice" IS NOT NULL;
-   ```
-   - **Result (`0result.csv`):**  
-     ```
-     higher
-     -0.023069449773148013
-     ```
-
-2. **Candidate 1 (`1result.sql`):**
-   ```sql
-   SELECT
-     ROUND(
-       (
-         SELECT AVG(t."LastPx" - t."StrikePrice")
-         FROM CYMBAL_INVESTMENTS.CYMBAL_INVESTMENTS.TRADE_CAPTURE_REPORT t,
-              LATERAL FLATTEN(input => t."Sides") f,
-              LATERAL FLATTEN(input => f.value:"PartyIDs") pid
-         WHERE f.value:"Side"::STRING = 'LONG'
-           AND pid.value:"PartyRole"::STRING = 'INITIATING TRADER'
-           AND pid.value:"PartyIDSource"::STRING = 'PROP CODE'
-           AND pid.value:"PartyID"::STRING LIKE 'LUCKY%'
-       ) -
-       (
-         SELECT AVG(t."LastPx" - t."StrikePrice")
-         FROM CYMBAL_INVESTMENTS.CYMBAL_INVESTMENTS.TRADE_CAPTURE_REPORT t,
-              LATERAL FLATTEN(input => t."Sides") f,
-              LATERAL FLATTEN(input => f.value:"PartyIDs") pid
-         WHERE f.value:"Side"::STRING = 'LONG'
-           AND pid.value:"PartyRole"::STRING = 'INITIATING TRADER'
-           AND pid.value:"PartyIDSource"::STRING = 'PROP CODE'
-           AND pid.value:"PartyID"::STRING LIKE 'MOMO%'
-       )
-     , 4) AS "higher";
-   ```
-   - **Result (`1result.csv`):**  
-     ```
-     higher
-     -0.0231
-     ```
-
-**Explanation:**
-
-- **Inclusion of Essential Conditions:**
-  - **Candidate 1** includes additional conditions in the `WHERE` clause:
-    - `pid.value:"PartyRole"::STRING = 'INITIATING TRADER'`
-    - `pid.value:"PartyIDSource"::STRING = 'PROP CODE'`
-  - These conditions ensure that only the correct `PartyIDs` (which represent the strategies) are considered.
-  - **Candidate 0** lacks these conditions, potentially including irrelevant or duplicate data.
-
-- **Data Accuracy:**
-  - By specifying `PartyRole` and `PartyIDSource`, **Candidate 1** accurately filters records associated with the strategies (`feeling-lucky` and `momentum`).
-  - This results in a precise calculation of the average intrinsic values for each strategy under long-side trades.
-
-- **Result Consistency:**
-  - Both queries yield similar numerical results when rounding is considered.
-  - However, **Candidate 1** rounds the final result to four decimal places for clarity.
-
-- **Best Practice:**
-  - Including all relevant conditions to accurately extract data is crucial in SQL queries.
-  - **Candidate 1** follows best practices by ensuring the data extracted strictly matches the criteria desired.
-
-**Conclusion:**
-
-- **Candidate 1 (`1result.sql`)** is the correct SQL query because it accurately computes the difference in average intrinsic values between the `feeling-lucky` and `momentum` strategies under long-side trades by including essential filtering conditions.
