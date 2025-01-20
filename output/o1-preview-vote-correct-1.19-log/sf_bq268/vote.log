@@ -1,0 +1,67 @@
+After comparing both SQL scripts and their results, I have determined that `1result.sql` provides the correct solution.
+
+**Reasoning:**
+
+1. **Handling of Transactions:**
+
+   - In `1result.sql`, the `per_user` Common Table Expression (CTE) calculates `first_transaction_time` using the following condition:
+
+     ```sql
+     MIN(CASE WHEN "transactions" > 0 THEN "visitStartTime" END) AS "first_transaction_time"
+     ```
+
+     This ensures that only sessions where the number of transactions is greater than zero are considered. It effectively excludes sessions where `transactions` might be `NULL` or equal to zero. This aligns with the requirement to consider the first transaction when it occurs.
+
+   - In contrast, `2result.sql` uses:
+
+     ```sql
+     WHERE "totals":transactions::NUMBER IS NOT NULL
+     ```
+
+     This condition includes sessions where `transactions` could be zero but not `NULL`. As a result, it might include sessions without actual transactions, which could lead to inaccuracies in identifying the true `first_transaction_time`.
+
+2. **Consistent Use of Data Types:**
+
+   - `1result.sql` explicitly compares `"transactions" > 0`, ensuring that the comparison is numeric and accurate.
+
+   - There might be instances where `"transactions"` is stored as a string or could have non-numeric values. By casting and comparing using `> 0`, `1result.sql` ensures correct filtering.
+
+3. **Calculating the Last Recorded Event Time:**
+
+   - Both scripts aim to determine the `last_recorded_event_time` by choosing between the `first_transaction_time` and `last_visit_time`.
+
+   - `1result.sql` uses:
+
+     ```sql
+     CASE 
+         WHEN "first_transaction_time" IS NOT NULL THEN "first_transaction_time"
+         ELSE "last_visit_time"
+     END AS "last_recorded_event_time"
+     ```
+
+     This logic correctly identifies the last significant event per user, prioritizing the first transaction over the last visit.
+
+4. **Joining to Determine Device Category:**
+
+   - `1result.sql` joins the `per_user_details` CTE back to the `all_sessions` table to get the `deviceCategory` of the `last_recorded_event_time` accurately.
+
+   - The join condition ensures that only the session corresponding to the `last_recorded_event_time` is considered:
+
+     ```sql
+     ON pud."fullVisitorId" = s."fullVisitorId" 
+        AND pud."last_recorded_event_time" = s."visitStartTime"
+     ```
+
+5. **Resulting Maximum Number of Days:**
+
+   - The maximum number of days calculated in `1result.sql` is **7**, which is plausible given the dataset spans multiple days.
+
+   - In `2result.sql`, the result is **6**, which might suggest an off-by-one error or a miscalculation due to the handling of `transactions` or dates.
+
+**Conclusion:**
+
+Given the precise handling of transactions, consistent data type usage, and accurate calculation of the last recorded event time, `1result.sql` is the correct script for identifying the longest number of days between the first visit and the last recorded event for users whose last event was associated with a mobile device.
+
+```plain
+1result.sql
+```
