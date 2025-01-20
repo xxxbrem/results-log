@@ -1,0 +1,2385 @@
+2025-01-20 00:44:28 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 00:44:30 - root - INFO - SQL:
+SELECT DISTINCT CFICode
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`
+   LIMIT 1000;
+Results:
+CFICode
+MMMXXX
+
+2025-01-20 00:44:32 - root - INFO - SQL:
+SELECT DISTINCT side.Side
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+     UNNEST(Sides) AS side
+   LIMIT 1000;
+Results:
+Side
+LONG
+SHORT
+
+2025-01-20 00:44:57 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 00:44:57 - root - INFO - The error you're encountering is due to a naming conflict between the alias used for the `UNNEST` operation and the field name you're trying to group by. In your query:
+
+```sql
+SELECT side.Side, COUNT(*) AS trade_count
+FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+  UNNEST(Sides) AS side
+GROUP BY side.Side
+LIMIT 1000;
+```
+
+You're using `side` as the alias for the unnested array and also referencing `side.Side` in the `GROUP BY` clause. BigQuery is getting confused because `side` is both an alias and a field name.
+
+**To fix the error, you can rename the alias used in the `UNNEST` operation to something else.** For example, change `side` to `s`:
+
+```sql
+SELECT s.Side, COUNT(*) AS trade_count
+FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+  UNNEST(Sides) AS s
+GROUP BY s.Side
+LIMIT 1000;
+```
+
+Here's the corrected query:
+
+```sql
+SELECT s.Side, COUNT(*) AS trade_count
+FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+  UNNEST(Sides) AS s
+GROUP BY s.Side
+LIMIT 1000;
+```
+
+**Explanation:**
+
+- **Alias Change:** By changing the alias from `side` to `s`, we avoid the conflict between the alias name and the field name.
+- **Field References:** Now, we refer to the field as `s.Side` in both the `SELECT` and `GROUP BY` clauses.
+- **Avoiding Reserved Keywords:** Also, be cautious using words like `Side` and `side`, which might be reserved keywords or cause confusion in SQL.
+
+**You can now run this query without errors, and it will provide the count of trades by Side (LONG or SHORT).**
+
+**Example Output:**
+
+```csv
+Side,trade_count
+LONG,1234
+SHORT,567
+```
+
+*(Note: The numbers are illustrative since actual data results are not provided.)*
+
+---
+
+If you continue to experience issues or have further questions about the data, feel free to ask!
+2025-01-20 00:45:37 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 00:45:37 - root - INFO - I understand that you're still encountering an error when running the query, even after attempting to adjust the alias. Let's work through this step by step to resolve the issue.
+
+**Problem Analysis:**
+
+The error message indicates:
+
+```
+Cannot GROUP BY field references from SELECT list alias side at [4:10]
+```
+
+This suggests that there's a naming conflict or ambiguity involving the alias `side` and the field `Side` in the `GROUP BY` clause.
+
+**Solution:**
+
+To resolve this, we'll:
+
+1. **Change the alias used in the `UNNEST` operation to avoid conflicts.**
+
+2. **Ensure that the field references in `SELECT` and `GROUP BY` are consistent and unambiguous.**
+
+Here's the corrected query:
+
+```sql
+SELECT s.Side, COUNT(*) AS trade_count
+FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+  UNNEST(t.Sides) AS s
+GROUP BY s.Side
+LIMIT 1000;
+```
+
+**Explanation:**
+
+- **Alias Change:** We changed the alias from `side` to `s` to avoid conflicts with the field name `Side`.
+
+- **Qualified Field References:** We're using `s.Side` consistently in both the `SELECT` and `GROUP BY` clauses.
+
+---
+
+**If the Error Persists:**
+
+In case you still encounter the error, we can further simplify the query by using a subquery. This approach can help eliminate any potential conflicts or ambiguities.
+
+**Rewritten Query Using a Subquery:**
+
+```sql
+SELECT Side, COUNT(*) AS trade_count
+FROM (
+  SELECT s.Side
+  FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+    UNNEST(t.Sides) AS s
+)
+GROUP BY Side
+LIMIT 1000;
+```
+
+**Explanation:**
+
+- **Subquery:** We use a subquery to extract `s.Side` from the unnested array.
+
+- **Outer Query:** We perform the `GROUP BY` operation on the result of the subquery, grouping by `Side`.
+
+---
+
+**Alternative Approach: Alias the Field in the Subquery:**
+
+If conflicts still arise, you can alias the `Side` field in the subquery:
+
+```sql
+SELECT trade_side, COUNT(*) AS trade_count
+FROM (
+  SELECT s.Side AS trade_side
+  FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+    UNNEST(t.Sides) AS s
+)
+GROUP BY trade_side
+LIMIT 1000;
+```
+
+**Explanation:**
+
+- **Field Alias:** By aliasing `s.Side` as `trade_side`, we ensure that there's no ambiguity in the field name during grouping.
+
+- **Consistent References:** We reference `trade_side` in both the `SELECT` and `GROUP BY` clauses.
+
+---
+
+**Steps to Proceed:**
+
+1. **Try the Corrected Query:**
+
+   ```sql
+   SELECT s.Side, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s
+   GROUP BY s.Side
+   LIMIT 1000;
+   ```
+
+2. **If the Error Persists, Use the Subquery Method:**
+
+   ```sql
+   SELECT Side, COUNT(*) AS trade_count
+   FROM (
+     SELECT s.Side
+     FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+       UNNEST(t.Sides) AS s
+   )
+   GROUP BY Side
+   LIMIT 1000;
+   ```
+
+3. **If Needed, Alias the Field:**
+
+   ```sql
+   SELECT trade_side, COUNT(*) AS trade_count
+   FROM (
+     SELECT s.Side AS trade_side
+     FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+       UNNEST(t.Sides) AS s
+   )
+   GROUP BY trade_side
+   LIMIT 1000;
+   ```
+
+---
+
+**Additional Notes:**
+
+- **Avoiding Reserved Keywords:** Ensure that you're not using any reserved keywords (like `Side` or `side`) as aliases without proper qualification.
+
+- **Consistency:** Always use consistent aliases and field references throughout your query.
+
+- **BigQuery Specifics:** In BigQuery, it's important to avoid naming conflicts between aliases and field names. Aliases must be unique and not match any field names used in the query.
+
+---
+
+**Example Execution:**
+
+Using the last query:
+
+```sql
+SELECT trade_side, COUNT(*) AS trade_count
+FROM (
+  SELECT s.Side AS trade_side
+  FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+    UNNEST(t.Sides) AS s
+)
+GROUP BY trade_side
+LIMIT 1000;
+```
+
+**Expected Result:**
+
+```csv
+trade_side,trade_count
+LONG, [number of long trades]
+SHORT, [number of short trades]
+```
+
+*(Replace `[number of long trades]` and `[number of short trades]` with the actual counts from your data.)*
+
+---
+
+**Moving Forward:**
+
+- **Run the Adjusted Query:** Try running the adjusted query in your BigQuery console.
+
+- **Verify the Results:** Ensure that the results make sense and match your expectations.
+
+- **Apply Similar Adjustments to Other Queries:** If you encounter similar errors in other queries, consider adjusting aliases and using subqueries as shown.
+
+---
+
+**Feel free to let me know if you have any questions or need further assistance!**
+2025-01-20 00:46:08 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 00:46:08 - root - INFO - SQL:
+SELECT trade_side, COUNT(*) AS trade_count
+   FROM (
+     SELECT s.Side AS trade_side
+     FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+       UNNEST(t.Sides) AS s
+   )
+   GROUP BY trade_side
+   LIMIT 1000;
+Results:
+trade_side,trade_count
+LONG,779250
+SHORT,443312
+
+2025-01-20 00:46:10 - root - INFO - SQL:
+SELECT CFICode, AVG(StrikePrice) AS avg_strike_price, AVG(LastPx) AS avg_last_px
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`
+   GROUP BY CFICode
+   LIMIT 1000
+Results:
+CFICode,avg_strike_price,avg_last_px
+MMMXXX,8587.710618663865,8587.699876779247
+
+2025-01-20 00:46:11 - root - INFO - SQL:
+SELECT s.Side, t.CFICode, t.Symbol, t.StrikePrice, t.LastPx
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s
+   WHERE LOWER(s.Side) = 'long'
+   LIMIT 1000
+Results:
+Too long, hard cut:
+Side,CFICode,Symbol,StrikePrice,LastPx
+LONG,MMMXXX,ESM0,2952.125,2951.125
+LONG,MMMXXX,ESM0,2954.375,2953.875
+LONG,MMMXXX,ESM0,2951.875,2952.375
+LONG,MMMXXX,ESM0,2955.125,2955.375
+LONG,MMMXXX,ESM0,2956.875,2956.875
+LONG,MMMXXX,ESM0,2956.375,2955.625
+LONG,MMMXXX,ESM0,2953.125,2954.125
+LONG,MMMXXX,ESM0,2959.125,2960.375
+LONG,MMMXXX,ESM0,2948.25,2948.25
+LONG,MMMXXX,ESM0,2945.625,2945.875
+LONG,MMMXXX,ESM0,2946.875,2947.125
+LONG,MMMXXX,ESM0,2947.375,2946.875
+LONG,MMMXXX,ESM0,2948.875,2948.625
+LONG,MMMXXX,ESM0,2951.625,2951.125
+LONG,MMMXXX,ESM0,2952.125,2951.625
+LONG,MMMXXX,ESM0,2952.875,2952.125
+LONG,MMMXXX,ESM0,2947.625,2948.125
+LONG,MMMXXX,ESM0,2949.5,2949.625
+LONG,MMMXXX,ESM0,2950.875,2950.625
+LONG,MMMXXX,ESM0,2948.875,2950.375
+LONG,MMMXXX,ESM0,2945.375,2945.625
+LONG,MMMXXX,ESM0,2946.625,2945.875
+LONG,MMMXXX,ESM0,2948.625,2948.125
+LONG,MMMXXX,ESM0,2945.875,2945.375
+LONG,MMMXXX,ESM0,2944.625,2945.625
+LONG,MMMXXX,ESM0,2945.625,2946.375
+LONG,MMMXXX,ESM0,2940.625,2941.375
+LONG,MMMXXX,ESM0,2939.875,2940.375
+LONG,MMMXXX,ESM0,2941.375,2941.125
+LONG,MMMXXX,ESM0,2941.375,2941.125
+LONG,MMMXXX,ESM0,2942.125,2942.375
+LONG,MMMXXX,ESM0,2944.125,2944.625
+LONG,MMMXXX,ESM0,2942.625,2943.625
+LONG,MMMXXX,ESM0,2943.375,2942.375
+LONG,MMMXXX,ESM0,2941.125,2940.625
+LONG,MMMXXX,ESM0,2942.125,2941.625
+LONG,MMMXXX,ESM0,2936.875,2936.5
+LONG,MMMXXX,ESM0,2936.625,2936.875
+LONG,MMMXXX,ESM0,2936.875,2936.625
+LONG,MMMXXX,ESM0,2936.625,2936.875
+LONG,MMMXXX,ESM0,2939.375,2938.625
+LONG,MMMXXX,ESM0,2945.875,2943.375
+LONG,MMMXXX,ESM0,2947.125,2945.125
+LONG,MMMXXX,ESM0,2945.375,2945.875
+LONG,MMMXXX,ESM0,2947.125,2947.375
+LONG,MMMXXX,ESM0,2945.625,2945.375
+LONG,MMMXXX,ESM0,2946.375,2945.875
+LONG,MMMXXX,ESM0,2945.625,2946.125
+LONG,MMMXXX,ESM0,2948.625,2946.625
+LONG,MMMXXX,ESM0,2949.375,2949.0
+LONG,MMMXXX,ESM0,2949.875,2949.875
+LONG,MMMXXX,ESM0,2948.625,2950.625
+LONG,MMMXXX,ESM0,2947.625,2947.375
+LONG,MMMXXX,ESM0,2948.375,2948.125
+LONG,MMMXXX,ESM0,2945.875,2947.125
+LONG,MMMXXX,ESM0,2945.625,2945.125
+LONG,MMMXXX,ESM0,2949.125,2948.375
+LONG,MMMXXX,ESM0,2948.625,2950.625
+LONG,MMMXXX,ESM0,2951.625,2952.25
+LONG,MMMXXX,ESM0,2960.375,2960.625
+LONG,MMMXXX,ESM0,2963.375,2962.875
+LONG,MMMXXX,ESM0,2963.375,2963.375
+LONG,MMMXXX,ESM0,2964.375,2963.875
+LONG,MMMXXX,ESM0,2965.5,2966.125
+LONG,MMMXXX,ESM0,2963.375,2965.625
+LONG,MMMXXX,ESM0,2957.375,2955.375
+LONG,MMMXXX,ESM0,2953.375,2951.125
+LONG,MMMXXX,ESM0,2943.875,2943.875
+LONG,MMMXXX,ESM0,2943.875,2943.875
+LONG,MMMXXX,ESM0,2938.625,2937.875
+LONG,MMMXXX,ESM0,2940.875,2939.625
+LONG,MMMXXX,ESM0,2942.875,2942.375
+LONG,MMMXXX,ESM0,2943.125,2942.875
+LONG,MMMXXX,ESM0,2939.875,2939.125
+LONG,MMMXXX,ESM0,2936.875,2937.375
+LONG,MMMXXX,ESM0,2941.625,2941.125
+LONG,MMMXXX,ESM0,2942.375,2940.375
+LONG,MMMXXX,ESM0,2935.875,2934.625
+LONG,MMMXXX,ESM0,2934.375,2935.375
+LONG,MMMXXX,ESM0,2933.875,2932.0
+LONG,MMMXXX,ESM0,2938.375,2937.625
+LONG,MMMXXX,ESM0,2939.375,2937.875
+LONG,MMMXXX,ESM0,2938.625,2938.375
+LONG,MMMXXX,ESM0,2939.625,2937.875
+LONG,MMMXXX,ESM0,2940.625,2939.875
+LONG,MMMXXX,ESM0,2941.125,2941.125
+LONG,MMMXXX,ESM0,2942.375,2942.625
+LONG,MMMXXX,ESM0,2947.375,2947.625
+LONG,MMMXXX,ESM0,2947.125,2947.625
+LONG,MMMXXX,ESM0,2946.375,2947.5
+LONG,MMMXXX,ESM0,2946.375,2945.375
+LONG,MMMXXX,ESM0,2946.125,2946.125
+LONG,MMMXXX,ESM0,2945.125,2947.625
+LONG,MMMXXX,ESM0,2942.875,2944.625
+LONG,MMMXXX,ESM0,2937.375,2937.625
+LONG,MMMXXX,ESM0,2938.875,2939.125
+LONG,MMMXXX,ESM0,2939.625,2939.625
+LONG,MMMXXX,ESM0,2940.875,2941.875
+LONG,MMMXXX,ESM0,2940.625,2942.375
+LONG,MMMXXX,ESM0,2943.125,2941.375
+LONG,MMMXXX,ESM0,2937.75,2941.125
+LONG,MMMXXX,ESM0,2938.625,2939.375
+LONG,MMMXXX,ESM0,2935.625,2934.875
+LONG,MMMXXX,ESM0,2942.875,2942.875
+LONG,MMMXXX,ESM0,2952.125,2949.125
+LONG,MMMXXX,ESM0,2953.375,2952.625
+LONG,MMMXXX,ESM0,2946.875,2946.625
+LONG,MMMXXX,ESM0,2948.125,2945.875
+LONG,MMMXXX,ESM0,2948.125,2948.625
+LONG,MMMXXX,ESM0,2945.875,2942.125
+LONG,MMMXXX,ESM0,2947.625,2949.125
+LONG,MMMXXX,ESM0,2947.125,2948.125
+LONG,MMMXXX,ESM0,2949.375,2948.625
+LONG,MMMXXX,ESM0,2949.125,2949.875
+LONG,MMMXXX,ESM0,2949.125,2949.625
+LONG,MMMXXX,ESM0,2952.375,2952.625
+LONG,MMMXXX,ESM0,2954.625,2953.375
+LONG,MMMXXX,ESM0,2951.875,2955.125
+LONG,MMMXXX,ESM0,2952.625,2952.625
+LONG,MMMXXX,ESM0,2951.375,2951.375
+LONG,MMMXXX,ESM0,2950.625,2949.625
+LONG,MMMXXX,ESM0,2949.375,2950.625
+LONG,MMMXXX,ESM0,2947.875,2949.625
+LONG,MMMXXX,ESM0,2948.625,2948.125
+LONG,MMMXXX,ESM0,2947.125,2948.125
+LONG,MMMXXX,ESM0,2947.875,2948.375
+LONG,MMMXXX,ESM0,2948.375,2948.625
+LONG,MMMXXX,ESM0,2950.375,2950.375
+LONG,MMMXXX,ESM0,2950.625,2950.625
+LONG,MMMXXX,ESM0,2950.375,2950.375
+LONG,MMMXXX,ESM0,2951.125,2951.125
+LONG,MMMXXX,ESM0,2954.875,2953.875
+LONG,MMMXXX,ESM0,2954.625,2954.875
+LONG,MMMXXX,ESM0,2955.125,2955.125
+LONG,MMMXXX,ESM0,2954.625,2955.625
+LONG,MMMXXX,ESM0,2954.875,2954.875
+LONG,MMMXXX,ESM0,2955.125,2955.375
+LONG,MMMXXX,ESM0,2956.125,2955.625
+LONG,MMMXXX,ESM0,2956.375,2956.125
+LONG,MMMXXX,ESM0,2958.375,2958.125
+LONG,MMMXXX,ESM0,2944.875,2945.125
+LONG,MMMXXX,ESM0,2949.875,2952.625
+LONG,MM
+
+2025-01-20 00:46:13 - root - INFO - SQL:
+SELECT t.CFICode, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s
+   WHERE LOWER(s.Side) = 'long'
+   GROUP BY t.CFICode
+   LIMIT 1000
+Results:
+CFICode,trade_count
+MMMXXX,779250
+
+2025-01-20 00:46:15 - root - INFO - SQL:
+SELECT DISTINCT p.PartyRole
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s,
+     UNNEST(s.PartyIDs) AS p
+   LIMIT 1000
+Results:
+PartyRole
+INITIATING TRADER
+
+2025-01-20 00:46:17 - root - INFO - SQL:
+SELECT p.PartyRole, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s,
+     UNNEST(s.PartyIDs) AS p
+   GROUP BY p.PartyRole
+   LIMIT 1000
+Results:
+PartyRole,trade_count
+INITIATING TRADER,1222562
+
+2025-01-20 00:46:19 - root - INFO - SQL:
+SELECT p.PartyID, AVG(t.StrikePrice) AS avg_strike_price
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s,
+     UNNEST(s.PartyIDs) AS p
+   WHERE LOWER(s.Side) = 'long'
+   GROUP BY p.PartyID
+   LIMIT 1000
+Results:
+PartyID,avg_strike_price
+MOMOES,3270.0658570163487
+MOMONQ,10995.11875084931
+LUCKYES,3339.0445850944493
+LUCKYNQ,10931.961821299525
+MOMOBTC,12139.427802294786
+LUCKYBTC,11611.033421952154
+PREDICTES,3298.5604822273503
+PREDICTNQ,11012.582432432433
+PREDICTBTC,11258.958970941123
+
+2025-01-20 00:46:21 - root - INFO - SQL:
+SELECT t.Symbol, t.Quantity
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s
+   WHERE LOWER(s.Side) = 'long'
+   LIMIT 1000
+Results:
+Too long, hard cut:
+Symbol,Quantity
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+
+
+2025-01-20 00:46:21 - root - INFO - itercount: 0
+2025-01-20 00:46:21 - root - INFO - Database Name: bigquery-public-data
+Schema Name: cymbal_investments
+DDL describes table information.
+,0
+table_name,trade_capture_report
+ddl,"CREATE TABLE `bigquery-public-data.cymbal_investments.trade_capture_report`
+(
+  SendingTime TIMESTAMP OPTIONS(description=""Time the message was sent""),
+  TargetCompID STRING OPTIONS(description=""Assigned value used to identify firm receiving message.""),
+  SenderCompID STRING OPTIONS(description=""Assigned value used to identify firm sending message.""),
+  Symbol STRING OPTIONS(description=""Trading symbol of the asset""),
+  Quantity INT64 OPTIONS(description=""Overall/total quantity (e.g. number of shares)""),
+  OrderID STRING OPTIONS(description=""Order identifier""),
+  TransactTime TIMESTAMP OPTIONS(description=""Time the transaction occured""),
+  StrikePrice FLOAT64 OPTIONS(description=""Price at which the CFD closed""),
+  LastPx FLOAT64 OPTIONS(description=""Price at which the CFD was entered""),
+  MaturityDate TIMESTAMP OPTIONS(description=""Date of contract expiry""),
+  TradeReportID STRING OPTIONS(description=""ID of this trade report""),
+  TradeDate DATE OPTIONS(description=""Date trade was executed""),
+  CFICode STRING OPTIONS(description=""Financial instrument classification code""),
+  Sides ARRAY<STRUCT<Side STRING OPTIONS(description=""Direction of the trade (long or short)""), OrderID STRING OPTIONS(description=""""), PartyIDs ARRAY<STRUCT<PartyID STRING OPTIONS(description=""Counterparty identifier""), PartyIDSource STRING, PartyRole STRING OPTIONS(description=""Counterparty irole"")>> OPTIONS(description="""")>>
+);"
+
+External knowledge that might be helpful: 
+None
+The table structure information is ({database name: {schema name: {table name}}}): 
+{'bigquery-public-data': {'cymbal_investments': ['trade_capture_report']}}
+Begin Exploring Related Columns
+**Relevant Columns and Potential Usage:**
+
+- **CFICode**: May represent the trading strategy used in the trade.
+- **Sides.Side**: Indicates the direction of the trade ('long' or 'short'). Used to filter long-side trades.
+- **StrikePrice**: Could be used as the intrinsic value of the trade.
+- **LastPx**: May represent the execution price of the trade.
+- **Symbol**: Trading symbol of the asset. Could be used to group trades by asset.
+- **PartyID**: May represent different counterparties or strategies.
+- **PartyRole**: Could indicate the role of the party, potentially relating to strategy.
+- **TransactTime**: Time the transaction occurred. Useful for temporal analysis.
+- **Quantity**: The total quantity traded. Could be used for weighting average calculations.
+- **TradeDate**: Date when the trade was executed. Useful for time-based filtering.
+
+**Conditions that May Be Used:**
+
+- `Sides.Side = 'long'` to filter for long-side trades.
+- Filtering by specific `CFICode` values to distinguish between strategies (e.g., 'feeling-lucky', 'momentum').
+- Using `StrikePrice` and `LastPx` to calculate differences or intrinsic values.
+
+---
+
+**SQL Queries to Explore the Data:**
+
+1. **Retrieve distinct CFICode values:**
+   ```sql
+   SELECT DISTINCT CFICode
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`
+   LIMIT 1000;
+   ```
+
+2. **Retrieve distinct Side values:**
+   ```sql
+   SELECT DISTINCT side.Side
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+     UNNEST(Sides) AS side
+   LIMIT 1000;
+   ```
+
+3. **Count trades by Side (long or short):**
+   ```sql
+   SELECT side.Side, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+     UNNEST(Sides) AS side
+   GROUP BY side.Side
+   LIMIT 1000;
+   ```
+
+4. **Average StrikePrice and LastPx grouped by CFICode:**
+   ```sql
+   SELECT CFICode, AVG(StrikePrice) AS avg_strike_price, AVG(LastPx) AS avg_last_px
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`
+   GROUP BY CFICode
+   LIMIT 1000;
+   ```
+
+5. **List of trades with 'long' Side and their CFICode:**
+   ```sql
+   SELECT side.Side, t.CFICode, t.Symbol, t.StrikePrice, t.LastPx
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(Sides) AS side
+   WHERE LOWER(side.Side) = 'long'
+   LIMIT 1000;
+   ```
+
+6. **Count of trades per CFICode for 'long' Side trades:**
+   ```sql
+   SELECT t.CFICode, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(Sides) AS side
+   WHERE LOWER(side.Side) = 'long'
+   GROUP BY t.CFICode
+   LIMIT 1000;
+   ```
+
+7. **Retrieve distinct PartyRole values:**
+   ```sql
+   SELECT DISTINCT party.PartyRole
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+     UNNEST(Sides) AS side,
+     UNNEST(side.PartyIDs) AS party
+   LIMIT 1000;
+   ```
+
+8. **Count of trades by PartyRole:**
+   ```sql
+   SELECT party.PartyRole, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+     UNNEST(Sides) AS side,
+     UNNEST(side.PartyIDs) AS party
+   GROUP BY party.PartyRole
+   LIMIT 1000;
+   ```
+
+9. **Average StrikePrice for each PartyID in 'long' Side trades:**
+   ```sql
+   SELECT party.PartyID, AVG(t.StrikePrice) AS avg_strike_price
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(Sides) AS side,
+     UNNEST(side.PartyIDs) AS party
+   WHERE LOWER(side.Side) = 'long'
+   GROUP BY party.PartyID
+   LIMIT 1000;
+   ```
+
+10. **List of Symbols traded with 'long' Side and their quantities:**
+    ```sql
+    SELECT t.Symbol, t.Quantity
+    FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+      UNNEST(Sides) AS side
+    WHERE LOWER(side.Side) = 'long'
+    LIMIT 1000;
+    ```
+
+---
+
+By exploring these columns and executing the above queries, you can gain insights into how the 'feeling-lucky' and 'momentum' strategies might be represented in the data, and compute the average intrinsic values accordingly.Query:
+SELECT DISTINCT CFICode
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`
+   LIMIT 1000;
+Answer:
+CFICode
+MMMXXX
+Query:
+SELECT DISTINCT side.Side
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`,
+     UNNEST(Sides) AS side
+   LIMIT 1000;
+Answer:
+Side
+LONG
+SHORT
+Query:
+SELECT trade_side, COUNT(*) AS trade_count
+   FROM (
+     SELECT s.Side AS trade_side
+     FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+       UNNEST(t.Sides) AS s
+   )
+   GROUP BY trade_side
+   LIMIT 1000;
+Answer:
+trade_side,trade_count
+LONG,779250
+SHORT,443312
+Query:
+SELECT CFICode, AVG(StrikePrice) AS avg_strike_price, AVG(LastPx) AS avg_last_px
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report`
+   GROUP BY CFICode
+   LIMIT 1000
+Answer:
+CFICode,avg_strike_price,avg_last_px
+MMMXXX,8587.710618663865,8587.699876779247
+Query:
+SELECT s.Side, t.CFICode, t.Symbol, t.StrikePrice, t.LastPx
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s
+   WHERE LOWER(s.Side) = 'long'
+   LIMIT 1000
+Answer:
+Too long, hard cut:
+Side,CFICode,Symbol,StrikePrice,LastPx
+LONG,MMMXXX,ESM0,2952.125,2951.125
+LONG,MMMXXX,ESM0,2954.375,2953.875
+LONG,MMMXXX,ESM0,2951.875,2952.375
+LONG,MMMXXX,ESM0,2955.125,2955.375
+LONG,MMMXXX,ESM0,2956.875,2956.875
+LONG,MMMXXX,ESM0,2956.375,2955.625
+LONG,MMMXXX,ESM0,2953.125,2954.125
+LONG,MMMXXX,ESM0,2959.125,2960.375
+LONG,MMMXXX,ESM0,2948.25,2948.25
+LONG,MMMXXX,ESM0,2945.625,2945.875
+LONG,MMMXXX,ESM0,2946.875,2947.125
+LONG,MMMXXX,ESM0,2947.375,2946.875
+LONG,MMMXXX,ESM0,2948.875,2948.625
+LONG,MMMXXX,ESM0,2951.625,2951.125
+LONG,MMMXXX,ESM0,2952.125,2951.625
+LONG,MMMXXX,ESM0,2952.875,2952.125
+LONG,MMMXXX,ESM0,2947.625,2948.125
+LONG,MMMXXX,ESM0,2949.5,2949.625
+LONG,MMMXXX,ESM0,2950.875,2950.625
+LONG,MMMXXX,ESM0,2948.875,2950.375
+LONG,MMMXXX,ESM0,2945.375,2945.625
+LONG,MMMXXX,ESM0,2946.625,2945.875
+LONG,MMMXXX,ESM0,2948.625,2948.125
+LONG,MMMXXX,ESM0,2945.875,2945.375
+LONG,MMMXXX,ESM0,2944.625,2945.625
+LONG,MMMXXX,ESM0,2945.625,2946.375
+LONG,MMMXXX,ESM0,2940.625,2941.375
+LONG,MMMXXX,ESM0,2939.875,2940.375
+LONG,MMMXXX,ESM0,2941.375,2941.125
+LONG,MMMXXX,ESM0,2941.375,2941.125
+LONG,MMMXXX,ESM0,2942.125,2942.375
+LONG,MMMXXX,ESM0,2944.125,2944.625
+LONG,MMMXXX,ESM0,2942.625,2943.625
+LONG,MMMXXX,ESM0,2943.375,2942.375
+LONG,MMMXXX,ESM0,2941.125,2940.625
+LONG,MMMXXX,ESM0,2942.125,2941.625
+LONG,MMMXXX,ESM0,2936.875,2936.5
+LONG,MMMXXX,ESM0,2936.625,2936.875
+LONG,MMMXXX,ESM0,2936.875,2936.625
+LONG,MMMXXX,ESM0,2936.625,2936.875
+LONG,MMMXXX,ESM0,2939.375,2938.625
+LONG,MMMXXX,ESM0,2945.875,2943.375
+LONG,MMMXXX,ESM0,2947.125,2945.125
+LONG,MMMXXX,ESM0,2945.375,2945.875
+LONG,MMMXXX,ESM0,2947.125,2947.375
+LONG,MMMXXX,ESM0,2945.625,2945.375
+LONG,MMMXXX,ESM0,2946.375,2945.875
+LONG,MMMXXX,ESM0,2945.625,2946.125
+LONG,MMMXXX,ESM0,2948.625,2946.625
+LONG,MMMXXX,ESM0,2949.375,2949.0
+LONG,MMMXXX,ESM0,2949.875,2949.875
+LONG,MMMXXX,ESM0,2948.625,2950.625
+LONG,MMMXXX,ESM0,2947.625,2947.375
+LONG,MMMXXX,ESM0,2948.375,2948.125
+LONG,MMMXXX,ESM0,2945.875,2947.125
+LONG,MMMXXX,ESM0,2945.625,2945.125
+LONG,MMMXXX,ESM0,2949.125,2948.375
+LONG,MMMXXX,ESM0,2948.625,2950.625
+LONG,MMMXXX,ESM0,2951.625,2952.25
+LONG,MMMXXX,ESM0,2960.375,2960.625
+LONG,MMMXXX,ESM0,2963.375,2962.875
+LONG,MMMXXX,ESM0,2963.375,2963.375
+LONG,MMMXXX,ESM0,2964.375,2963.875
+LONG,MMMXXX,ESM0,2965.5,2966.125
+LONG,MMMXXX,ESM0,2963.375,2965.625
+LONG,MMMXXX,ESM0,2957.375,2955.375
+LONG,MMMXXX,ESM0,2953.375,2951.125
+LONG,MMMXXX,ESM0,2943.875,2943.875
+LONG,MMMXXX,ESM0,2943.875,2943.875
+LONG,MMMXXX,ESM0,2938.625,2937.875
+LONG,MMMXXX,ESM0,2940.875,2939.625
+LONG,MMMXXX,ESM0,2942.875,2942.375
+LONG,MMMXXX,ESM0,2943.125,2942.875
+LONG,MMMXXX,ESM0,2939.875,2939.125
+LONG,MMMXXX,ESM0,2936.875,2937.375
+LONG,MMMXXX,ESM0,2941.625,2941.125
+LONG,MMMXXX,ESM0,2942.375,2940.375
+LONG,MMMXXX,ESM0,2935.875,2934.625
+LONG,MMMXXX,ESM0,2934.375,2935.375
+LONG,MMMXXX,ESM0,2933.875,2932.0
+LONG,MMMXXX,ESM0,2938.375,2937.625
+LONG,MMMXXX,ESM0,2939.375,2937.875
+LONG,MMMXXX,ESM0,2938.625,2938.375
+LONG,MMMXXX,ESM0,2939.625,2937.875
+LONG,MMMXXX,ESM0,2940.625,2939.875
+LONG,MMMXXX,ESM0,2941.125,2941.125
+LONG,MMMXXX,ESM0,2942.375,2942.625
+LONG,MMMXXX,ESM0,2947.375,2947.625
+LONG,MMMXXX,ESM0,2947.125,2947.625
+LONG,MMMXXX,ESM0,2946.375,2947.5
+LONG,MMMXXX,ESM0,2946.375,2945.375
+LONG,MMMXXX,ESM0,2946.125,2946.125
+LONG,MMMXXX,ESM0,2945.125,2947.625
+LONG,MMMXXX,ESM0,2942.875,2944.625
+LONG,MMMXXX,ESM0,2937.375,2937.625
+LONG,MMMXXX,ESM0,2938.875,2939.125
+LONG,MMMXXX,ESM0,2939.625,2939.625
+LONG,MMMXXX,ESM0,2940.875,2941.875
+LONG,MMMXXX,ESM0,2940.625,2942.375
+LONG,MMMXXX,ESM0,2943.125,2941.375
+LONG,MMMXXX,ESM0,2937.75,2941.125
+LONG,MMMXXX,ESM0,2938.625,2939.375
+LONG,MMMXXX,ESM0,2935.625,2934.875
+LONG,MMMXXX,ESM0,2942.875,2942.875
+LONG,MMMXXX,ESM0,2952.125,2949.125
+LONG,MMMXXX,ESM0,2953.375,2952.625
+LONG,MMMXXX,ESM0,2946.875,2946.625
+LONG,MMMXXX,ESM0,2948.125,2945.875
+LONG,MMMXXX,ESM0,2948.125,2948.625
+LONG,MMMXXX,ESM0,2945.875,2942.125
+LONG,MMMXXX,ESM0,2947.625,2949.125
+LONG,MMMXXX,ESM0,2947.125,2948.125
+LONG,MMMXXX,ESM0,2949.375,2948.625
+LONG,MMMXXX,ESM0,2949.125,2949.875
+LONG,MMMXXX,ESM0,2949.125,2949.625
+LONG,MMMXXX,ESM0,2952.375,2952.625
+LONG,MMMXXX,ESM0,2954.625,2953.375
+LONG,MMMXXX,ESM0,2951.875,2955.125
+LONG,MMMXXX,ESM0,2952.625,2952.625
+LONG,MMMXXX,ESM0,2951.375,2951.375
+LONG,MMMXXX,ESM0,2950.625,2949.625
+LONG,MMMXXX,ESM0,2949.375,2950.625
+LONG,MMMXXX,ESM0,2947.875,2949.625
+LONG,MMMXXX,ESM0,2948.625,2948.125
+LONG,MMMXXX,ESM0,2947.125,2948.125
+LONG,MMMXXX,ESM0,2947.875,2948.375
+LONG,MMMXXX,ESM0,2948.375,2948.625
+LONG,MMMXXX,ESM0,2950.375,2950.375
+LONG,MMMXXX,ESM0,2950.625,2950.625
+LONG,MMMXXX,ESM0,2950.375,2950.375
+LONG,MMMXXX,ESM0,2951.125,2951.125
+LONG,MMMXXX,ESM0,2954.875,2953.875
+LONG,MMMXXX,ESM0,2954.625,2954.875
+LONG,MMMXXX,ESM0,2955.125,2955.125
+LONG,MMMXXX,ESM0,2954.625,2955.625
+LONG,MMMXXX,ESM0,2954.875,2954.875
+LONG,MMMXXX,ESM0,2955.125,2955.375
+LONG,MMMXXX,ESM0,2956.125,2955.625
+LONG,MMMXXX,ESM0,2956.375,2956.125
+LONG,MMMXXX,ESM0,2958.375,2958.125
+LONG,MMMXXX,ESM0,2944.875,2945.125
+LONG,MMMXXX,ESM0,2949.875,2952.625
+LONG,MM
+Query:
+SELECT t.CFICode, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s
+   WHERE LOWER(s.Side) = 'long'
+   GROUP BY t.CFICode
+   LIMIT 1000
+Answer:
+CFICode,trade_count
+MMMXXX,779250
+Query:
+SELECT DISTINCT p.PartyRole
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s,
+     UNNEST(s.PartyIDs) AS p
+   LIMIT 1000
+Answer:
+PartyRole
+INITIATING TRADER
+Query:
+SELECT p.PartyRole, COUNT(*) AS trade_count
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s,
+     UNNEST(s.PartyIDs) AS p
+   GROUP BY p.PartyRole
+   LIMIT 1000
+Answer:
+PartyRole,trade_count
+INITIATING TRADER,1222562
+Query:
+SELECT p.PartyID, AVG(t.StrikePrice) AS avg_strike_price
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s,
+     UNNEST(s.PartyIDs) AS p
+   WHERE LOWER(s.Side) = 'long'
+   GROUP BY p.PartyID
+   LIMIT 1000
+Answer:
+PartyID,avg_strike_price
+MOMOES,3270.0658570163487
+MOMONQ,10995.11875084931
+LUCKYES,3339.0445850944493
+LUCKYNQ,10931.961821299525
+MOMOBTC,12139.427802294786
+LUCKYBTC,11611.033421952154
+PREDICTES,3298.5604822273503
+PREDICTNQ,11012.582432432433
+PREDICTBTC,11258.958970941123
+Query:
+SELECT t.Symbol, t.Quantity
+   FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t,
+     UNNEST(t.Sides) AS s
+   WHERE LOWER(s.Side) = 'long'
+   LIMIT 1000
+Answer:
+Too long, hard cut:
+Symbol,Quantity
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+ESM0,1
+
+End Exploring Related Columns
+Task: How much higher the average intrinsic value is for trades using the feeling-lucky strategy compared to those using the momentum strategy under long-side trades?
+
+Please answer only one complete SQL in bigquery dialect in ```sql``` format.
+Usage example: ```sql
+SELECT `column_name` FROM `database.schema.table` WHERE ... ``` (Replace `database`, `schema`, and `table` with actual names. Enclose column names and table identifiers with backticks.)
+Follow the answer format like: ```csv
+higher
+value:float > 0
+```
+
+The required data fields for 'intrinsic value' and 'strategy' are not available in the provided table schema to perform the calculation..
+Here are some useful tips for answering:
+When performing a UNION operation on many tables, ensure that all table names are explicitly listed. Union first and then add condition and selection. e.g. SELECT "col1", "col2" FROM (TABLE1 UNION ALL TABLE2) WHERE ...; Don't write sqls as (SELECT col1, col2 FROM TABLE1 WHERE ...) UNION ALL (SELECT col1, col2 FROM TABLE2 WHERE ...); Don't use ['-- Include all', '-- Omit', '-- Continue', '-- Union all', '-- ...', '-- List all', '-- Replace this', '-- Each table', '-- Add other'] to omit any table. Table names here: ({database name: {schema name: {table name}}}): 
+{'bigquery-public-data': {'cymbal_investments': ['trade_capture_report']}}
+
+For string-matching scenarios, if the string is decided, don't use fuzzy query, and avoid using REGEXP. e.g. Get the object's title contains the word "book"
+However, if the string is not decided, you may use fuzzy query and ignore upper or lower case. e.g. Get articles that mention "education".
+When using ORDER BY, if there are duplicate values in the primary sort column, sort by an additional column as a secondary criterion.Keep all decimals to four decimal places.
+You need to follow the format's positive and negative signs.
+
+2025-01-20 00:46:58 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 00:46:58 - root - INFO - ```sql
+SELECT
+  ROUND(
+    AVG(CASE WHEN p.PartyID LIKE 'LUCKY%' THEN t.StrikePrice END) -
+    AVG(CASE WHEN p.PartyID LIKE 'MOMO%' THEN t.StrikePrice END),
+    4
+  ) AS higher
+FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t
+JOIN UNNEST(t.Sides) AS s
+JOIN UNNEST(s.PartyIDs) AS p
+WHERE LOWER(s.Side) = 'long' AND (p.PartyID LIKE 'LUCKY%' OR p.PartyID LIKE 'MOMO%')
+;
+```
+2025-01-20 00:47:00 - root - INFO - itercount: 1
+2025-01-20 00:47:00 - root - INFO - 0
+2025-01-20 00:47:00 - root - INFO - results: 
+higher
+995.2836
+
+
+2025-01-20 00:47:00 - root - INFO - Please check the answer again by reviewing How much higher the average intrinsic value is for trades using the feeling-lucky strategy compared to those using the momentum strategy under long-side trades?, reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+higher
+value:float > 0
+```
+
+The required data fields for 'intrinsic value' and 'strategy' are not available in the provided table schema to perform the calculation. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+higher
+995.2836
+Current sql:
+SELECT
+  ROUND(
+    AVG(CASE WHEN p.PartyID LIKE 'LUCKY%' THEN t.StrikePrice END) -
+    AVG(CASE WHEN p.PartyID LIKE 'MOMO%' THEN t.StrikePrice END),
+    4
+  ) AS higher
+FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t
+JOIN UNNEST(t.Sides) AS s
+JOIN UNNEST(s.PartyIDs) AS p
+WHERE LOWER(s.Side) = 'long' AND (p.PartyID LIKE 'LUCKY%' OR p.PartyID LIKE 'MOMO%')
+;
+2025-01-20 00:47:35 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-20 00:47:35 - root - INFO - ```sql
+SELECT
+  ROUND(
+    AVG(CASE WHEN p.PartyID LIKE 'LUCKY%' THEN t.StrikePrice END) -
+    AVG(CASE WHEN p.PartyID LIKE 'MOMO%' THEN t.StrikePrice END),
+    4
+  ) AS higher
+FROM `bigquery-public-data.cymbal_investments.trade_capture_report` AS t
+JOIN UNNEST(t.Sides) AS s
+JOIN UNNEST(s.PartyIDs) AS p
+WHERE LOWER(s.Side) = 'long' AND (p.PartyID LIKE 'LUCKY%' OR p.PartyID LIKE 'MOMO%')
+;
+```
+2025-01-20 00:47:36 - root - INFO - itercount: 2
+2025-01-20 00:47:36 - root - INFO - 0
+2025-01-20 00:47:36 - root - INFO - Total iteration counts: 2

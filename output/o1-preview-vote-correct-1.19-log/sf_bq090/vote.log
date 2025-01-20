@@ -1,0 +1,84 @@
+The correct SQL query is:
+
+```plain
+1result.sql
+```
+
+**Reasoning:**
+
+**Comparison of Queries:**
+
+1. **Candidate 0 (`0result.sql`):**
+   ```sql
+   SELECT
+       (AVG(CASE WHEN pid.value:"PartyID"::STRING LIKE 'LUCKY%' THEN ("LastPx" - "StrikePrice") END) -
+        AVG(CASE WHEN pid.value:"PartyID"::STRING LIKE 'MOMO%' THEN ("LastPx" - "StrikePrice") END)) AS "higher"
+   FROM CYMBAL_INVESTMENTS.CYMBAL_INVESTMENTS.TRADE_CAPTURE_REPORT t,
+        LATERAL FLATTEN(input => t."Sides") s,
+        LATERAL FLATTEN(input => s.value:"PartyIDs") pid
+   WHERE s.value:"Side"::STRING = 'LONG'
+     AND (pid.value:"PartyID"::STRING LIKE 'LUCKY%' OR pid.value:"PartyID"::STRING LIKE 'MOMO%')
+     AND "LastPx" IS NOT NULL AND "StrikePrice" IS NOT NULL;
+   ```
+   - **Result (`0result.csv`):**  
+     ```
+     higher
+     -0.023069449773148013
+     ```
+
+2. **Candidate 1 (`1result.sql`):**
+   ```sql
+   SELECT
+     ROUND(
+       (
+         SELECT AVG(t."LastPx" - t."StrikePrice")
+         FROM CYMBAL_INVESTMENTS.CYMBAL_INVESTMENTS.TRADE_CAPTURE_REPORT t,
+              LATERAL FLATTEN(input => t."Sides") f,
+              LATERAL FLATTEN(input => f.value:"PartyIDs") pid
+         WHERE f.value:"Side"::STRING = 'LONG'
+           AND pid.value:"PartyRole"::STRING = 'INITIATING TRADER'
+           AND pid.value:"PartyIDSource"::STRING = 'PROP CODE'
+           AND pid.value:"PartyID"::STRING LIKE 'LUCKY%'
+       ) -
+       (
+         SELECT AVG(t."LastPx" - t."StrikePrice")
+         FROM CYMBAL_INVESTMENTS.CYMBAL_INVESTMENTS.TRADE_CAPTURE_REPORT t,
+              LATERAL FLATTEN(input => t."Sides") f,
+              LATERAL FLATTEN(input => f.value:"PartyIDs") pid
+         WHERE f.value:"Side"::STRING = 'LONG'
+           AND pid.value:"PartyRole"::STRING = 'INITIATING TRADER'
+           AND pid.value:"PartyIDSource"::STRING = 'PROP CODE'
+           AND pid.value:"PartyID"::STRING LIKE 'MOMO%'
+       )
+     , 4) AS "higher";
+   ```
+   - **Result (`1result.csv`):**  
+     ```
+     higher
+     -0.0231
+     ```
+
+**Explanation:**
+
+- **Inclusion of Essential Conditions:**
+  - **Candidate 1** includes additional conditions in the `WHERE` clause:
+    - `pid.value:"PartyRole"::STRING = 'INITIATING TRADER'`
+    - `pid.value:"PartyIDSource"::STRING = 'PROP CODE'`
+  - These conditions ensure that only the correct `PartyIDs` (which represent the strategies) are considered.
+  - **Candidate 0** lacks these conditions, potentially including irrelevant or duplicate data.
+
+- **Data Accuracy:**
+  - By specifying `PartyRole` and `PartyIDSource`, **Candidate 1** accurately filters records associated with the strategies (`feeling-lucky` and `momentum`).
+  - This results in a precise calculation of the average intrinsic values for each strategy under long-side trades.
+
+- **Result Consistency:**
+  - Both queries yield similar numerical results when rounding is considered.
+  - However, **Candidate 1** rounds the final result to four decimal places for clarity.
+
+- **Best Practice:**
+  - Including all relevant conditions to accurately extract data is crucial in SQL queries.
+  - **Candidate 1** follows best practices by ensuring the data extracted strictly matches the criteria desired.
+
+**Conclusion:**
+
+- **Candidate 1 (`1result.sql`)** is the correct SQL query because it accurately computes the difference in average intrinsic values between the `feeling-lucky` and `momentum` strategies under long-side trades by including essential filtering conditions.
