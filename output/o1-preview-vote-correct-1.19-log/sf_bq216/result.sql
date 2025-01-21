@@ -1,23 +1,35 @@
 WITH target_embedding AS (
-    SELECT parse_json("embedding_v1") AS emb
-    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB
-    WHERE "publication_number" = 'US-9741766-B2'
+  SELECT t."publication_number", f.value::FLOAT AS "embedding_value", f."INDEX" AS idx
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t,
+       LATERAL FLATTEN(input => t."embedding_v1") f
+  WHERE t."publication_number" = 'US-9741766-B2'
 ),
-other_patents AS (
-    SELECT t1."publication_number", parse_json(t1."embedding_v1") AS emb
-    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t1
-    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS t2
-      ON t1."publication_number" = t2."publication_number"
-    WHERE SUBSTRING(CAST(t2."filing_date" AS VARCHAR), 1, 4) = '2016'
-      AND t1."embedding_v1" IS NOT NULL
-      AND t1."publication_number" <> 'US-9741766-B2'
+same_year_patents AS (
+  SELECT p."publication_number", a."embedding_v1"
+  FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+  JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB a
+    ON p."publication_number" = a."publication_number"
+  WHERE SUBSTR(CAST(p."filing_date" AS STRING), 1, 4) = (
+    SELECT SUBSTR(CAST("filing_date" AS STRING), 1, 4)
+    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
+    WHERE "publication_number" = 'US-9741766-B2'
+  )
+    AND a."embedding_v1" IS NOT NULL
+    AND p."publication_number" <> 'US-9741766-B2'
+),
+flattened_embeddings AS (
+  SELECT syp."publication_number", f.value::FLOAT AS "embedding_value", f."INDEX" AS idx
+  FROM same_year_patents syp,
+       LATERAL FLATTEN(input => syp."embedding_v1") f
+),
+dot_products AS (
+  SELECT fe."publication_number",
+         ROUND(SUM(fe."embedding_value" * te."embedding_value"), 4) AS similarity
+  FROM flattened_embeddings fe
+  JOIN target_embedding te ON fe.idx = te.idx
+  GROUP BY fe."publication_number"
 )
-SELECT op."publication_number"
-FROM target_embedding te
-CROSS JOIN other_patents op,
-     LATERAL FLATTEN(input => te.emb) f1,
-     LATERAL FLATTEN(input => op.emb) f2
-WHERE f1.seq = f2.seq
-GROUP BY op."publication_number"
-ORDER BY SUM(f1.value::FLOAT * f2.value::FLOAT) DESC NULLS LAST
+SELECT "publication_number"
+FROM dot_products
+ORDER BY similarity DESC NULLS LAST
 LIMIT 5;

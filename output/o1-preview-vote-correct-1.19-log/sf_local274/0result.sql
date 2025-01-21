@@ -1,59 +1,55 @@
-WITH picked_totals AS (
+WITH total_picked AS (
     SELECT "product_id", SUM("qty") AS "total_qty_picked"
-    FROM ORACLE_SQL.ORACLE_SQL.PICKING_LINE
+    FROM "ORACLE_SQL"."ORACLE_SQL"."PICKING_LINE"
     WHERE "order_id" = 421
     GROUP BY "product_id"
 ),
-purchases_ordered AS (
+inventory_batches AS (
     SELECT
-        inv."product_id",
-        pur."id" AS "purchase_id",
-        pur."purchased",
-        inv."qty" AS "inventory_qty",
-        SUM(inv."qty") OVER (
-            PARTITION BY inv."product_id"
-            ORDER BY pur."purchased", pur."id"
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) AS "cumulative_inventory"
-    FROM ORACLE_SQL.ORACLE_SQL.INVENTORY inv
-    JOIN ORACLE_SQL.ORACLE_SQL.PURCHASES pur
-      ON inv."purchase_id" = pur."id"
-    WHERE inv."product_id" IN (
-        SELECT DISTINCT "product_id"
-        FROM ORACLE_SQL.ORACLE_SQL.PICKING_LINE
-        WHERE "order_id" = 421
-    )
+        i."product_id",
+        i."purchase_id",
+        pu."purchased",
+        i."qty",
+        SUM(i."qty") OVER (
+            PARTITION BY i."product_id"
+            ORDER BY pu."purchased", i."purchase_id"
+        ) AS "cumulative_qty",
+        ROW_NUMBER() OVER (
+            PARTITION BY i."product_id"
+            ORDER BY pu."purchased", i."purchase_id"
+        ) AS "batch_number"
+    FROM "ORACLE_SQL"."ORACLE_SQL"."INVENTORY" i
+    JOIN "ORACLE_SQL"."ORACLE_SQL"."PURCHASES" pu
+        ON i."purchase_id" = pu."id"
+    WHERE i."product_id" IN (SELECT "product_id" FROM total_picked)
 ),
-fifo_allocation AS (
-    SELECT
-        po."product_id",
-        po."purchase_id",
-        po."purchased",
-        po."inventory_qty",
-        po."cumulative_inventory",
-        pt."total_qty_picked",
-        CASE
-            WHEN po."cumulative_inventory" - po."inventory_qty" < pt."total_qty_picked"
-                 AND po."cumulative_inventory" >= pt."total_qty_picked"
-            THEN pt."total_qty_picked" - (po."cumulative_inventory" - po."inventory_qty")
-            WHEN po."cumulative_inventory" <= pt."total_qty_picked"
-            THEN po."inventory_qty"
-            ELSE 0
-        END AS "allocated_qty"
-    FROM purchases_ordered po
-    JOIN picked_totals pt
-      ON po."product_id" = pt."product_id"
+batches_needed AS (
+    SELECT ib.*
+    FROM inventory_batches ib
+    JOIN total_picked tp
+        ON ib."product_id" = tp."product_id"
+    WHERE ib."cumulative_qty" <= tp."total_qty_picked"
+       OR ib."batch_number" = (
+           SELECT MIN(ib2."batch_number")
+           FROM inventory_batches ib2
+           WHERE ib2."product_id" = ib."product_id"
+             AND ib2."cumulative_qty" >= tp."total_qty_picked"
+       )
 ),
-batches_used AS (
+final_result AS (
     SELECT
-        "product_id",
-        COUNT(CASE WHEN "allocated_qty" > 0 THEN 1 END) AS "batches_used",
-        SUM("allocated_qty") AS "total_allocated_qty"
-    FROM fifo_allocation
-    WHERE "allocated_qty" > 0
-    GROUP BY "product_id"
+        ib."product_id",
+        COUNT(DISTINCT ib."batch_number") AS "batches_used",
+        tp."total_qty_picked"
+    FROM batches_needed ib
+    JOIN total_picked tp
+        ON ib."product_id" = tp."product_id"
+    GROUP BY ib."product_id", tp."total_qty_picked"
 )
 SELECT
-    "product_id",
-    ROUND("total_allocated_qty" / "batches_used", 4) AS "average_units_picked_per_batch"
-FROM batches_used;
+    fr."product_id",
+    p."name" AS "product_name",
+    ROUND(fr."total_qty_picked" / fr."batches_used", 4) AS "average_units_picked_per_batch"
+FROM final_result fr
+JOIN "ORACLE_SQL"."ORACLE_SQL"."PRODUCTS" p
+    ON fr."product_id" = p."id";

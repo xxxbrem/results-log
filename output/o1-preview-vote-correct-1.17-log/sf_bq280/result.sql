@@ -1,8 +1,0 @@
-SELECT u."display_name"
-FROM STACKOVERFLOW.STACKOVERFLOW.USERS u
-JOIN STACKOVERFLOW.STACKOVERFLOW.POSTS_ANSWERS p
-  ON u."id" = p."owner_user_id"
-WHERE u."reputation" > 10
-GROUP BY u."id", u."display_name"
-ORDER BY COUNT(*) DESC NULLS LAST
-LIMIT 1;

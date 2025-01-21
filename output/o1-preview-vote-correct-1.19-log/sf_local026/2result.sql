@@ -1,26 +1,25 @@
 SELECT
-    p."player_name" AS bowler_name,
-    bbb."match_id",
-    bbb."over_id",
-    SUM(COALESCE(bat."runs_scored", 0) + COALESCE(extra."extra_runs", 0)) AS total_runs_conceded
+    p."player_name" AS "bowler_name",
+    b."match_id",
+    SUM(COALESCE(s."runs_scored", 0) + COALESCE(e."extra_runs", 0)) AS "runs_conceded_in_one_over"
 FROM
-    "IPL"."IPL"."BALL_BY_BALL" AS bbb
-LEFT JOIN "IPL"."IPL"."BATSMAN_SCORED" AS bat
-    ON bbb."match_id" = bat."match_id"
-    AND bbb."over_id" = bat."over_id"
-    AND bbb."ball_id" = bat."ball_id"
-    AND bbb."innings_no" = bat."innings_no"
-LEFT JOIN "IPL"."IPL"."EXTRA_RUNS" AS extra
-    ON bbb."match_id" = extra."match_id"
-    AND bbb."over_id" = extra."over_id"
-    AND bbb."ball_id" = extra."ball_id"
-    AND bbb."innings_no" = extra."innings_no"
-JOIN "IPL"."IPL"."PLAYER" AS p
-    ON bbb."bowler" = p."player_id"
+    IPL.IPL.BALL_BY_BALL b
+    LEFT JOIN IPL.IPL.BATSMAN_SCORED s ON
+        b."match_id" = s."match_id"
+        AND b."over_id" = s."over_id"
+        AND b."ball_id" = s."ball_id"
+        AND b."innings_no" = s."innings_no"
+    LEFT JOIN IPL.IPL.EXTRA_RUNS e ON
+        b."match_id" = e."match_id"
+        AND b."over_id" = e."over_id"
+        AND b."ball_id" = e."ball_id"
+        AND b."innings_no" = e."innings_no"
+    JOIN IPL.IPL.PLAYER p ON
+        b."bowler" = p."player_id"
 GROUP BY
     p."player_name",
-    bbb."match_id",
-    bbb."over_id"
+    b."match_id",
+    b."over_id"
 ORDER BY
-    total_runs_conceded DESC NULLS LAST
+    "runs_conceded_in_one_over" DESC NULLS LAST
 LIMIT 3;

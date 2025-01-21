@@ -1,8 +1,0 @@
-SELECT f."repo_name"
-FROM "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" f
-JOIN "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" c
-ON f."id" = c."id"
-WHERE c."binary" = FALSE
-  AND f."path" LIKE '%.swift'
-ORDER BY c."copies" DESC NULLS LAST
-LIMIT 1;

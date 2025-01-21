@@ -1,47 +1,41 @@
-WITH
-year_causes AS (
+WITH overall_top_causes AS (
+    SELECT "primary_collision_factor"
+    FROM (
+        SELECT "primary_collision_factor", COUNT(*) AS total_count
+        FROM CALIFORNIA_TRAFFIC_COLLISION.CALIFORNIA_TRAFFIC_COLLISION.COLLISIONS
+        WHERE "primary_collision_factor" IS NOT NULL AND "primary_collision_factor" != ''
+        GROUP BY "primary_collision_factor"
+    ) t
+    ORDER BY total_count DESC NULLS LAST
+    LIMIT 2
+),
+yearly_top_causes AS (
     SELECT
-        SUBSTRING("collision_date", 1, 4) AS "year",
-        "pcf_violation_category",
-        COUNT(*) AS "count"
+        EXTRACT(YEAR FROM TO_DATE("collision_date", 'YYYY-MM-DD')) AS "year",
+        "primary_collision_factor",
+        COUNT(*) AS collision_count,
+        DENSE_RANK() OVER (
+            PARTITION BY EXTRACT(YEAR FROM TO_DATE("collision_date", 'YYYY-MM-DD')) 
+            ORDER BY COUNT(*) DESC NULLS LAST
+        ) AS cause_rank
     FROM CALIFORNIA_TRAFFIC_COLLISION.CALIFORNIA_TRAFFIC_COLLISION.COLLISIONS
-    GROUP BY "year", "pcf_violation_category"
-),
-ranked_causes AS (
-    SELECT
-        "year",
-        "pcf_violation_category",
-        "count",
-        RANK() OVER (PARTITION BY "year" ORDER BY "count" DESC NULLS LAST) AS "cause_rank"
-    FROM year_causes
-),
-top_causes AS (
-    SELECT
-        "year",
-        "pcf_violation_category"
-    FROM ranked_causes
-    WHERE "cause_rank" <= 2
-),
-year_top_causes AS (
-    SELECT
-        "year",
-        LISTAGG("pcf_violation_category", ',') WITHIN GROUP (ORDER BY "pcf_violation_category") AS "top_two_causes"
-    FROM top_causes
-    GROUP BY "year"
-),
-cause_occurrences AS (
-    SELECT
-        "top_two_causes",
-        COUNT(*) AS "year_count"
-    FROM year_top_causes
-    GROUP BY "top_two_causes"
-),
-unique_causes AS (
-    SELECT "top_two_causes"
-    FROM cause_occurrences
-    WHERE "year_count" = 1
+    WHERE "primary_collision_factor" IS NOT NULL AND "primary_collision_factor" != ''
+    GROUP BY 
+        EXTRACT(YEAR FROM TO_DATE("collision_date", 'YYYY-MM-DD')), 
+        "primary_collision_factor"
 )
-SELECT CAST("year" AS INT) AS "year"
-FROM year_top_causes
-WHERE "top_two_causes" IN (SELECT "top_two_causes" FROM unique_causes)
-ORDER BY CAST("year" AS INT);
+SELECT DISTINCT "year"
+FROM (
+    SELECT 
+        ytc."year",
+        MIN(CASE WHEN cause_rank = 1 THEN ytc."primary_collision_factor" END) AS cause1,
+        MIN(CASE WHEN cause_rank = 2 THEN ytc."primary_collision_factor" END) AS cause2
+    FROM yearly_top_causes ytc
+    WHERE cause_rank <= 2
+    GROUP BY ytc."year"
+) top_causes
+WHERE NOT (
+    (cause1 = 'vehicle code violation' AND cause2 = 'unknown') OR
+    (cause1 = 'unknown' AND cause2 = 'vehicle code violation')
+)
+ORDER BY "year";

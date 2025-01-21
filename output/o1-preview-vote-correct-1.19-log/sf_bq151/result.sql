@@ -1,40 +1,50 @@
-WITH patients_to_exclude AS (
-  SELECT DISTINCT "patient_barcode"
-  FROM PANCANCER_ATLAS_2.PANCANCER_ATLAS."MERGED_SAMPLE_QUALITY_ANNOTATIONS"
-  WHERE "Do_not_use" IN ('True', '1', '1.0')
+WITH patients AS (
+  SELECT DISTINCT p."bcr_patient_barcode"
+  FROM PANCANCER_ATLAS_2.PANCANCER_ATLAS.FILTERED_CLINICAL_PANCAN_PATIENT_WITH_FOLLOWUP AS p
+  WHERE p."acronym" = 'PAAD'
 ),
-paad_patients AS (
-  SELECT DISTINCT c."bcr_patient_barcode" AS "patient_barcode"
-  FROM PANCANCER_ATLAS_2.PANCANCER_ATLAS."FILTERED_CLINICAL_PANCAN_PATIENT_WITH_FOLLOWUP" c
-  WHERE c."acronym" = 'PAAD'
-),
-high_quality_paad_patients AS (
-  SELECT p."patient_barcode"
-  FROM paad_patients p
-  LEFT JOIN patients_to_exclude pte
-    ON p."patient_barcode" = pte."patient_barcode"
-  WHERE pte."patient_barcode" IS NULL
-),
-kras_mutations AS (
-  SELECT DISTINCT m."ParticipantBarcode" AS "patient_barcode"
-  FROM PANCANCER_ATLAS_2.PANCANCER_ATLAS."FILTERED_MC3_MAF_V5_ONE_PER_TUMOR_SAMPLE" m
-  WHERE m."Hugo_Symbol" = 'KRAS' AND UPPER(m."FILTER") = 'PASS'
-),
-tp53_mutations AS (
-  SELECT DISTINCT m."ParticipantBarcode" AS "patient_barcode"
-  FROM PANCANCER_ATLAS_2.PANCANCER_ATLAS."FILTERED_MC3_MAF_V5_ONE_PER_TUMOR_SAMPLE" m
-  WHERE m."Hugo_Symbol" = 'TP53' AND UPPER(m."FILTER") = 'PASS'
-),
-patient_mutation_status AS (
+mutations AS (
   SELECT
-    hqpp."patient_barcode",
-    CASE WHEN k."patient_barcode" IS NOT NULL THEN 'Yes' ELSE 'No' END AS KRAS_mutated,
-    CASE WHEN t."patient_barcode" IS NOT NULL THEN 'Yes' ELSE 'No' END AS TP53_mutated
-  FROM high_quality_paad_patients hqpp
-  LEFT JOIN kras_mutations k ON hqpp."patient_barcode" = k."patient_barcode"
-  LEFT JOIN tp53_mutations t ON hqpp."patient_barcode" = t."patient_barcode"
+    p."bcr_patient_barcode",
+    MAX(CASE WHEN m."Hugo_Symbol" = 'KRAS' THEN 1 ELSE 0 END) AS KRAS_mutation,
+    MAX(CASE WHEN m."Hugo_Symbol" = 'TP53' THEN 1 ELSE 0 END) AS TP53_mutation
+  FROM patients p
+  LEFT JOIN PANCANCER_ATLAS_2.PANCANCER_ATLAS.FILTERED_MC3_MAF_V5_ONE_PER_TUMOR_SAMPLE AS m
+    ON p."bcr_patient_barcode" = m."ParticipantBarcode"
+    AND m."Study" = 'PAAD'
+    AND m."Hugo_Symbol" IN ('KRAS', 'TP53')
+    AND m."FILTER" = 'PASS'
+  GROUP BY p."bcr_patient_barcode"
+),
+counts AS (
+  SELECT
+    SUM(CASE WHEN KRAS_mutation = 1 AND TP53_mutation = 1 THEN 1 ELSE 0 END) AS A,
+    SUM(CASE WHEN KRAS_mutation = 1 AND TP53_mutation = 0 THEN 1 ELSE 0 END) AS B,
+    SUM(CASE WHEN KRAS_mutation = 0 AND TP53_mutation = 1 THEN 1 ELSE 0 END) AS C,
+    SUM(CASE WHEN KRAS_mutation = 0 AND TP53_mutation = 0 THEN 1 ELSE 0 END) AS D
+  FROM mutations
+),
+expected AS (
+  SELECT
+    A, B, C, D,
+    (A + B + C + D) AS N,
+    (A + B) AS Row1_Total,
+    (C + D) AS Row2_Total,
+    (A + C) AS Col1_Total,
+    (B + D) AS Col2_Total,
+    ((A + C) * (A + B))::FLOAT / NULLIF((A + B + C + D), 0) AS E11,
+    ((B + D) * (A + B))::FLOAT / NULLIF((A + B + C + D), 0) AS E12,
+    ((A + C) * (C + D))::FLOAT / NULLIF((A + B + C + D), 0) AS E21,
+    ((B + D) * (C + D))::FLOAT / NULLIF((A + B + C + D), 0) AS E22
+  FROM counts
+),
+chi_squared AS (
+  SELECT
+    ((A - E11)*(A - E11)) / NULLIF(E11, 0) +
+    ((B - E12)*(B - E12)) / NULLIF(E12, 0) +
+    ((C - E21)*(C - E21)) / NULLIF(E21, 0) +
+    ((D - E22)*(D - E22)) / NULLIF(E22, 0) AS chi_squared_value
+  FROM expected
 )
-SELECT KRAS_mutated, TP53_mutated, COUNT(*) AS "Count"
-FROM patient_mutation_status
-GROUP BY KRAS_mutated, TP53_mutated
-ORDER BY KRAS_mutated DESC NULLS LAST, TP53_mutated DESC NULLS LAST;
+SELECT ROUND(chi_squared_value, 4) AS "chi-squared value"
+FROM chi_squared;

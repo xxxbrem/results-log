@@ -1,35 +1,41 @@
-WITH target_filing_year AS (
-    SELECT EXTRACT(YEAR FROM TRY_TO_DATE("filing_date"::VARCHAR, 'YYYYMMDD')) AS "filing_year"
-    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS
-    WHERE "publication_number" = 'US-9741766-B2'
+WITH us_patent_embedding AS (
+    SELECT
+        f.seq AS idx,
+        f.value::FLOAT AS us_value
+    FROM 
+        PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB a,
+        LATERAL FLATTEN(INPUT => PARSE_JSON(a."embedding_v1")) f
+    WHERE 
+        a."publication_number" = 'US-9741766-B2'
 ),
-target_embedding AS (
-    SELECT f.seq AS idx, f.value::FLOAT AS val
-    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB t
-    , LATERAL FLATTEN(input => t."embedding_v1") f
-    WHERE t."publication_number" = 'US-9741766-B2'
-),
-same_year_patents AS (
-    SELECT p."publication_number"
-    FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
-    INNER JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB a
-    ON p."publication_number" = a."publication_number"
-    WHERE EXTRACT(YEAR FROM TRY_TO_DATE(p."filing_date"::VARCHAR, 'YYYYMMDD')) = 
-    (SELECT "filing_year" FROM target_filing_year)
-    AND p."publication_number" <> 'US-9741766-B2'
-),
-patent_similarity AS (
-    SELECT pwe."publication_number", ROUND(SUM(pwe.val * te.val), 4) AS similarity_score
-    FROM (
-        SELECT a."publication_number", f.seq AS idx, f.value::FLOAT AS val
-        FROM PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB a
-        INNER JOIN same_year_patents p ON a."publication_number" = p."publication_number"
-        , LATERAL FLATTEN(input => a."embedding_v1") f
-    ) pwe
-    JOIN target_embedding te ON pwe.idx = te.idx
-    GROUP BY pwe."publication_number"
+patents_same_year_embeddings AS (
+    SELECT 
+        a."publication_number",
+        f.seq AS idx,
+        f.value::FLOAT AS other_value
+    FROM 
+        PATENTS_GOOGLE.PATENTS_GOOGLE.ABS_AND_EMB a
+    JOIN PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p
+      ON a."publication_number" = p."publication_number",
+    LATERAL FLATTEN(INPUT => PARSE_JSON(a."embedding_v1")) f
+    WHERE 
+        FLOOR(p."filing_date" / 10000) = (
+            SELECT FLOOR(p2."filing_date" / 10000)
+            FROM PATENTS_GOOGLE.PATENTS_GOOGLE.PUBLICATIONS p2
+            WHERE p2."publication_number" = 'US-9741766-B2'
+        )
+        AND a."publication_number" != 'US-9741766-B2'
+        AND a."embedding_v1" IS NOT NULL
 )
-SELECT "publication_number"
-FROM patent_similarity
-ORDER BY similarity_score DESC NULLS LAST
-LIMIT 5
+SELECT
+    p."publication_number"
+FROM
+    us_patent_embedding u
+JOIN
+    patents_same_year_embeddings p
+    ON u.idx = p.idx
+GROUP BY
+    p."publication_number"
+ORDER BY
+    SUM(ROUND(u.us_value * p.other_value, 4)) DESC NULLS LAST
+LIMIT 5;

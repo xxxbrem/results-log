@@ -1,29 +1,26 @@
-**Comparison of the SQL queries and their results:**
-
-1. **Option 0 (`0result.sql`):**
-
-   - **Summary:** This query selects PAAD patients from the mutation data (`FILTERED_MC3_MAF_V5_ONE_PER_TUMOR_SAMPLE`) where mutations in KRAS and TP53 are present, and the mutation calls are of high quality (`"FILTER" = 'PASS'`). It then counts the number of patients with mutations in KRAS and TP53.
-
-   - **Limitations:** It does not incorporate clinical data or sample quality annotations. Therefore, it may include samples that are flagged as low quality or patients who should be excluded.
-
-2. **Option 1 (`1result.sql`):**
-
-   - **Summary:** This query selects high-quality PAAD patients by joining clinical data (`FILTERED_CLINICAL_PANCAN_PATIENT_WITH_FOLLOWUP`) with sample quality annotations (`MERGED_SAMPLE_QUALITY_ANNOTATIONS`), excluding patients where `"Do_not_use"` is `'Yes'`. It then identifies mutations in KRAS and TP53 among these patients.
-
-   - **Limitations:** The condition `q."Do_not_use" IS NULL OR q."Do_not_use" != 'Yes'` may not accurately exclude all low-quality samples because the `"Do_not_use"` field may contain values like `'True'`, `'1.0'`, or `'1'`. This may result in including patients that should be excluded.
-
-3. **Option 2 (`2result.sql`):**
-
-   - **Summary:** This query accurately excludes patients with low-quality samples by selecting patients where `"Do_not_use"` is `'True'`, `'1'`, or `'1.0'` and excluding them. It selects high-quality PAAD patients and includes only those with high-quality mutation data (`"FILTER"` = `'PASS'`).
-
-   - **Advantages:** It correctly incorporates both clinical data and sample quality annotations. It ensures that only patients with high-quality data are included, and accurately counts patients with KRAS and TP53 mutations.
-
-**Conclusion:**
-
-Option 2 (`2result.sql`) is the correct SQL query because it meticulously matches patient records, incorporates clinical follow-up data, uses high-quality mutation annotations, and carefully excludes patients with low-quality samples based on the `"Do_not_use"` field in the sample quality annotations.
-
-Therefore, the correct SQL query is:
-
-```plain
-2result.sql
+```plaintext
+1result.sql
 ```
+
+**Reasoning:**
+
+Both SQL scripts aim to compute the chi-squared statistic to evaluate the association between KRAS and TP53 gene mutations in patients diagnosed with pancreatic adenocarcinoma (PAAD). They both extract patient data from the clinical table and mutation data from the mutation table, ensuring that only high-quality mutations (with `"FILTER" = 'PASS'`) are considered. They both calculate the counts of patients with different combinations of mutations (both mutations, KRAS only, TP53 only, neither mutation) and then compute the expected counts and the chi-squared value.
+
+However, the second SQL script (`1result.sql`) is more efficient and concise in its approach:
+
+1. **Efficient Data Handling:**
+   - The second script combines the mutation data for both genes in a single step using `LEFT JOIN` and conditional aggregation. It uses `MAX(CASE WHEN ...)` to determine if a patient has a KRAS or TP53 mutation.
+   - This approach reduces the need for multiple CTEs (Common Table Expressions) or subqueries, making the SQL script more efficient and easier to read.
+
+2. **Accurate Patient Matching:**
+   - Both scripts ensure that patients are matched accurately using the patient barcodes. The second script uses `"bcr_patient_barcode"` from the clinical data and matches it with `"ParticipantBarcode"` from the mutation data, ensuring data integrity.
+   - By using `LEFT JOIN`, it includes all patients diagnosed with PAAD, even if they do not have mutations in either gene, which is essential for an accurate chi-squared test.
+
+3. **Conciseness and Readability:**
+   - The second script is more concise, with fewer steps required to achieve the same result. It simplifies the calculation of mutation status and counts, making it easier to follow the logic of the computation.
+   - This conciseness reduces the potential for errors and makes maintenance and future modifications easier.
+
+4. **Correct Chi-Squared Calculation:**
+   - Both scripts correctly compute the chi-squared statistic, arriving at the same value of `46.5222`. The second script clearly outlines the calculation of expected counts and the chi-squared value, aiding in transparency and verification.
+
+Considering these points, the second SQL script (`1result.sql`) is the correct choice as it efficiently, accurately, and succinctly computes the chi-squared statistic while maintaining data integrity through proper patient matching.

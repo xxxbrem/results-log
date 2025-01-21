@@ -1,55 +1,79 @@
-WITH cpc_patents AS (
-    SELECT t."publication_number",
-           t."country_code",
-           TRY_TO_DATE(TO_VARCHAR(t."filing_date"), 'YYYYMMDD') AS "filing_date",
-           f_cpc.value::VARIANT:"code"::STRING AS "cpc_code",
-           f_assignee.value::VARIANT:"name"::STRING AS "assignee_name",
-           EXTRACT(YEAR FROM TRY_TO_DATE(TO_VARCHAR(t."filing_date"), 'YYYYMMDD')) AS "filing_year"
-    FROM PATENTS.PATENTS.PUBLICATIONS t
-    CROSS JOIN LATERAL FLATTEN(input => t."cpc") f_cpc
-    CROSS JOIN LATERAL FLATTEN(input => t."assignee_harmonized") f_assignee
-    WHERE f_cpc.value::VARIANT:"code"::STRING LIKE 'A01B3%'
-      AND f_assignee.value::VARIANT:"name" IS NOT NULL
+WITH total_apps AS (
+  SELECT t."assignee_harmonized"[0]['name']::STRING AS "Assignee_Name",
+         COUNT(DISTINCT t."publication_number") AS "Total_Applications"
+  FROM PATENTS.PATENTS.PUBLICATIONS t,
+       LATERAL FLATTEN(INPUT => t."cpc") f
+  WHERE f.value['code']::STRING LIKE 'A01B3%'
+    AND t."assignee_harmonized"[0]['name']::STRING IS NOT NULL
+    AND t."assignee_harmonized"[0]['name']::STRING <> ''
+  GROUP BY "Assignee_Name"
+  ORDER BY "Total_Applications" DESC NULLS LAST
+  LIMIT 3
 ),
-assignee_totals AS (
-    SELECT "assignee_name",
-           COUNT(DISTINCT "publication_number") AS "total_applications"
-    FROM cpc_patents
-    GROUP BY "assignee_name"
+assignee_year_apps AS (
+  SELECT
+    t."assignee_harmonized"[0]['name']::STRING AS "Assignee_Name",
+    EXTRACT(YEAR FROM TRY_TO_DATE(t."filing_date"::VARCHAR, 'YYYYMMDD')) AS "Filing_Year",
+    COUNT(DISTINCT t."publication_number") AS "Applications_In_That_Year"
+  FROM PATENTS.PATENTS.PUBLICATIONS t,
+       LATERAL FLATTEN(INPUT => t."cpc") f
+  WHERE f.value['code']::STRING LIKE 'A01B3%'
+    AND t."assignee_harmonized"[0]['name']::STRING IS NOT NULL
+    AND t."assignee_harmonized"[0]['name']::STRING <> ''
+    AND TRY_TO_DATE(t."filing_date"::VARCHAR, 'YYYYMMDD') IS NOT NULL
+  GROUP BY "Assignee_Name", "Filing_Year"
 ),
-assignee_yearly_counts AS (
-    SELECT "assignee_name", "filing_year", COUNT(DISTINCT "publication_number") AS "yearly_count"
-    FROM cpc_patents
-    GROUP BY "assignee_name", "filing_year"
+peak_years AS (
+  SELECT a."Assignee_Name", a."Filing_Year" AS "Year_With_Most_Applications", a."Applications_In_That_Year"
+  FROM (
+    SELECT a.*,
+           ROW_NUMBER() OVER (PARTITION BY a."Assignee_Name" ORDER BY a."Applications_In_That_Year" DESC, a."Filing_Year" ASC) AS rn
+    FROM assignee_year_apps a
+    JOIN total_apps ta ON a."Assignee_Name" = ta."Assignee_Name"
+  ) a
+  WHERE rn = 1
 ),
-assignee_max_year AS (
-    SELECT ayc."assignee_name", ayc."filing_year", ayc."yearly_count"
-    FROM (
-        SELECT ayc.*, ROW_NUMBER() OVER (PARTITION BY "assignee_name" ORDER BY "yearly_count" DESC, "filing_year" ASC) AS rn
-        FROM assignee_yearly_counts ayc
-    ) ayc
-    WHERE ayc.rn = 1
+assignee_country_apps AS (
+  SELECT
+    t."assignee_harmonized"[0]['name']::STRING AS "Assignee_Name",
+    EXTRACT(YEAR FROM TRY_TO_DATE(t."filing_date"::VARCHAR, 'YYYYMMDD')) AS "Filing_Year",
+    t."country_code" AS "Country_Code",
+    COUNT(DISTINCT t."publication_number") AS "Applications_In_Country"
+  FROM PATENTS.PATENTS.PUBLICATIONS t,
+       LATERAL FLATTEN(INPUT => t."cpc") f
+  WHERE f.value['code']::STRING LIKE 'A01B3%'
+    AND t."assignee_harmonized"[0]['name']::STRING IS NOT NULL
+    AND t."assignee_harmonized"[0]['name']::STRING <> ''
+    AND TRY_TO_DATE(t."filing_date"::VARCHAR, 'YYYYMMDD') IS NOT NULL
+  GROUP BY "Assignee_Name", "Filing_Year", "Country_Code"
 ),
-assignee_country_counts AS (
-    SELECT "assignee_name", "filing_year", "country_code", COUNT(DISTINCT "publication_number") AS "country_count"
-    FROM cpc_patents
-    GROUP BY "assignee_name", "filing_year", "country_code"
+peak_countries AS (
+  SELECT ac."Assignee_Name", ac."Country_Code" AS "Country_Code_With_Most_Applications"
+  FROM (
+    SELECT ac.*,
+           ROW_NUMBER() OVER (PARTITION BY ac."Assignee_Name", ac."Filing_Year" ORDER BY ac."Applications_In_Country" DESC, ac."Country_Code" ASC) AS rn
+    FROM assignee_country_apps ac
+    JOIN peak_years py ON ac."Assignee_Name" = py."Assignee_Name" AND ac."Filing_Year" = py."Year_With_Most_Applications"
+  ) ac
+  WHERE rn = 1
 ),
-assignee_max_country AS (
-    SELECT acc."assignee_name", acc."filing_year", acc."country_code", acc."country_count"
-    FROM (
-        SELECT acc.*, ROW_NUMBER() OVER (PARTITION BY "assignee_name", "filing_year" ORDER BY "country_count" DESC) AS rn
-        FROM assignee_country_counts acc
-    ) acc
-    WHERE acc.rn = 1
+final_result AS (
+  SELECT
+    ta."Assignee_Name",
+    ta."Total_Applications",
+    py."Year_With_Most_Applications",
+    py."Applications_In_That_Year",
+    pc."Country_Code_With_Most_Applications"
+  FROM total_apps ta
+  JOIN peak_years py ON ta."Assignee_Name" = py."Assignee_Name"
+  LEFT JOIN peak_countries pc ON ta."Assignee_Name" = pc."Assignee_Name"
 )
-SELECT a."assignee_name",
-       a."total_applications",
-       am."filing_year" AS "year_with_most_applications",
-       am."yearly_count" AS "applications_in_that_year",
-       amc."country_code" AS "country_with_most_applications_in_that_year"
-FROM assignee_totals a
-JOIN assignee_max_year am ON a."assignee_name" = am."assignee_name"
-LEFT JOIN assignee_max_country amc ON am."assignee_name" = amc."assignee_name" AND am."filing_year" = amc."filing_year"
-ORDER BY a."total_applications" DESC NULLS LAST
-LIMIT 3;
+
+SELECT
+  "Assignee_Name",
+  "Total_Applications",
+  "Year_With_Most_Applications",
+  "Applications_In_That_Year",
+  "Country_Code_With_Most_Applications"
+FROM final_result
+ORDER BY "Total_Applications" DESC NULLS LAST;

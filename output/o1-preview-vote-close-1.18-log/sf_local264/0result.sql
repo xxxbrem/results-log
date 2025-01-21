@@ -1,5 +1,0 @@
-SELECT "L1_model", COUNT(*) AS "Total_count"
-FROM STACKING.STACKING.MODEL
-GROUP BY "L1_model"
-ORDER BY "Total_count" DESC NULLS LAST
-LIMIT 1;
