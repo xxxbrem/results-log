@@ -4875,3 +4875,745 @@ LIMIT 5;
 2025-01-21 08:16:44 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
 2025-01-21 08:16:44 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
 2025-01-21 08:16:44 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-21 08:17:21 - snowflake.connector.cursor - INFO - Number of results in first chunk: 5
+2025-01-21 08:17:21 - snowflake.connector.connection - INFO - closed
+2025-01-21 08:17:21 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-21 08:17:21 - root - INFO - itercount: 5
+2025-01-21 08:17:21 - root - INFO - 0
+2025-01-21 08:17:21 - root - INFO - results: 
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+2015-01-01 01:00:00,10016,2011,1730,0,0,1730.000,,1730.000,
+2015-01-01 00:00:00,10003,1809,0,0,0,,,,
+2015-01-01 02:00:00,10016,1752,2011,0,0,1870.500,198.697,1870.500,198.697
+2015-01-01 00:00:00,10016,1730,0,0,0,,,,
+2015-01-01 01:00:00,10022,1673,1392,0,0,1392.000,,1392.000,
+
+
+2025-01-21 08:17:21 - root - INFO - Please check the answer again by reviewing What were the top 5 busiest pickup times and locations (by ZIP code) for yellow taxi rides in New York City on January 1, 2015? Additionally, provide detailed metrics for each of these top 5 records, including the count of rides, hourly, daily, and weekly lagged counts, as well as 14-day and 21-day average and standard deviation of ride counts., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+pickup_time1:str,zipcode1:str,count1:int,hourly_lagged_count1:int,daily_lagged_count1:int,weekly_lagged_count1:int,avg14_1:float,stddev14_1:float,avg21_1:float,stddev21_1:float
+pickup_time2:str,zipcode2:str,count2:int,hourly_lagged_count2:int,daily_lagged_count2:int,weekly_lagged_count2:int,avg14_2:float,stddev14_2:float,avg21_2:float,stddev21_2:float
+pickup_time3:str,zipcode3:str,count3:int,hourly_lagged_count3:int,daily_lagged_count3:int,weekly_lagged_count3:int,avg14_3:float,stddev14_3:float,avg21_3:float,stddev21_3:float
+pickup_time4:str,zipcode4:str,count4:int,hourly_lagged_count4:int,daily_lagged_count4:int,weekly_lagged_count4:int,avg14_4:float,stddev14_4:float,avg21_4:float,stddev21_4:float
+pickup_time5:str,zipcode5:str,count5:int,hourly_lagged_count5:int,daily_lagged_count5:int,weekly_lagged_count5:int,avg14_5:float,stddev14_5:float,avg21_5:float,stddev21_5:float
+(Attention: answer in five rows)
+```
+
+The table above presents the top 5 busiest pickup times and locations (by ZIP Code) for yellow taxi rides in New York City on January 1, 2015. For each of these records, detailed metrics are provided, including the count of rides, hourly, daily, and weekly lagged counts, as well as 14-day and 21-day average and standard deviation of ride counts. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+2015-01-01 01:00:00,10016,2011,1730,0,0,1730.000,,1730.000,
+2015-01-01 00:00:00,10003,1809,0,0,0,,,,
+2015-01-01 02:00:00,10016,1752,2011,0,0,1870.500,198.697,1870.500,198.697
+2015-01-01 00:00:00,10016,1730,0,0,0,,,,
+2015-01-01 01:00:00,10022,1673,1392,0,0,1392.000,,1392.000,
+Current sql:
+WITH all_rides AS (
+    SELECT
+        t."pickup_datetime",
+        t."pickup_longitude",
+        t."pickup_latitude",
+        DATE_TRUNC('hour', TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Time",
+        TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Date"
+    FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2015" t
+    WHERE t."pickup_longitude" BETWEEN -80 AND -70
+      AND t."pickup_latitude" BETWEEN 40 AND 41
+      AND t."pickup_longitude" != 0
+      AND t."pickup_latitude" != 0
+      AND TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) BETWEEN DATEADD(day, -30, '2015-01-01') AND DATEADD(day, 21, '2015-01-01')
+),
+pickup_points AS (
+    SELECT
+        ar.*,
+        ST_POINT(ar."pickup_longitude", ar."pickup_latitude") AS "pickup_point"
+    FROM all_rides ar
+),
+ride_zips AS (
+    SELECT
+        pp."Pickup_Time",
+        pp."Pickup_Date",
+        z."zip_code" AS "ZIP_Code"
+    FROM pickup_points pp
+    JOIN "NEW_YORK_GEO"."GEO_US_BOUNDARIES"."ZIP_CODES" z
+      ON ST_CONTAINS(
+           ST_GEOGFROMWKB(z."zip_code_geom"),
+           pp."pickup_point"
+         )
+),
+ride_counts AS (
+    SELECT
+        "Pickup_Time",
+        "Pickup_Date",
+        "ZIP_Code",
+        COUNT(*) AS "Count_of_Rides"
+    FROM ride_zips
+    GROUP BY 1,2,3
+),
+metrics AS (
+    SELECT
+        rc.*,
+        lag_counts."Count_of_Rides" AS "Hourly_Lagged_Counts",
+        daily_counts."Count_of_Rides" AS "Daily_Lagged_Counts",
+        weekly_counts."Count_of_Rides" AS "Weekly_Lagged_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_StdDev_Ride_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_StdDev_Ride_Counts"
+    FROM ride_counts rc
+    LEFT JOIN ride_counts lag_counts ON
+        rc."ZIP_Code" = lag_counts."ZIP_Code" AND
+        lag_counts."Pickup_Time" = DATEADD(hour, -1, rc."Pickup_Time")
+    LEFT JOIN ride_counts daily_counts ON
+        rc."ZIP_Code" = daily_counts."ZIP_Code" AND
+        daily_counts."Pickup_Time" = DATEADD(day, -1, rc."Pickup_Time")
+    LEFT JOIN ride_counts weekly_counts ON
+        rc."ZIP_Code" = weekly_counts."ZIP_Code" AND
+        weekly_counts."Pickup_Time" = DATEADD(week, -1, rc."Pickup_Time")
+)
+SELECT
+    TO_VARCHAR(rc."Pickup_Time", 'YYYY-MM-DD HH24:MI:SS') AS "Pickup_Time",
+    rc."ZIP_Code",
+    rc."Count_of_Rides",
+    COALESCE(rc."Hourly_Lagged_Counts", 0) AS "Hourly_Lagged_Counts",
+    COALESCE(rc."Daily_Lagged_Counts", 0) AS "Daily_Lagged_Counts",
+    COALESCE(rc."Weekly_Lagged_Counts", 0) AS "Weekly_Lagged_Counts",
+    ROUND(rc."14-Day_Avg_Ride_Counts", 4) AS "14-Day_Avg_Ride_Counts",
+    ROUND(rc."14-Day_StdDev_Ride_Counts", 4) AS "14-Day_StdDev_Ride_Counts",
+    ROUND(rc."21-Day_Avg_Ride_Counts", 4) AS "21-Day_Avg_Ride_Counts",
+    ROUND(rc."21-Day_StdDev_Ride_Counts", 4) AS "21-Day_StdDev_Ride_Counts"
+FROM metrics rc
+WHERE rc."Pickup_Date" = '2015-01-01'
+ORDER BY rc."Count_of_Rides" DESC NULLS LAST
+LIMIT 5;Empty results in Column ['Daily_Lagged_Counts', 'Weekly_Lagged_Counts']. Please correct them.
+
+2025-01-21 08:19:10 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-21 08:19:10 - root - INFO - ```sql
+WITH all_rides AS (
+    SELECT
+        t."pickup_datetime",
+        t."pickup_longitude",
+        t."pickup_latitude",
+        DATE_TRUNC('hour', TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Time",
+        TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Date",
+        EXTRACT(HOUR FROM TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Hour"
+    FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2015" t
+    WHERE t."pickup_longitude" BETWEEN -80 AND -70
+      AND t."pickup_latitude" BETWEEN 40 AND 41
+      AND t."pickup_longitude" != 0
+      AND t."pickup_latitude" != 0
+      AND TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) BETWEEN DATEADD(day, -30, '2015-01-01') AND DATEADD(day, 21, '2015-01-01')
+),
+pickup_points AS (
+    SELECT
+        ar."Pickup_Time",
+        ar."Pickup_Date",
+        ar."Pickup_Hour",
+        ar."pickup_longitude",
+        ar."pickup_latitude",
+        ST_POINT(ar."pickup_longitude", ar."pickup_latitude") AS "pickup_point"
+    FROM all_rides ar
+),
+ride_zips AS (
+    SELECT
+        pp."Pickup_Time",
+        pp."Pickup_Date",
+        pp."Pickup_Hour",
+        z."zip_code" AS "ZIP_Code"
+    FROM pickup_points pp
+    JOIN "NEW_YORK_GEO"."GEO_US_BOUNDARIES"."ZIP_CODES" z
+      ON ST_CONTAINS(
+           ST_GEOGFROMWKB(z."zip_code_geom"),
+           pp."pickup_point"
+         )
+),
+ride_counts AS (
+    SELECT
+        "Pickup_Time",
+        "Pickup_Date",
+        "Pickup_Hour",
+        "ZIP_Code",
+        COUNT(*) AS "Count_of_Rides"
+    FROM ride_zips
+    GROUP BY 1,2,3,4
+),
+metrics AS (
+    SELECT
+        rc.*,
+        lag_counts."Count_of_Rides" AS "Hourly_Lagged_Counts",
+        daily_counts."Count_of_Rides" AS "Daily_Lagged_Counts",
+        weekly_counts."Count_of_Rides" AS "Weekly_Lagged_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_StdDev_Ride_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_StdDev_Ride_Counts"
+    FROM ride_counts rc
+    LEFT JOIN ride_counts lag_counts ON
+        rc."ZIP_Code" = lag_counts."ZIP_Code" AND
+        lag_counts."Pickup_Time" = DATEADD(hour, -1, rc."Pickup_Time")
+    LEFT JOIN ride_counts daily_counts ON
+        rc."ZIP_Code" = daily_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = daily_counts."Pickup_Hour" AND
+        daily_counts."Pickup_Date" = DATEADD(day, -1, rc."Pickup_Date")
+    LEFT JOIN ride_counts weekly_counts ON
+        rc."ZIP_Code" = weekly_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = weekly_counts."Pickup_Hour" AND
+        weekly_counts."Pickup_Date" = DATEADD(week, -1, rc."Pickup_Date")
+)
+SELECT
+    TO_VARCHAR(metrics."Pickup_Time", 'YYYY-MM-DD HH24:MI:SS') AS "Pickup_Time",
+    metrics."ZIP_Code",
+    metrics."Count_of_Rides",
+    COALESCE(metrics."Hourly_Lagged_Counts", 0) AS "Hourly_Lagged_Counts",
+    COALESCE(metrics."Daily_Lagged_Counts", 0) AS "Daily_Lagged_Counts",
+    COALESCE(metrics."Weekly_Lagged_Counts", 0) AS "Weekly_Lagged_Counts",
+    ROUND(metrics."14-Day_Avg_Ride_Counts", 4) AS "14-Day_Avg_Ride_Counts",
+    ROUND(metrics."14-Day_StdDev_Ride_Counts", 4) AS "14-Day_StdDev_Ride_Counts",
+    ROUND(metrics."21-Day_Avg_Ride_Counts", 4) AS "21-Day_Avg_Ride_Counts",
+    ROUND(metrics."21-Day_StdDev_Ride_Counts", 4) AS "21-Day_StdDev_Ride_Counts"
+FROM metrics
+WHERE metrics."Pickup_Date" = '2015-01-01'
+ORDER BY metrics."Count_of_Rides" DESC NULLS LAST
+LIMIT 5;
+```
+2025-01-21 08:19:10 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-21 08:19:10 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-21 08:19:10 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-21 08:19:47 - snowflake.connector.cursor - INFO - Number of results in first chunk: 5
+2025-01-21 08:19:47 - snowflake.connector.connection - INFO - closed
+2025-01-21 08:19:47 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-21 08:19:47 - root - INFO - itercount: 6
+2025-01-21 08:19:47 - root - INFO - 0
+2025-01-21 08:19:47 - root - INFO - results: 
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+2015-01-01 01:00:00,10016,2011,1730,0,0,1730.000,,1730.000,
+2015-01-01 00:00:00,10003,1809,0,0,0,,,,
+2015-01-01 02:00:00,10016,1752,2011,0,0,1870.500,198.697,1870.500,198.697
+2015-01-01 00:00:00,10016,1730,0,0,0,,,,
+2015-01-01 01:00:00,10022,1673,1392,0,0,1392.000,,1392.000,
+
+
+2025-01-21 08:19:47 - root - INFO - Please check the answer again by reviewing What were the top 5 busiest pickup times and locations (by ZIP code) for yellow taxi rides in New York City on January 1, 2015? Additionally, provide detailed metrics for each of these top 5 records, including the count of rides, hourly, daily, and weekly lagged counts, as well as 14-day and 21-day average and standard deviation of ride counts., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+pickup_time1:str,zipcode1:str,count1:int,hourly_lagged_count1:int,daily_lagged_count1:int,weekly_lagged_count1:int,avg14_1:float,stddev14_1:float,avg21_1:float,stddev21_1:float
+pickup_time2:str,zipcode2:str,count2:int,hourly_lagged_count2:int,daily_lagged_count2:int,weekly_lagged_count2:int,avg14_2:float,stddev14_2:float,avg21_2:float,stddev21_2:float
+pickup_time3:str,zipcode3:str,count3:int,hourly_lagged_count3:int,daily_lagged_count3:int,weekly_lagged_count3:int,avg14_3:float,stddev14_3:float,avg21_3:float,stddev21_3:float
+pickup_time4:str,zipcode4:str,count4:int,hourly_lagged_count4:int,daily_lagged_count4:int,weekly_lagged_count4:int,avg14_4:float,stddev14_4:float,avg21_4:float,stddev21_4:float
+pickup_time5:str,zipcode5:str,count5:int,hourly_lagged_count5:int,daily_lagged_count5:int,weekly_lagged_count5:int,avg14_5:float,stddev14_5:float,avg21_5:float,stddev21_5:float
+(Attention: answer in five rows)
+```
+
+The table above presents the top 5 busiest pickup times and locations (by ZIP Code) for yellow taxi rides in New York City on January 1, 2015. For each of these records, detailed metrics are provided, including the count of rides, hourly, daily, and weekly lagged counts, as well as 14-day and 21-day average and standard deviation of ride counts. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+2015-01-01 01:00:00,10016,2011,1730,0,0,1730.000,,1730.000,
+2015-01-01 00:00:00,10003,1809,0,0,0,,,,
+2015-01-01 02:00:00,10016,1752,2011,0,0,1870.500,198.697,1870.500,198.697
+2015-01-01 00:00:00,10016,1730,0,0,0,,,,
+2015-01-01 01:00:00,10022,1673,1392,0,0,1392.000,,1392.000,
+Current sql:
+WITH all_rides AS (
+    SELECT
+        t."pickup_datetime",
+        t."pickup_longitude",
+        t."pickup_latitude",
+        DATE_TRUNC('hour', TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Time",
+        TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Date",
+        EXTRACT(HOUR FROM TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Hour"
+    FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2015" t
+    WHERE t."pickup_longitude" BETWEEN -80 AND -70
+      AND t."pickup_latitude" BETWEEN 40 AND 41
+      AND t."pickup_longitude" != 0
+      AND t."pickup_latitude" != 0
+      AND TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) BETWEEN DATEADD(day, -30, '2015-01-01') AND DATEADD(day, 21, '2015-01-01')
+),
+pickup_points AS (
+    SELECT
+        ar."Pickup_Time",
+        ar."Pickup_Date",
+        ar."Pickup_Hour",
+        ar."pickup_longitude",
+        ar."pickup_latitude",
+        ST_POINT(ar."pickup_longitude", ar."pickup_latitude") AS "pickup_point"
+    FROM all_rides ar
+),
+ride_zips AS (
+    SELECT
+        pp."Pickup_Time",
+        pp."Pickup_Date",
+        pp."Pickup_Hour",
+        z."zip_code" AS "ZIP_Code"
+    FROM pickup_points pp
+    JOIN "NEW_YORK_GEO"."GEO_US_BOUNDARIES"."ZIP_CODES" z
+      ON ST_CONTAINS(
+           ST_GEOGFROMWKB(z."zip_code_geom"),
+           pp."pickup_point"
+         )
+),
+ride_counts AS (
+    SELECT
+        "Pickup_Time",
+        "Pickup_Date",
+        "Pickup_Hour",
+        "ZIP_Code",
+        COUNT(*) AS "Count_of_Rides"
+    FROM ride_zips
+    GROUP BY 1,2,3,4
+),
+metrics AS (
+    SELECT
+        rc.*,
+        lag_counts."Count_of_Rides" AS "Hourly_Lagged_Counts",
+        daily_counts."Count_of_Rides" AS "Daily_Lagged_Counts",
+        weekly_counts."Count_of_Rides" AS "Weekly_Lagged_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_StdDev_Ride_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_StdDev_Ride_Counts"
+    FROM ride_counts rc
+    LEFT JOIN ride_counts lag_counts ON
+        rc."ZIP_Code" = lag_counts."ZIP_Code" AND
+        lag_counts."Pickup_Time" = DATEADD(hour, -1, rc."Pickup_Time")
+    LEFT JOIN ride_counts daily_counts ON
+        rc."ZIP_Code" = daily_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = daily_counts."Pickup_Hour" AND
+        daily_counts."Pickup_Date" = DATEADD(day, -1, rc."Pickup_Date")
+    LEFT JOIN ride_counts weekly_counts ON
+        rc."ZIP_Code" = weekly_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = weekly_counts."Pickup_Hour" AND
+        weekly_counts."Pickup_Date" = DATEADD(week, -1, rc."Pickup_Date")
+)
+SELECT
+    TO_VARCHAR(metrics."Pickup_Time", 'YYYY-MM-DD HH24:MI:SS') AS "Pickup_Time",
+    metrics."ZIP_Code",
+    metrics."Count_of_Rides",
+    COALESCE(metrics."Hourly_Lagged_Counts", 0) AS "Hourly_Lagged_Counts",
+    COALESCE(metrics."Daily_Lagged_Counts", 0) AS "Daily_Lagged_Counts",
+    COALESCE(metrics."Weekly_Lagged_Counts", 0) AS "Weekly_Lagged_Counts",
+    ROUND(metrics."14-Day_Avg_Ride_Counts", 4) AS "14-Day_Avg_Ride_Counts",
+    ROUND(metrics."14-Day_StdDev_Ride_Counts", 4) AS "14-Day_StdDev_Ride_Counts",
+    ROUND(metrics."21-Day_Avg_Ride_Counts", 4) AS "21-Day_Avg_Ride_Counts",
+    ROUND(metrics."21-Day_StdDev_Ride_Counts", 4) AS "21-Day_StdDev_Ride_Counts"
+FROM metrics
+WHERE metrics."Pickup_Date" = '2015-01-01'
+ORDER BY metrics."Count_of_Rides" DESC NULLS LAST
+LIMIT 5;Empty results in Column ['Daily_Lagged_Counts', 'Weekly_Lagged_Counts']. Please correct them.
+
+2025-01-21 08:22:02 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-21 08:22:02 - root - INFO - ```sql
+WITH all_rides AS (
+    SELECT
+        t."vendor_id",
+        t."pickup_datetime",
+        t."pickup_longitude",
+        t."pickup_latitude",
+        DATE_TRUNC('hour', TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Time",
+        TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Date",
+        EXTRACT(HOUR FROM TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Hour"
+    FROM (
+        SELECT * FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2014"
+        UNION ALL
+        SELECT * FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2015"
+    ) t
+    WHERE t."pickup_longitude" BETWEEN -80 AND -70
+      AND t."pickup_latitude" BETWEEN 40 AND 41
+      AND t."pickup_longitude" != 0
+      AND t."pickup_latitude" != 0
+      AND TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) BETWEEN DATEADD(day, -30, '2015-01-01') AND '2015-01-01'
+),
+pickup_points AS (
+    SELECT
+        ar."Pickup_Time",
+        ar."Pickup_Date",
+        ar."Pickup_Hour",
+        ST_POINT(ar."pickup_longitude", ar."pickup_latitude") AS "pickup_point"
+    FROM all_rides ar
+),
+ride_zips AS (
+    SELECT
+        pp."Pickup_Time",
+        pp."Pickup_Date",
+        pp."Pickup_Hour",
+        z."zip_code" AS "ZIP_Code"
+    FROM pickup_points pp
+    JOIN "NEW_YORK_GEO"."GEO_US_BOUNDARIES"."ZIP_CODES" z
+      ON ST_CONTAINS(
+           ST_GEOGFROMWKB(z."zip_code_geom"),
+           pp."pickup_point"
+         )
+),
+ride_counts AS (
+    SELECT
+        "Pickup_Time",
+        "Pickup_Date",
+        "Pickup_Hour",
+        "ZIP_Code",
+        COUNT(*) AS "Count_of_Rides"
+    FROM ride_zips
+    GROUP BY 1,2,3,4
+),
+metrics AS (
+    SELECT
+        rc.*,
+        lag_counts."Count_of_Rides" AS "Hourly_Lagged_Counts",
+        daily_counts."Count_of_Rides" AS "Daily_Lagged_Counts",
+        weekly_counts."Count_of_Rides" AS "Weekly_Lagged_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_StdDev_Ride_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_StdDev_Ride_Counts"
+    FROM ride_counts rc
+    LEFT JOIN ride_counts lag_counts ON
+        rc."ZIP_Code" = lag_counts."ZIP_Code" AND
+        lag_counts."Pickup_Time" = DATEADD(hour, -1, rc."Pickup_Time")
+    LEFT JOIN ride_counts daily_counts ON
+        rc."ZIP_Code" = daily_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = daily_counts."Pickup_Hour" AND
+        daily_counts."Pickup_Date" = DATEADD(day, -1, rc."Pickup_Date")
+    LEFT JOIN ride_counts weekly_counts ON
+        rc."ZIP_Code" = weekly_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = weekly_counts."Pickup_Hour" AND
+        weekly_counts."Pickup_Date" = DATEADD(week, -1, rc."Pickup_Date")
+)
+SELECT
+    TO_VARCHAR(metrics."Pickup_Time", 'YYYY-MM-DD HH24:MI:SS') AS "Pickup_Time",
+    metrics."ZIP_Code",
+    metrics."Count_of_Rides",
+    COALESCE(metrics."Hourly_Lagged_Counts", 0) AS "Hourly_Lagged_Counts",
+    COALESCE(metrics."Daily_Lagged_Counts", 0) AS "Daily_Lagged_Counts",
+    COALESCE(metrics."Weekly_Lagged_Counts", 0) AS "Weekly_Lagged_Counts",
+    ROUND(metrics."14-Day_Avg_Ride_Counts", 4) AS "14-Day_Avg_Ride_Counts",
+    ROUND(metrics."14-Day_StdDev_Ride_Counts", 4) AS "14-Day_StdDev_Ride_Counts",
+    ROUND(metrics."21-Day_Avg_Ride_Counts", 4) AS "21-Day_Avg_Ride_Counts",
+    ROUND(metrics."21-Day_StdDev_Ride_Counts", 4) AS "21-Day_StdDev_Ride_Counts"
+FROM metrics
+WHERE metrics."Pickup_Date" = '2015-01-01'
+ORDER BY metrics."Count_of_Rides" DESC NULLS LAST
+LIMIT 5;
+```
+2025-01-21 08:22:02 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-21 08:22:02 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-21 08:22:02 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-21 08:22:54 - snowflake.connector.cursor - INFO - Number of results in first chunk: 5
+2025-01-21 08:22:54 - snowflake.connector.connection - INFO - closed
+2025-01-21 08:22:54 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-21 08:22:54 - root - INFO - itercount: 7
+2025-01-21 08:22:54 - root - INFO - 0
+2025-01-21 08:22:54 - root - INFO - results: 
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+2015-01-01 01:00:00,10016,2011,1730,412,299,799.149,445.1666,857.644,460.4591
+2015-01-01 00:00:00,10003,1809,1353,1258,701,840.429,489.7459,898.936,497.2956
+2015-01-01 02:00:00,10016,1752,2011,250,238,804.462,448.9716,861.097,462.5818
+2015-01-01 00:00:00,10016,1730,1043,647,408,795.271,442.6847,855.051,459.207
+2015-01-01 01:00:00,10022,1673,1392,310,374,844.432,506.1329,903.196,516.1367
+
+
+2025-01-21 08:22:54 - root - INFO - Please check the answer again by reviewing What were the top 5 busiest pickup times and locations (by ZIP code) for yellow taxi rides in New York City on January 1, 2015? Additionally, provide detailed metrics for each of these top 5 records, including the count of rides, hourly, daily, and weekly lagged counts, as well as 14-day and 21-day average and standard deviation of ride counts., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+pickup_time1:str,zipcode1:str,count1:int,hourly_lagged_count1:int,daily_lagged_count1:int,weekly_lagged_count1:int,avg14_1:float,stddev14_1:float,avg21_1:float,stddev21_1:float
+pickup_time2:str,zipcode2:str,count2:int,hourly_lagged_count2:int,daily_lagged_count2:int,weekly_lagged_count2:int,avg14_2:float,stddev14_2:float,avg21_2:float,stddev21_2:float
+pickup_time3:str,zipcode3:str,count3:int,hourly_lagged_count3:int,daily_lagged_count3:int,weekly_lagged_count3:int,avg14_3:float,stddev14_3:float,avg21_3:float,stddev21_3:float
+pickup_time4:str,zipcode4:str,count4:int,hourly_lagged_count4:int,daily_lagged_count4:int,weekly_lagged_count4:int,avg14_4:float,stddev14_4:float,avg21_4:float,stddev21_4:float
+pickup_time5:str,zipcode5:str,count5:int,hourly_lagged_count5:int,daily_lagged_count5:int,weekly_lagged_count5:int,avg14_5:float,stddev14_5:float,avg21_5:float,stddev21_5:float
+(Attention: answer in five rows)
+```
+
+The table above presents the top 5 busiest pickup times and locations (by ZIP Code) for yellow taxi rides in New York City on January 1, 2015. For each of these records, detailed metrics are provided, including the count of rides, hourly, daily, and weekly lagged counts, as well as 14-day and 21-day average and standard deviation of ride counts. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+Pickup_Time,ZIP_Code,Count_of_Rides,Hourly_Lagged_Counts,Daily_Lagged_Counts,Weekly_Lagged_Counts,14-Day_Avg_Ride_Counts,14-Day_StdDev_Ride_Counts,21-Day_Avg_Ride_Counts,21-Day_StdDev_Ride_Counts
+2015-01-01 01:00:00,10016,2011,1730,412,299,799.149,445.1666,857.644,460.4591
+2015-01-01 00:00:00,10003,1809,1353,1258,701,840.429,489.7459,898.936,497.2956
+2015-01-01 02:00:00,10016,1752,2011,250,238,804.462,448.9716,861.097,462.5818
+2015-01-01 00:00:00,10016,1730,1043,647,408,795.271,442.6847,855.051,459.207
+2015-01-01 01:00:00,10022,1673,1392,310,374,844.432,506.1329,903.196,516.1367
+Current sql:
+WITH all_rides AS (
+    SELECT
+        t."vendor_id",
+        t."pickup_datetime",
+        t."pickup_longitude",
+        t."pickup_latitude",
+        DATE_TRUNC('hour', TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Time",
+        TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Date",
+        EXTRACT(HOUR FROM TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Hour"
+    FROM (
+        SELECT * FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2014"
+        UNION ALL
+        SELECT * FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2015"
+    ) t
+    WHERE t."pickup_longitude" BETWEEN -80 AND -70
+      AND t."pickup_latitude" BETWEEN 40 AND 41
+      AND t."pickup_longitude" != 0
+      AND t."pickup_latitude" != 0
+      AND TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) BETWEEN DATEADD(day, -30, '2015-01-01') AND '2015-01-01'
+),
+pickup_points AS (
+    SELECT
+        ar."Pickup_Time",
+        ar."Pickup_Date",
+        ar."Pickup_Hour",
+        ST_POINT(ar."pickup_longitude", ar."pickup_latitude") AS "pickup_point"
+    FROM all_rides ar
+),
+ride_zips AS (
+    SELECT
+        pp."Pickup_Time",
+        pp."Pickup_Date",
+        pp."Pickup_Hour",
+        z."zip_code" AS "ZIP_Code"
+    FROM pickup_points pp
+    JOIN "NEW_YORK_GEO"."GEO_US_BOUNDARIES"."ZIP_CODES" z
+      ON ST_CONTAINS(
+           ST_GEOGFROMWKB(z."zip_code_geom"),
+           pp."pickup_point"
+         )
+),
+ride_counts AS (
+    SELECT
+        "Pickup_Time",
+        "Pickup_Date",
+        "Pickup_Hour",
+        "ZIP_Code",
+        COUNT(*) AS "Count_of_Rides"
+    FROM ride_zips
+    GROUP BY 1,2,3,4
+),
+metrics AS (
+    SELECT
+        rc.*,
+        lag_counts."Count_of_Rides" AS "Hourly_Lagged_Counts",
+        daily_counts."Count_of_Rides" AS "Daily_Lagged_Counts",
+        weekly_counts."Count_of_Rides" AS "Weekly_Lagged_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_StdDev_Ride_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_StdDev_Ride_Counts"
+    FROM ride_counts rc
+    LEFT JOIN ride_counts lag_counts ON
+        rc."ZIP_Code" = lag_counts."ZIP_Code" AND
+        lag_counts."Pickup_Time" = DATEADD(hour, -1, rc."Pickup_Time")
+    LEFT JOIN ride_counts daily_counts ON
+        rc."ZIP_Code" = daily_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = daily_counts."Pickup_Hour" AND
+        daily_counts."Pickup_Date" = DATEADD(day, -1, rc."Pickup_Date")
+    LEFT JOIN ride_counts weekly_counts ON
+        rc."ZIP_Code" = weekly_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = weekly_counts."Pickup_Hour" AND
+        weekly_counts."Pickup_Date" = DATEADD(week, -1, rc."Pickup_Date")
+)
+SELECT
+    TO_VARCHAR(metrics."Pickup_Time", 'YYYY-MM-DD HH24:MI:SS') AS "Pickup_Time",
+    metrics."ZIP_Code",
+    metrics."Count_of_Rides",
+    COALESCE(metrics."Hourly_Lagged_Counts", 0) AS "Hourly_Lagged_Counts",
+    COALESCE(metrics."Daily_Lagged_Counts", 0) AS "Daily_Lagged_Counts",
+    COALESCE(metrics."Weekly_Lagged_Counts", 0) AS "Weekly_Lagged_Counts",
+    ROUND(metrics."14-Day_Avg_Ride_Counts", 4) AS "14-Day_Avg_Ride_Counts",
+    ROUND(metrics."14-Day_StdDev_Ride_Counts", 4) AS "14-Day_StdDev_Ride_Counts",
+    ROUND(metrics."21-Day_Avg_Ride_Counts", 4) AS "21-Day_Avg_Ride_Counts",
+    ROUND(metrics."21-Day_StdDev_Ride_Counts", 4) AS "21-Day_StdDev_Ride_Counts"
+FROM metrics
+WHERE metrics."Pickup_Date" = '2015-01-01'
+ORDER BY metrics."Count_of_Rides" DESC NULLS LAST
+LIMIT 5;
+2025-01-21 08:24:24 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-21 08:24:24 - root - INFO - ```sql
+WITH all_rides AS (
+    SELECT
+        t."pickup_datetime",
+        t."pickup_longitude",
+        t."pickup_latitude",
+        DATE_TRUNC('hour', TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Time",
+        TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Date",
+        EXTRACT(HOUR FROM TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) AS "Pickup_Hour"
+    FROM (
+        SELECT * FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2014"
+        UNION ALL
+        SELECT * FROM "NEW_YORK_GEO"."NEW_YORK"."TLC_YELLOW_TRIPS_2015"
+    ) t
+    WHERE t."pickup_longitude" BETWEEN -80 AND -70
+      AND t."pickup_latitude" BETWEEN 40 AND 41
+      AND t."pickup_longitude" != 0
+      AND t."pickup_latitude" != 0
+      AND TO_DATE(TO_TIMESTAMP_NTZ(t."pickup_datetime" / 1e6)) BETWEEN DATEADD(day, -30, '2015-01-01') AND '2015-01-01'
+),
+pickup_points AS (
+    SELECT
+        ar."Pickup_Time",
+        ar."Pickup_Date",
+        ar."Pickup_Hour",
+        ST_POINT(ar."pickup_longitude", ar."pickup_latitude") AS "pickup_point"
+    FROM all_rides ar
+),
+ride_zips AS (
+    SELECT
+        pp."Pickup_Time",
+        pp."Pickup_Date",
+        pp."Pickup_Hour",
+        z."zip_code" AS "ZIP_Code"
+    FROM pickup_points pp
+    JOIN "NEW_YORK_GEO"."GEO_US_BOUNDARIES"."ZIP_CODES" z
+      ON ST_CONTAINS(
+           ST_GEOGFROMWKB(z."zip_code_geom"),
+           pp."pickup_point"
+         )
+),
+ride_counts AS (
+    SELECT
+        "Pickup_Time",
+        "Pickup_Date",
+        "Pickup_Hour",
+        "ZIP_Code",
+        COUNT(*) AS "Count_of_Rides"
+    FROM ride_zips
+    GROUP BY 1,2,3,4
+),
+metrics AS (
+    SELECT
+        rc.*,
+        lag_counts."Count_of_Rides" AS "Hourly_Lagged_Counts",
+        daily_counts."Count_of_Rides" AS "Daily_Lagged_Counts",
+        weekly_counts."Count_of_Rides" AS "Weekly_Lagged_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 335 PRECEDING AND 1 PRECEDING
+        ) AS "14-Day_StdDev_Ride_Counts",
+        AVG(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_Avg_Ride_Counts",
+        STDDEV_SAMP(rc."Count_of_Rides") OVER(
+            PARTITION BY rc."ZIP_Code"
+            ORDER BY rc."Pickup_Time"
+            ROWS BETWEEN 503 PRECEDING AND 1 PRECEDING
+        ) AS "21-Day_StdDev_Ride_Counts"
+    FROM ride_counts rc
+    LEFT JOIN ride_counts lag_counts ON
+        rc."ZIP_Code" = lag_counts."ZIP_Code" AND
+        lag_counts."Pickup_Time" = DATEADD(hour, -1, rc."Pickup_Time")
+    LEFT JOIN ride_counts daily_counts ON
+        rc."ZIP_Code" = daily_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = daily_counts."Pickup_Hour" AND
+        daily_counts."Pickup_Date" = DATEADD(day, -1, rc."Pickup_Date")
+    LEFT JOIN ride_counts weekly_counts ON
+        rc."ZIP_Code" = weekly_counts."ZIP_Code" AND
+        rc."Pickup_Hour" = weekly_counts."Pickup_Hour" AND
+        weekly_counts."Pickup_Date" = DATEADD(week, -1, rc."Pickup_Date")
+)
+SELECT
+    TO_VARCHAR(metrics."Pickup_Time", 'YYYY-MM-DD HH24:MI:SS') AS "Pickup_Time",
+    metrics."ZIP_Code",
+    metrics."Count_of_Rides",
+    COALESCE(metrics."Hourly_Lagged_Counts", 0) AS "Hourly_Lagged_Counts",
+    COALESCE(metrics."Daily_Lagged_Counts", 0) AS "Daily_Lagged_Counts",
+    COALESCE(metrics."Weekly_Lagged_Counts", 0) AS "Weekly_Lagged_Counts",
+    ROUND(metrics."14-Day_Avg_Ride_Counts", 4) AS "14-Day_Avg_Ride_Counts",
+    ROUND(metrics."14-Day_StdDev_Ride_Counts", 4) AS "14-Day_StdDev_Ride_Counts",
+    ROUND(metrics."21-Day_Avg_Ride_Counts", 4) AS "21-Day_Avg_Ride_Counts",
+    ROUND(metrics."21-Day_StdDev_Ride_Counts", 4) AS "21-Day_StdDev_Ride_Counts"
+FROM metrics
+WHERE metrics."Pickup_Date" = '2015-01-01'
+ORDER BY metrics."Count_of_Rides" DESC NULLS LAST
+LIMIT 5;
+```
+2025-01-21 08:24:24 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.38-x86_64-with-glibc2.31
+2025-01-21 08:24:24 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-21 08:24:24 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-21 08:25:17 - snowflake.connector.cursor - INFO - Number of results in first chunk: 5
+2025-01-21 08:25:17 - snowflake.connector.connection - INFO - closed
+2025-01-21 08:25:17 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-21 08:25:17 - root - INFO - itercount: 8
+2025-01-21 08:25:17 - root - INFO - 0
+2025-01-21 08:25:17 - root - INFO - Total iteration counts: 8
