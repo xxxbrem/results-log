@@ -3867,3 +3867,127 @@ The error information is:
 000904 (42000): 01b9e60d-0004-8054-0001-11c300f5e0b2: SQL compilation error: error line 16 at position 26
 invalid identifier '"gene_name"'
 Please correct it and output only 1 complete SQL query.
+2025-01-23 07:10:17 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:10:17 - root - INFO - ```sql
+SELECT
+    r."case_barcode",
+    r."MDM2_expression",
+    r."TP53_expression",
+    r."CDKN1A_expression",
+    r."CCNE1_expression",
+    c."gender",
+    c."race",
+    c."ethnicity",
+    c."age_at_diagnosis",
+    c."pathologic_stage" AS "ajcc_clinical_stage"
+FROM
+    (
+        SELECT
+            "case_barcode",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000135679' THEN "HTSeq__FPKM_UQ" END) AS "MDM2_expression",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000141510' THEN "HTSeq__FPKM_UQ" END) AS "TP53_expression",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000124762' THEN "HTSeq__FPKM_UQ" END) AS "CDKN1A_expression",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000105173' THEN "HTSeq__FPKM_UQ" END) AS "CCNE1_expression"
+        FROM "TCGA"."TCGA_VERSIONED"."RNASEQ_HG19_GDC_2017_02"
+        WHERE
+            "project_short_name" = 'TCGA-BLCA' AND
+            "Ensembl_gene_id" IN ('ENSG00000135679', 'ENSG00000141510', 'ENSG00000124762', 'ENSG00000105173') AND
+            "case_barcode" IN (
+                SELECT DISTINCT "case_barcode"
+                FROM "TCGA"."TCGA_VERSIONED"."SOMATIC_MUTATION_HG19_MC3_2017_02"
+                WHERE "project_short_name" = 'TCGA-BLCA' AND "Hugo_Symbol" = 'CDKN2A'
+            )
+        GROUP BY "case_barcode"
+    ) AS r
+INNER JOIN "TCGA"."TCGA_VERSIONED"."CLINICAL_GDC_2018_06" AS c
+    ON r."case_barcode" = c."case_barcode"
+WHERE c."project_short_name" = 'TCGA-BLCA';
+```
+2025-01-23 07:10:17 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:10:17 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:10:17 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:10:18 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:10:18 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:10:18 - root - INFO - itercount: 9
+2025-01-23 07:10:18 - root - INFO - 000904 (42000): 01b9e60e-0004-8054-0001-11c300f5e0b6: SQL compilation error: error line 16 at position 26
+invalid identifier '"Ensembl_gene_id"'
+2025-01-23 07:10:18 - root - INFO - Input sql:
+SELECT
+    r."case_barcode",
+    r."MDM2_expression",
+    r."TP53_expression",
+    r."CDKN1A_expression",
+    r."CCNE1_expression",
+    c."gender",
+    c."race",
+    c."ethnicity",
+    c."age_at_diagnosis",
+    c."pathologic_stage" AS "ajcc_clinical_stage"
+FROM
+    (
+        SELECT
+            "case_barcode",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000135679' THEN "HTSeq__FPKM_UQ" END) AS "MDM2_expression",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000141510' THEN "HTSeq__FPKM_UQ" END) AS "TP53_expression",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000124762' THEN "HTSeq__FPKM_UQ" END) AS "CDKN1A_expression",
+            MAX(CASE WHEN "Ensembl_gene_id" = 'ENSG00000105173' THEN "HTSeq__FPKM_UQ" END) AS "CCNE1_expression"
+        FROM "TCGA"."TCGA_VERSIONED"."RNASEQ_HG19_GDC_2017_02"
+        WHERE
+            "project_short_name" = 'TCGA-BLCA' AND
+            "Ensembl_gene_id" IN ('ENSG00000135679', 'ENSG00000141510', 'ENSG00000124762', 'ENSG00000105173') AND
+            "case_barcode" IN (
+                SELECT DISTINCT "case_barcode"
+                FROM "TCGA"."TCGA_VERSIONED"."SOMATIC_MUTATION_HG19_MC3_2017_02"
+                WHERE "project_short_name" = 'TCGA-BLCA' AND "Hugo_Symbol" = 'CDKN2A'
+            )
+        GROUP BY "case_barcode"
+    ) AS r
+INNER JOIN "TCGA"."TCGA_VERSIONED"."CLINICAL_GDC_2018_06" AS c
+    ON r."case_barcode" = c."case_barcode"
+WHERE c."project_short_name" = 'TCGA-BLCA';
+The error information is:
+000904 (42000): 01b9e60e-0004-8054-0001-11c300f5e0b6: SQL compilation error: error line 16 at position 26
+invalid identifier '"Ensembl_gene_id"'
+Please correct it and output only 1 complete SQL query.
+2025-01-23 07:11:26 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:11:26 - root - INFO - ```sql
+SELECT
+    r.CASE_BARCODE,
+    r.MDM2_EXPRESSION,
+    r.TP53_EXPRESSION,
+    r.CDKN1A_EXPRESSION,
+    r.CCNE1_EXPRESSION,
+    c.GENDER,
+    c.RACE,
+    c.ETHNICITY,
+    c.AGE_AT_DIAGNOSIS,
+    c.PATHOLOGIC_STAGE AS AJCC_CLINICAL_STAGE
+FROM
+    (
+        SELECT
+            CASE_BARCODE,
+            MAX(CASE WHEN ENSEMBL_GENE_ID = 'ENSG00000135679' THEN HTSEQ__FPKM_UQ END) AS MDM2_EXPRESSION,
+            MAX(CASE WHEN ENSEMBL_GENE_ID = 'ENSG00000141510' THEN HTSEQ__FPKM_UQ END) AS TP53_EXPRESSION,
+            MAX(CASE WHEN ENSEMBL_GENE_ID = 'ENSG00000124762' THEN HTSEQ__FPKM_UQ END) AS CDKN1A_EXPRESSION,
+            MAX(CASE WHEN ENSEMBL_GENE_ID = 'ENSG00000105173' THEN HTSEQ__FPKM_UQ END) AS CCNE1_EXPRESSION
+        FROM TCGA.TCGA_VERSIONED.RNASEQ_HG19_GDC_2017_02
+        WHERE
+            PROJECT_SHORT_NAME = 'TCGA-BLCA' AND
+            ENSEMBL_GENE_ID IN ('ENSG00000135679', 'ENSG00000141510', 'ENSG00000124762', 'ENSG00000105173') AND
+            CASE_BARCODE IN (
+                SELECT DISTINCT CASE_BARCODE
+                FROM TCGA.TCGA_VERSIONED.SOMATIC_MUTATION_HG19_MC3_2017_02
+                WHERE PROJECT_SHORT_NAME = 'TCGA-BLCA' AND HUGO_SYMBOL = 'CDKN2A'
+            )
+        GROUP BY CASE_BARCODE
+    ) AS r
+INNER JOIN TCGA.TCGA_VERSIONED.CLINICAL_GDC_2018_06 AS c
+    ON r.CASE_BARCODE = c.CASE_BARCODE
+WHERE c.PROJECT_SHORT_NAME = 'TCGA-BLCA';
+```
+2025-01-23 07:11:26 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:11:26 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:11:26 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:11:28 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:11:28 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:11:28 - root - INFO - Total iteration counts: 10

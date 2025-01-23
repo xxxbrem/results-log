@@ -1503,3 +1503,325 @@ TCGA-PRAD
 2025-01-23 07:09:11 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
 2025-01-23 07:09:12 - snowflake.connector.connection - INFO - closed
 2025-01-23 07:09:13 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:10:14 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:10:14 - root - INFO - It appears that you're encountering the following error:
+
+```
+SQL compilation error:
+Object 'TCGA.TCGA_VERSIONED.RNASEQ_HG19_GDC_2018_06' does not exist or not authorized.
+```
+
+**Explanation:**
+
+This error indicates that the table `RNASEQ_HG19_GDC_2018_06` either does not exist in your database or you do not have the necessary permissions to access it.
+
+**Possible Reasons and Solutions:**
+
+1. **Table Does Not Exist in Your Database:**
+
+   Based on the list of available tables you provided earlier, the table `RNASEQ_HG19_GDC_2018_06` is **not** among them. Here are the RNA-Seq tables from your list:
+
+   - `RNASEQ_HG19_GDC_2017_02`
+   - `RNASEQ_HG38_GDC_2017_12`
+   - `RNASEQ_HG38_GDC_R28`
+   - `RNASEQ_HG38_GDC_R35`
+   - `RNASEQ_HG38_GDC_R39`
+   - `RNASEQ_HG38_GDC_R40`
+
+   **Action:** Let's use a table that exists in your database.
+
+2. **Select an Appropriate Table:**
+
+   The table `RNASEQ_HG19_GDC_2017_02` contains RNA-Seq data aligned to the hg19 reference genome and includes the 'TCGA-BLCA' project, as confirmed by your query results.
+
+   **However**, previous attempts to retrieve data from this table resulted in invalid identifier errors for columns like `"HTSeq__FPKM"` and `"raw_count"`.
+
+**Steps to Resolve the Issue:**
+
+**A. Identify the Correct Expression Column in the Available Table**
+
+1. **Check for Available Columns in `RNASEQ_HG19_GDC_2017_02`:**
+
+   Since direct schema queries are not permitted, we can attempt to retrieve all columns for a single record to identify the correct column name for expression values.
+
+   ```sql
+   SELECT *
+   FROM TCGA.TCGA_VERSIONED."RNASEQ_HG19_GDC_2017_02"
+   WHERE "project_short_name" = 'TCGA-BLCA'
+   LIMIT 1;
+   ```
+
+2. **Identify the Expression Data Column:**
+
+   Look for columns that might contain expression values, such as:
+
+   - `"unstranded"`
+   - `"stranded_first"`
+   - `"stranded_second"`
+   - `"raw_counts"`
+   - `"scaled_estimate"`
+   - `"expected_count"`
+   - `"TPM"`
+   - `"FPKM"`
+
+3. **Update Your Query with the Correct Column Name:**
+
+   Suppose you find that the expression data is stored under the column `"raw_counts"`. You can then update your query accordingly.
+
+**B. Try Using Alternative RNA-Seq Tables**
+
+If the above table does not yield the required data, consider using another table that contains the RNA-Seq data you need.
+
+1. **Check Availability of 'TCGA-BLCA' Data in `RNASEQ_HG38_GDC_R28`:**
+
+   ```sql
+   SELECT DISTINCT "project_short_name"
+   FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+   WHERE "project_short_name" = 'TCGA-BLCA'
+   LIMIT 100;
+   ```
+
+2. **If 'TCGA-BLCA' Is Present, Identify Expression Columns:**
+
+   Attempt to retrieve all columns for one record:
+
+   ```sql
+   SELECT *
+   FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+   WHERE "project_short_name" = 'TCGA-BLCA'
+   LIMIT 1;
+   ```
+
+3. **Update Your Query with Correct Table and Columns:**
+
+   If you find that the expression data is in a column like `"HTSeq__FPKM"`, update your query:
+
+   ```sql
+   SELECT "case_barcode", "HTSeq__FPKM"
+   FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+   WHERE "project_short_name" = 'TCGA-BLCA' AND "gene_name" = 'CDKN1A'
+   LIMIT 100;
+   ```
+
+**C. Finalize Your Queries:**
+
+Assuming you have identified the correct table and column, here are the updated queries:
+
+---
+
+**1. Retrieve RNA Expression for 'CDKN1A' Using Correct Column and Table:**
+
+```sql
+SELECT "case_barcode", "HTSeq__FPKM"
+FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+WHERE "project_short_name" = 'TCGA-BLCA' AND "gene_name" = 'CDKN1A'
+LIMIT 100;
+```
+
+**Note:** Replace `"HTSeq__FPKM"` with the actual expression column if different.
+
+---
+
+**2. Retrieve RNA Expression for 'CCNE1':**
+
+```sql
+SELECT "case_barcode", "HTSeq__FPKM"
+FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+WHERE "project_short_name" = 'TCGA-BLCA' AND "gene_name" = 'CCNE1'
+LIMIT 100;
+```
+
+---
+
+**3. Retrieve RNA Expression for All Four Genes:**
+
+```sql
+SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+WHERE "project_short_name" = 'TCGA-BLCA' AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+LIMIT 100;
+```
+
+---
+
+**4. Combine Clinical and Expression Data:**
+
+```sql
+SELECT t1."case_barcode",
+       MAX(CASE WHEN t2."gene_name" = 'MDM2' THEN t2."HTSeq__FPKM" END) AS "MDM2_expression",
+       MAX(CASE WHEN t2."gene_name" = 'TP53' THEN t2."HTSeq__FPKM" END) AS "TP53_expression",
+       MAX(CASE WHEN t2."gene_name" = 'CDKN1A' THEN t2."HTSeq__FPKM" END) AS "CDKN1A_expression",
+       MAX(CASE WHEN t2."gene_name" = 'CCNE1' THEN t2."HTSeq__FPKM" END) AS "CCNE1_expression",
+       t3."gender",
+       t3."race",
+       t3."ethnicity",
+       t3."age_at_diagnosis",
+       t3."ajcc_clinical_stage"
+FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02" t1
+JOIN TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28" t2 ON t1."case_barcode" = t2."case_barcode"
+JOIN TCGA.TCGA_VERSIONED."CLINICAL_GDC_R38" t3 ON t1."case_barcode" = t3."submitter_id"
+WHERE t1."project_short_name" = 'TCGA-BLCA'
+  AND t1."Hugo_Symbol" = 'CDKN2A'
+  AND t2."gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+GROUP BY t1."case_barcode",
+         t3."gender",
+         t3."race",
+         t3."ethnicity",
+         t3."age_at_diagnosis",
+         t3."ajcc_clinical_stage"
+LIMIT 100;
+```
+
+---
+
+**Important Considerations:**
+
+- **Reference Genome Consistency:** Ensure consistency in reference genomes (hg19 vs. hg38) across datasets to avoid discrepancies.
+- **Data Permissions:** Verify that you have the necessary permissions to access the tables in your database.
+- **Data Availability:** Confirm that the tables contain data for the 'TCGA-BLCA' project and the genes of interest.
+
+**Summary:**
+
+- The table `RNASEQ_HG19_GDC_2018_06` does not exist or is inaccessible in your database.
+- Use `RNASEQ_HG38_GDC_R28` or `RNASEQ_HG19_GDC_2017_02` if they contain the necessary data.
+- Identify the correct expression data column by selecting all columns for a sample record.
+- Update your queries with the correct table and column names based on available data.
+
+**Next Steps:**
+
+1. **Verify Table Availability:**
+
+   - Run a query to list available tables or check your database documentation to confirm accessible tables.
+
+2. **Check for 'TCGA-BLCA' Data:**
+
+   - Ensure the selected table contains data for the 'TCGA-BLCA' project.
+
+3. **Identify Available Columns:**
+
+   - Use `SELECT *` with a `LIMIT 1` to view available columns and identify the correct expression data column.
+
+4. **Adjust Queries Accordingly:**
+
+   - Update table names, column names, and conditions in your queries based on the available data.
+
+**Feel free to let me know if you need further assistance or if you encounter any other issues. I'm here to help you achieve your research objectives.**
+2025-01-23 07:10:14 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:10:14 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:10:14 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:10:16 - snowflake.connector.cursor - INFO - Number of results in first chunk: 1
+2025-01-23 07:10:16 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:10:16 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:11:32 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:11:32 - root - INFO - SQL:
+SELECT *
+   FROM TCGA.TCGA_VERSIONED."RNASEQ_HG19_GDC_2017_02"
+   WHERE "project_short_name" = 'TCGA-BLCA'
+   LIMIT 1;
+Results:
+project_short_name,case_barcode,sample_barcode,aliquot_barcode,HGNC_gene_symbol,gene_id,normalized_count,original_gene_symbol,platform
+TCGA-BLCA,TCGA-2F-A9KO,TCGA-2F-A9KO-01A,TCGA-2F-A9KO-01A-11R-A38B-07,TRMT112,51504,2270.5539,TRMT112,IlluminaHiSeq
+
+2025-01-23 07:11:32 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:11:32 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:11:32 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:11:33 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-23 07:11:33 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:11:33 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:12:08 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:12:08 - root - INFO - ```sql
+SELECT "case_barcode", "HGNC_gene_symbol", "normalized_count"
+FROM TCGA.TCGA_VERSIONED."RNASEQ_HG19_GDC_2017_02"
+WHERE "project_short_name" = 'TCGA-BLCA' AND "HGNC_gene_symbol" = 'CDKN1A'
+LIMIT 100;
+```
+2025-01-23 07:12:08 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:12:08 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:12:08 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:12:10 - snowflake.connector.cursor - INFO - Number of results in first chunk: 57
+2025-01-23 07:12:10 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:12:10 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:13:14 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:13:14 - root - INFO - SQL:
+SELECT "case_barcode", "HGNC_gene_symbol", "normalized_count"
+FROM TCGA.TCGA_VERSIONED."RNASEQ_HG19_GDC_2017_02"
+WHERE "project_short_name" = 'TCGA-BLCA' AND "HGNC_gene_symbol" = 'CDKN1A'
+LIMIT 100;
+Results:
+case_barcode,HGNC_gene_symbol,normalized_count
+TCGA-GD-A3OS,CDKN1A,994.0519
+TCGA-ZF-AA52,CDKN1A,4179.6231
+TCGA-FD-A62S,CDKN1A,3476.1577
+TCGA-XF-A9SH,CDKN1A,2166.5133
+TCGA-DK-A3IQ,CDKN1A,5111.7949
+TCGA-K4-A3WS,CDKN1A,2447.6465
+TCGA-ZF-A9R0,CDKN1A,5051.7116
+TCGA-2F-A9KO,CDKN1A,7942.2741
+TCGA-ZF-A9RN,CDKN1A,2536.2458
+TCGA-FD-A3SS,CDKN1A,10575.945
+TCGA-FD-A6TA,CDKN1A,4097.7488
+TCGA-XF-AAN4,CDKN1A,4669.4969
+TCGA-XF-A9SJ,CDKN1A,27258.781
+TCGA-GV-A6ZA,CDKN1A,2671.3729
+TCGA-GC-A3WC,CDKN1A,2654.4987
+TCGA-UY-A78N,CDKN1A,1177.6194
+TCGA-BL-A0C8,CDKN1A,1532.6721
+TCGA-DK-A6B5,CDKN1A,5182.3176
+TCGA-E7-A678,CDKN1A,7278.5388
+TCGA-GC-A3I6,CDKN1A,11534.7512
+TCGA-BT-A2LB,CDKN1A,15983.3024
+TCGA-CU-A0YR,CDKN1A,8602.9412
+TCGA-G2-A2EJ,CDKN1A,7270.7756
+TCGA-XF-A9SY,CDKN1A,4005.3603
+TCGA-K4-A3WV,CDKN1A,5322.5841
+TCGA-UY-A8OB,CDKN1A,3559.1381
+TCGA-ZF-AA54,CDKN1A,888.1579
+TCGA-CU-A0YN,CDKN1A,8901.0499
+TCGA-E7-A4XJ,CDKN1A,8315.5775
+TCGA-XF-AAMY,CDKN1A,2872.6458
+TCGA-DK-AA75,CDKN1A,1439.2694
+TCGA-FD-A3B5,CDKN1A,18268.4366
+TCGA-ZF-AA5N,CDKN1A,9071.1656
+TCGA-GU-A42R,CDKN1A,5744.4424
+TCGA-E7-A7DV,CDKN1A,656.8042
+TCGA-G2-A2EO,CDKN1A,3191.3943
+TCGA-XF-A8HC,CDKN1A,15147.3465
+TCGA-XF-A9SV,CDKN1A,6884.1406
+TCGA-XF-AAMW,CDKN1A,7239.0665
+TCGA-BT-A20N,CDKN1A,6839.1116
+TCGA-GV-A3JW,CDKN1A,3103.3768
+TCGA-XF-A8HB,CDKN1A,6404.0525
+TCGA-BT-A20Q,CDKN1A,1719.9647
+TCGA-ZF-A9RM,CDKN1A,1924.36
+TCGA-BT-A0S7,CDKN1A,2907.7744
+TCGA-GU-A762,CDKN1A,2190.1163
+TCGA-KQ-A41R,CDKN1A,3625.7723
+TCGA-UY-A9PH,CDKN1A,7005.473
+TCGA-ZF-AA5H,CDKN1A,5746.775
+TCGA-GV-A3JX,CDKN1A,800.5234
+TCGA-DK-A2HX,CDKN1A,11870.6782
+TCGA-E7-A5KF,CDKN1A,6780.7843
+TCGA-K4-A4AB,CDKN1A,2105.8176
+TCGA-4Z-AA81,CDKN1A,8376.3085
+TCGA-4Z-AA84,CDKN1A,745.4096
+TCGA-CU-A0YN,CDKN1A,2811.8669
+TCGA-GU-AATP,CDKN1A,2136.896
+
+2025-01-23 07:13:14 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:13:14 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:13:14 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:13:16 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:13:16 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:13:56 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:13:56 - root - INFO - ```sql
+SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+WHERE "gene_name" = 'CCNE1'
+LIMIT 100;
+```
+2025-01-23 07:13:56 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:13:56 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:13:56 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:13:57 - snowflake.connector.cursor - INFO - Number of results in first chunk: 24
+2025-01-23 07:13:57 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:13:57 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session

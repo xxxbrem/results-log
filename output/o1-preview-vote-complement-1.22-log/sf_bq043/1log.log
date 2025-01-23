@@ -4542,3 +4542,497 @@ The error information is:
 000904 (42000): 01b9e60b-0004-7ed2-0001-11c300f5d25a: SQL compilation error: error line 2 at position 18
 invalid identifier '"case_submitter_id"'
 Please correct it and output only 1 complete SQL query.
+2025-01-23 07:09:41 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:09:41 - root - INFO - ```sql
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R39"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R39"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+```
+2025-01-23 07:09:41 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:09:41 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:09:41 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:09:42 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:09:43 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:09:43 - root - INFO - itercount: 6
+2025-01-23 07:09:43 - root - INFO - 000904 (42000): 01b9e60d-0004-7ed2-0001-11c300f5d266: SQL compilation error: error line 8 at position 38
+invalid identifier '"HTSeq__FPKM"'
+2025-01-23 07:09:43 - root - INFO - Input sql:
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R39"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R39"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+The error information is:
+000904 (42000): 01b9e60d-0004-7ed2-0001-11c300f5d266: SQL compilation error: error line 8 at position 38
+invalid identifier '"HTSeq__FPKM"'
+Please correct it and output only 1 complete SQL query.
+2025-01-23 07:11:12 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:11:12 - root - INFO - ```sql
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM_UQ"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R39"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM_UQ" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM_UQ" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM_UQ" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM_UQ" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R39"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+```
+2025-01-23 07:11:12 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:11:12 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:11:12 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:11:13 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:11:13 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:11:14 - root - INFO - itercount: 7
+2025-01-23 07:11:14 - root - INFO - 000904 (42000): 01b9e60f-0004-8054-0001-11c300f5e0ba: SQL compilation error: error line 8 at position 38
+invalid identifier '"HTSeq__FPKM_UQ"'
+2025-01-23 07:11:14 - root - INFO - Input sql:
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM_UQ"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R39"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM_UQ" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM_UQ" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM_UQ" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM_UQ" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R39"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+The error information is:
+000904 (42000): 01b9e60f-0004-8054-0001-11c300f5e0ba: SQL compilation error: error line 8 at position 38
+invalid identifier '"HTSeq__FPKM_UQ"'
+Please correct it and output only 1 complete SQL query.
+2025-01-23 07:12:48 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:12:48 - root - INFO - ```sql
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R38"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+```
+
+**Explanation:**
+
+The error occurred because the column `"HTSeq__FPKM_UQ"` does not exist in the table `"RNASEQ_HG38_GDC_R39"`. To resolve this issue:
+
+- **Changed the RNA-seq table** from `"RNASEQ_HG38_GDC_R39"` to `"RNASEQ_HG38_GDC_R28"`, where the column `"HTSeq__FPKM"` exists.
+- **Updated the clinical data table** from `"CLINICAL_GDC_R39"` to `"CLINICAL_GDC_R38"` to match the available data.
+
+The corrected query retrieves the RNA expression levels of the genes **MDM2**, **TP53**, **CDKN1A**, and **CCNE1**, along with associated clinical information, for bladder cancer patients with **CDKN2A** mutations in the **'TCGA-BLCA'** project.
+2025-01-23 07:12:48 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:12:48 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:12:48 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:12:50 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-23 07:12:50 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:12:50 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:12:50 - root - INFO - itercount: 8
+2025-01-23 07:12:50 - root - INFO - No data found for the specified query.
+
+2025-01-23 07:12:50 - root - INFO - Input sql:
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R38"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+The error information is:
+ No data found for the specified query.
+
+2025-01-23 07:14:03 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:14:03 - root - INFO - ```sql
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R38"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+```
+
+**Explanation:**
+
+The error "No data found for the specified query" likely occurs because the `"project_short_name"` in the `SOMATIC_MUTATION_HG19_MC3_2017_02` table may not include `'TCGA-BLCA'`, or the cases with `CDKN2A` mutations do not have matching `"case_barcode"`s in the RNA expression data.
+
+To resolve this:
+
+- **Removed the filter on `"project_short_name"`** in the `cdkn2a_mutations` CTE to include all cases with `CDKN2A` mutations, regardless of the project. This allows us to capture any cases that might have matching RNA expression data.
+
+- **Kept the filter on `"project_short_name"` in the `gene_expression` CTE** to focus on the `'TCGA-BLCA'` project in the RNA expression data.
+
+This query retrieves the RNA expression levels of the genes **MDM2**, **TP53**, **CDKN1A**, and **CCNE1**, along with associated clinical information, for bladder cancer patients with **CDKN2A** mutations.
+
+Please run the adjusted query. If it still returns no data, we may need to verify the following:
+
+- **Ensure that the `"case_barcode"` identifiers match** across the mutation and expression datasets. There might be differences in how the case identifiers are formatted in different datasets.
+
+- **Check for the existence of gene expression data** for the cases with `CDKN2A` mutations. It's possible that RNA expression data is not available for those specific cases in the `'TCGA-BLCA'` project.
+
+- **List available projects** in the `SOMATIC_MUTATION_HG19_MC3_2017_02` table to confirm the correct project name:
+
+  ```sql
+  SELECT DISTINCT "project_short_name"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02";
+  ```
+
+- **Verify case identifiers**:
+
+  - Compare the `"case_barcode"`s from the mutations dataset with those in the RNA expression dataset to ensure they match and are in the same format.
+
+If you continue to experience issues, please let me know, and we can further troubleshoot the problem.
+2025-01-23 07:14:03 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:14:03 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:14:03 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:14:05 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-23 07:14:05 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:14:05 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:14:05 - root - INFO - itercount: 9
+2025-01-23 07:14:05 - root - INFO - No data found for the specified query.
+
+2025-01-23 07:14:05 - root - INFO - Input sql:
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "case_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "case_barcode", "gene_name", "HTSeq__FPKM"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "case_barcode" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "case_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "case_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R38"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+    AND "submitter_id" IN (SELECT "case_barcode" FROM cdkn2a_mutations)
+)
+SELECT
+  gep."case_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON gep."case_barcode" = cd."case_barcode";
+The error information is:
+ No data found for the specified query.
+
