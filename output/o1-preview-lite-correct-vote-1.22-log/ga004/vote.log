@@ -1,0 +1,71 @@
+**Comparison of the SQL scripts:**
+
+**0result.sql:**
+
+- **Approach:**
+  - Aggregates pageviews for each user using `COUNTIF(LOWER(event_name) = 'page_view')`.
+  - Determines if a user is a purchaser with `MAX(IF(LOWER(event_name) = 'purchase', 1, 0))`.
+  - Computes the average pageviews for purchasers and non-purchasers directly in the outer query.
+  - Calculates the difference between the two averages.
+
+- **Pros:**
+  - Efficiently processes data using aggregate functions and conditional expressions.
+  - Uses the wildcard table name `events_202012*` to include all December 2020 events.
+
+- **Cons:**
+  - Performs calculations directly in the SELECT clause, which might make the query less readable.
+  - Lacks structuring components like CTEs that can enhance clarity.
+
+---
+
+**1result.sql:**
+
+- **Approach:**
+  - Uses a Common Table Expression (CTE) `user_pageviews` to calculate pageviews and identify purchasers for each user.
+    - Counts pageviews with `SUM(CASE WHEN LOWER(event_name) = 'page_view' THEN 1 ELSE 0 END)`.
+    - Identifies purchasers with `MAX(CASE WHEN LOWER(event_name) = 'purchase' THEN 1 ELSE 0 END)`.
+  - Introduces another CTE `averages` to compute the average pageviews for purchasers and non-purchasers separately.
+  - In the final SELECT statement, calculates the difference between these two averages.
+
+- **Pros:**
+  - Enhances readability by structuring the query into logical sections using CTEs.
+  - Separates data preparation from final calculation, making the query easier to understand and maintain.
+  - Efficiently utilizes BigQuery's capabilities with the wildcard table name `events_202012*`.
+
+- **Cons:**
+  - Slightly more verbose due to the additional CTEs.
+
+---
+
+**2result.sql:**
+
+- **Approach:**
+  - Manually unions all daily tables from December 1st to December 31st into an `all_events` CTE.
+  - Similar aggregation and purchaser identification as the other queries.
+  - Calculates the difference in average pageviews between purchasers and non-purchasers.
+
+- **Pros:**
+  - Functionally achieves the desired calculation.
+
+- **Cons:**
+  - Inefficient and less maintainable due to the manual union of 31 tables.
+  - Does not leverage BigQuery's wildcard capabilities for table names.
+  - The query is excessively long and cumbersome, making it harder to read and prone to errors.
+
+---
+
+**Conclusion:**
+
+**1result.sql** is the correct and preferred SQL script because:
+
+- It provides a clear and organized structure using CTEs, enhancing readability and maintainability.
+- It efficiently processes all December 2020 events by using the wildcard table name `events_202012*`, adhering to best practices.
+- The separation of data preparation and calculation steps makes the logic easy to follow.
+- While functionally similar to 0result.sql, the improved clarity and structure make 1result.sql superior.
+- It avoids the inefficiencies and maintenance issues present in 2result.sql.
+
+**Answer:**
+
+```plaintext
+1result.sql
+```
