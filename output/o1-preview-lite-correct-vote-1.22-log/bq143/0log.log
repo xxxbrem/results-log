@@ -499,3 +499,22 @@ JOIN `isb-cgc-bq.CPTAC.RNAseq_hg38_gdc_current` AS r
 ON p.case_id = r.case_barcode
 LIMIT 100;
 ```
+2025-01-23 02:30:39 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 02:30:39 - root - INFO - ```sql
+SELECT p.sample_id,
+       s.sample_submitter_id AS proteomics_sample_submitter_id,
+       r.sample_barcode AS rna_seq_sample_barcode,
+       p.gene_symbol,
+       r.gene_name,
+       p.protein_abundance_log2ratio,
+       r.fpkm_unstranded
+FROM `isb-cgc-bq.CPTAC.quant_proteome_CPTAC_CCRCC_discovery_study_pdc_current` AS p
+JOIN `isb-cgc-bq.PDC_metadata.aliquot_to_case_mapping_current` AS s
+  ON p.sample_id = s.sample_id
+JOIN `isb-cgc-bq.CPTAC.RNAseq_hg38_gdc_current` AS r
+  ON s.sample_submitter_id = r.sample_barcode
+     AND p.gene_symbol = r.gene_name
+WHERE r.primary_site = 'Kidney'
+  AND r.sample_type_name IN ('Primary Tumor', 'Solid Tissue Normal')
+LIMIT 100;
+```

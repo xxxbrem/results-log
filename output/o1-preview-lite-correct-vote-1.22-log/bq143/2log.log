@@ -291,3 +291,35 @@ sample_type_name,sample_count
 Primary Tumor,2669
 Solid Tissue Normal,727
 
+2025-01-23 02:30:34 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 02:30:34 - root - INFO - ```sql
+SELECT
+  sample_type AS Sample_Type,
+  AVG(correlation) AS Average_Correlation
+FROM (
+  SELECT
+    sample_type,
+    gene_symbol,
+    CORR(protein_abundance_log2ratio, log_fpkm) AS correlation
+  FROM (
+    SELECT
+      m.sample_type,
+      p.gene_symbol,
+      p.protein_abundance_log2ratio,
+      LOG(r.fpkm_unstranded + 1) AS log_fpkm
+    FROM `isb-cgc-bq.CPTAC.quant_proteome_CPTAC_CCRCC_discovery_study_pdc_current` p
+    JOIN `isb-cgc-bq.PDC_metadata.aliquot_to_case_mapping_current` m
+      ON p.sample_id = m.sample_id
+    JOIN `isb-cgc-bq.CPTAC.RNAseq_hg38_gdc_current` r
+      ON m.case_submitter_id = r.case_barcode
+    WHERE
+      m.sample_type IN ('Primary Tumor', 'Solid Tissue Normal')
+      AND r.sample_type_name IN ('Primary Tumor', 'Solid Tissue Normal')
+      AND p.gene_symbol = r.gene_name
+      AND p.protein_abundance_log2ratio IS NOT NULL
+      AND r.fpkm_unstranded IS NOT NULL
+  )
+  GROUP BY sample_type, gene_symbol
+)
+GROUP BY sample_type;
+```
