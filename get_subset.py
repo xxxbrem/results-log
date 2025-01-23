@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 
 snow_close_list = [
     "sf_bq002", "sf_bq007", "sf_bq011", "sf_bq028", "sf_bq033", "sf_bq039", "sf_bq062", "sf_bq098", "sf_bq099", "sf_bq112", "sf_bq113", "sf_bq119", "sf_bq123", "sf_bq150", 
@@ -65,14 +66,26 @@ def mv(all_path, target_path, sql_list, json_name):
         shutil.copytree(source, sql_path)
     shutil.copy(os.path.join(all_path, json_name), os.path.join(target_path, json_name))
 
+def get_full_list(json_name, all_path):
+    json_path = os.path.join(all_path, json_name)
+    task_list = []
+    with open(json_path) as f:
+        for line in f:
+            line_js = json.loads(line)
+            task_list.append(line_js['instance_id'])
+    return task_list
+
+
 snow_close_path = "../snow-spider-agent/methods/spider-self-refine/examples-close"
 snow_correct_path = "../snow-spider-agent/methods/spider-self-refine/examples-correct"
 snow_all_path = "../snow-spider-agent/methods/spider-self-refine/examples"
+snow_complement_path = "../snow-spider-agent/methods/spider-self-refine/examples-complement"
 snow_json_name = "spider2-snow.jsonl"
 
 lite_close_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-close"
 lite_correct_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-correct"
 lite_all_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite"
+lite_complement_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-complement"
 lite_json_name = "spider2-lite.jsonl"
 
 mv(snow_all_path, snow_close_path, snow_close_list, snow_json_name)
@@ -80,3 +93,13 @@ mv(snow_all_path, snow_correct_path, snow_correct_list, snow_json_name)
 mv(lite_all_path, lite_close_path, lite_close_list, lite_json_name)
 mv(lite_all_path, lite_correct_path, lite_correct_list, lite_json_name)
 
+snow_full_list = get_full_list(snow_json_name, snow_all_path)
+lite_full_list = get_full_list(lite_json_name, lite_all_path)
+
+lite_full_list_no_sf = list(set(lite_full_list) - set(snow_full_list))
+
+snow_complement_list = list(set(snow_full_list) - (set(snow_close_list) | set(snow_correct_list)))
+lite_complement_list = list(set(lite_full_list_no_sf) - (set(lite_close_list) | (set(lite_correct_list))))
+
+mv(snow_all_path, snow_complement_path, snow_complement_list, snow_json_name)
+mv(lite_all_path, lite_complement_path, lite_complement_list, lite_json_name)
