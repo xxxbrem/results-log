@@ -1,5 +1,6 @@
 #!/bin/bash
-
+git config --global user.email "m2deng@ucsd.edu"
+git config --global user.name "Bruce"
 cp -r ../snow-spider-agent/methods/spider-self-refine/output ./
 
 TARGET_DIR="./" 

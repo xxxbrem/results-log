@@ -3998,3 +3998,41 @@ JOIN (
 ON ft.fullVisitorId = fv.fullVisitorId
 WHERE ft.rn = 1
 LIMIT 100;
+2025-01-22 21:16:16 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-22 21:16:16 - root - INFO - ```sql
+SELECT
+  ft.fullVisitorId AS visitor_id,
+  DATE_DIFF(
+    DATE(TIMESTAMP_SECONDS(ft.first_transaction_time)),
+    DATE(TIMESTAMP_SECONDS(fv.first_visit_time)),
+    DAY
+  ) AS days_between_first_transaction_and_first_visit,
+  ft.device_used_in_transaction
+FROM (
+  SELECT
+    fullVisitorId,
+    visitStartTime AS first_transaction_time,
+    device.deviceCategory AS device_used_in_transaction,
+    ROW_NUMBER() OVER (
+      PARTITION BY fullVisitorId
+      ORDER BY visitStartTime ASC
+    ) AS rn
+  FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201702*`
+  WHERE
+    totals.transactions > 0
+    AND date BETWEEN '20170201' AND '20170228'
+) AS ft
+JOIN (
+  SELECT
+    fullVisitorId,
+    MIN(visitStartTime) AS first_visit_time
+  FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201702*`
+  WHERE
+    date BETWEEN '20170201' AND '20170228'
+  GROUP BY fullVisitorId
+) AS fv
+ON ft.fullVisitorId = fv.fullVisitorId
+WHERE ft.rn = 1
+LIMIT 100;
+```
+2025-01-22 21:16:19 - root - INFO - Total iteration counts: 10
