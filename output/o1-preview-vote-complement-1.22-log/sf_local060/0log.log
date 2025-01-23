@@ -3331,3 +3331,697 @@ Be careful of information in nested columns. e.g. When it comes to completed pur
 Be careful one country may have different country_name and country_region in different columns in a database.
 Don't be misled by examples. For instance, a question related to Android development on StackOverflow might include tags like 'android-layout,' 'android-activity,' or 'android-intent.' However, you should not limit your analysis to just these three tags; instead, consider all tags related to Android: "tags" LIKE '%android%'.
 
+2025-01-23 10:01:35 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 10:01:35 - root - INFO - To determine the change in each product’s share of total sales among the top 20% of products (by sales) between Q4 of 2019 and Q4 of 2020 in the United States, while including only products with no promotions in those periods, you can use the following SQL query in Snowflake:
+
+```sql
+WITH product_sales AS (
+    SELECT 
+        s."prod_id", 
+        SUM(CASE WHEN t."calendar_year" = 2019 THEN s."amount_sold" ELSE 0 END) AS total_sales_2019,
+        SUM(CASE WHEN t."calendar_year" = 2020 THEN s."amount_sold" ELSE 0 END) AS total_sales_2020,
+        SUM(s."amount_sold") AS total_sales
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t 
+        ON s."time_id" = t."time_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c 
+        ON s."cust_id" = c."cust_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co 
+        ON c."country_id" = co."country_id"
+    WHERE
+        t."calendar_year" IN (2019, 2020)
+        AND t."calendar_month_number" IN (10, 11, 12)
+        AND co."country_name" = 'United States'
+        AND (s."promo_id" IS NULL OR s."promo_id" = 0)
+        AND s."prod_id" NOT IN (
+            SELECT DISTINCT s2."prod_id"
+            FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s2
+            JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t2 
+                ON s2."time_id" = t2."time_id"
+            WHERE 
+                t2."calendar_year" IN (2019, 2020) 
+                AND t2."calendar_month_number" IN (10, 11, 12)
+                AND s2."promo_id" IS NOT NULL 
+                AND s2."promo_id" != 0
+        )
+    GROUP BY s."prod_id"
+),
+ranked_products AS (
+    SELECT 
+        ps.*, 
+        NTILE(5) OVER (ORDER BY ps.total_sales DESC) AS tile
+    FROM product_sales ps
+),
+top_products AS (
+    SELECT *
+    FROM ranked_products
+    WHERE tile = 1
+),
+total_sales_top AS (
+    SELECT 
+        SUM(total_sales_2019) AS total_sales_2019_top,
+        SUM(total_sales_2020) AS total_sales_2020_top
+    FROM top_products
+)
+SELECT 
+    tp."prod_id" AS "Product_ID",
+    ROUND(
+        (tp.total_sales_2020 / ts.total_sales_2020_top) - 
+        (tp.total_sales_2019 / ts.total_sales_2019_top),
+        4
+    ) AS "Change_in_Sales_Share"
+FROM top_products tp
+CROSS JOIN total_sales_top ts
+ORDER BY "Change_in_Sales_Share" DESC;
+```
+
+**Explanation:**
+
+- **Extract Product Sales Data:**
+  - The `product_sales` CTE calculates total sales per product for Q4 2019 and Q4 2020 in the US, excluding any promotional sales.
+  - It excludes any products that had promotions in either Q4 2019 or Q4 2020.
+
+- **Determine Top 20% Products:**
+  - The `ranked_products` CTE ranks products based on total sales across both periods using `NTILE(5)`, which divides the products into five tiles (each representing 20%).
+  - The `top_products` CTE selects products in the top tile (`tile = 1`), representing the top 20% of products by sales.
+
+- **Calculate Total Sales for Top Products:**
+  - The `total_sales_top` CTE calculates the total sales for the top products in Q4 2019 and Q4 2020. This is used to compute the sales share.
+
+- **Compute Change in Sales Share:**
+  - The final `SELECT` statement calculates the change in each product's share of total sales among the top products between the two periods.
+  - Results are ordered by the greatest positive change in sales share.
+
+**Result Format:**
+
+The results will be presented as:
+
+```csv
+Product_ID,Change_in_Sales_Share
+product_id1:int,change1:float
+product_id2:int,change2:float
+...
+```
+
+This format includes each product's ID and the change in their sales share, rounded to four decimal places, sorted in decreasing order of the change.
+2025-01-23 10:01:35 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 10:01:35 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 10:01:35 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 10:01:37 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-23 10:01:37 - snowflake.connector.connection - INFO - closed
+2025-01-23 10:01:37 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 10:01:37 - root - INFO - itercount: 1
+2025-01-23 10:01:37 - root - INFO - No data found for the specified query.
+
+2025-01-23 10:01:37 - root - INFO - Input sql:
+WITH product_sales AS (
+    SELECT 
+        s."prod_id", 
+        SUM(CASE WHEN t."calendar_year" = 2019 THEN s."amount_sold" ELSE 0 END) AS total_sales_2019,
+        SUM(CASE WHEN t."calendar_year" = 2020 THEN s."amount_sold" ELSE 0 END) AS total_sales_2020,
+        SUM(s."amount_sold") AS total_sales
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t 
+        ON s."time_id" = t."time_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c 
+        ON s."cust_id" = c."cust_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co 
+        ON c."country_id" = co."country_id"
+    WHERE
+        t."calendar_year" IN (2019, 2020)
+        AND t."calendar_month_number" IN (10, 11, 12)
+        AND co."country_name" = 'United States'
+        AND (s."promo_id" IS NULL OR s."promo_id" = 0)
+        AND s."prod_id" NOT IN (
+            SELECT DISTINCT s2."prod_id"
+            FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s2
+            JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t2 
+                ON s2."time_id" = t2."time_id"
+            WHERE 
+                t2."calendar_year" IN (2019, 2020) 
+                AND t2."calendar_month_number" IN (10, 11, 12)
+                AND s2."promo_id" IS NOT NULL 
+                AND s2."promo_id" != 0
+        )
+    GROUP BY s."prod_id"
+),
+ranked_products AS (
+    SELECT 
+        ps.*, 
+        NTILE(5) OVER (ORDER BY ps.total_sales DESC) AS tile
+    FROM product_sales ps
+),
+top_products AS (
+    SELECT *
+    FROM ranked_products
+    WHERE tile = 1
+),
+total_sales_top AS (
+    SELECT 
+        SUM(total_sales_2019) AS total_sales_2019_top,
+        SUM(total_sales_2020) AS total_sales_2020_top
+    FROM top_products
+)
+SELECT 
+    tp."prod_id" AS "Product_ID",
+    ROUND(
+        (tp.total_sales_2020 / ts.total_sales_2020_top) - 
+        (tp.total_sales_2019 / ts.total_sales_2019_top),
+        4
+    ) AS "Change_in_Sales_Share"
+FROM top_products tp
+CROSS JOIN total_sales_top ts
+ORDER BY "Change_in_Sales_Share" DESC;
+The error information is:
+ No data found for the specified query.
+When using ORDER BY xxx DESC, add NULLS LAST to exclude null records: ORDER BY xxx DESC NULLS LAST.
+
+2025-01-23 10:02:33 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 10:02:33 - root - INFO - Thank you for pointing out the issue. It appears that in the dataset, a `promo_id` of `999` indicates sales with **no promotions** rather than `NULL` or `0`. Therefore, we need to adjust the query to include `promo_id = 999` when selecting sales with no promotions and exclude products that had any other `promo_id` (indicating promotions) during Q4 of 2019 or 2020.
+
+Also, as per the error message, we'll add `NULLS LAST` to the `ORDER BY` clause to handle any potential `NULL` values in the "Change_in_Sales_Share" column.
+
+Here is the corrected SQL query:
+
+```sql
+WITH product_sales AS (
+    SELECT 
+        s."prod_id", 
+        SUM(CASE WHEN t."calendar_year" = 2019 THEN s."amount_sold" ELSE 0 END) AS total_sales_2019,
+        SUM(CASE WHEN t."calendar_year" = 2020 THEN s."amount_sold" ELSE 0 END) AS total_sales_2020,
+        SUM(s."amount_sold") AS total_sales
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t 
+        ON s."time_id" = t."time_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c 
+        ON s."cust_id" = c."cust_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co 
+        ON c."country_id" = co."country_id"
+    WHERE
+        t."calendar_year" IN (2019, 2020)
+        AND t."calendar_month_number" IN (10, 11, 12)
+        AND co."country_name" = 'United States'
+        AND s."promo_id" = 999
+        AND s."prod_id" NOT IN (
+            SELECT DISTINCT s2."prod_id"
+            FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s2
+            JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t2 
+                ON s2."time_id" = t2."time_id"
+            WHERE 
+                t2."calendar_year" IN (2019, 2020) 
+                AND t2."calendar_month_number" IN (10, 11, 12)
+                AND s2."promo_id" <> 999
+        )
+    GROUP BY s."prod_id"
+),
+ranked_products AS (
+    SELECT 
+        ps.*, 
+        NTILE(5) OVER (ORDER BY ps.total_sales DESC) AS tile
+    FROM product_sales ps
+),
+top_products AS (
+    SELECT *
+    FROM ranked_products
+    WHERE tile = 1
+),
+total_sales_top AS (
+    SELECT 
+        SUM(total_sales_2019) AS total_sales_2019_top,
+        SUM(total_sales_2020) AS total_sales_2020_top
+    FROM top_products
+)
+SELECT 
+    tp."prod_id" AS "Product_ID",
+    ROUND(
+        (tp.total_sales_2020 / NULLIF(ts.total_sales_2020_top, 0)) - 
+        (tp.total_sales_2019 / NULLIF(ts.total_sales_2019_top, 0)),
+        4
+    ) AS "Change_in_Sales_Share"
+FROM top_products tp
+CROSS JOIN total_sales_top ts
+ORDER BY "Change_in_Sales_Share" DESC NULLS LAST;
+```
+
+**Explanation of Changes:**
+
+1. **Adjusted the Promotion Condition:**
+   - Replaced `(s."promo_id" IS NULL OR s."promo_id" = 0)` with `s."promo_id" = 999` to include only sales with `promo_id` equal to `999`, indicating no promotions.
+   - Updated the subquery in the `NOT IN` clause to exclude products that had any promotions (`promo_id` not equal to `999`) during the specified periods.
+
+2. **Added NULL Handling:**
+   - Wrapped the denominators in the `ROUND` function with `NULLIF` to prevent division by zero in case the total sales are zero:
+     ```sql
+     NULLIF(ts.total_sales_2019_top, 0)
+     NULLIF(ts.total_sales_2020_top, 0)
+     ```
+   - This ensures that if `total_sales_2019_top` or `total_sales_2020_top` is zero, the division results in `NULL`, avoiding runtime errors.
+
+3. **Included NULLS LAST in ORDER BY Clause:**
+   - Added `NULLS LAST` to the `ORDER BY` clause:
+     ```sql
+     ORDER BY "Change_in_Sales_Share" DESC NULLS LAST;
+     ```
+   - This places any `NULL` values at the end of the result set.
+
+**Result Presentation:**
+
+The query will return results in the following format, with products ordered by the greatest positive change in sales share:
+
+```csv
+Product_ID,Change_in_Sales_Share
+product_id1:int,change1:float
+product_id2:int,change2:float
+...
+```
+
+**Additional Notes:**
+
+- Ensure that the columns and table names match exactly as per your database schema.
+- The `NULLIF` function is used to handle scenarios where total sales could be zero, which would otherwise result in a division by zero error.
+- If after these changes you still receive no data, it may indicate that no products meet the specified criteria. In that case, you might need to verify the data or adjust the criteria slightly.
+- If you're unsure about the `promo_id` values representing no promotion, you can run a query to confirm:
+
+  ```sql
+  SELECT DISTINCT "promo_id"
+  FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES"
+  ORDER BY "promo_id";
+  ```
+
+  This will list all unique `promo_id` values, helping you confirm which ones represent no promotion.
+
+**Example Execution:**
+
+To test the query, you can start by running the `product_sales` CTE separately to see if it returns any data:
+
+```sql
+WITH product_sales AS (
+    /* Same as above */
+)
+SELECT *
+FROM product_sales
+LIMIT 10;
+```
+
+If data is returned, proceed to run the entire query.
+
+**Testing Adjustments:**
+
+If you still receive "No data found for the specified query," consider removing the `s."prod_id" NOT IN (...)` condition temporarily to see if data is returned. This might help identify if the issue lies with the exclusion of products or another part of the query.
+
+---
+
+By making these adjustments, the query should execute successfully and provide the desired results, showing the change in each product's share of total sales among the top 20% of products between Q4 2019 and Q4 2020 in the United States, including only products with no promotions in those periods.
+2025-01-23 10:02:33 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 10:02:33 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 10:02:33 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 10:02:34 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-23 10:02:34 - snowflake.connector.connection - INFO - closed
+2025-01-23 10:02:35 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 10:02:35 - root - INFO - itercount: 2
+2025-01-23 10:02:35 - root - INFO - No data found for the specified query.
+
+2025-01-23 10:02:35 - root - INFO - Input sql:
+WITH product_sales AS (
+    SELECT 
+        s."prod_id", 
+        SUM(CASE WHEN t."calendar_year" = 2019 THEN s."amount_sold" ELSE 0 END) AS total_sales_2019,
+        SUM(CASE WHEN t."calendar_year" = 2020 THEN s."amount_sold" ELSE 0 END) AS total_sales_2020,
+        SUM(s."amount_sold") AS total_sales
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t 
+        ON s."time_id" = t."time_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c 
+        ON s."cust_id" = c."cust_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co 
+        ON c."country_id" = co."country_id"
+    WHERE
+        t."calendar_year" IN (2019, 2020)
+        AND t."calendar_month_number" IN (10, 11, 12)
+        AND co."country_name" = 'United States'
+        AND s."promo_id" = 999
+        AND s."prod_id" NOT IN (
+            SELECT DISTINCT s2."prod_id"
+            FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s2
+            JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t2 
+                ON s2."time_id" = t2."time_id"
+            WHERE 
+                t2."calendar_year" IN (2019, 2020) 
+                AND t2."calendar_month_number" IN (10, 11, 12)
+                AND s2."promo_id" <> 999
+        )
+    GROUP BY s."prod_id"
+),
+ranked_products AS (
+    SELECT 
+        ps.*, 
+        NTILE(5) OVER (ORDER BY ps.total_sales DESC) AS tile
+    FROM product_sales ps
+),
+top_products AS (
+    SELECT *
+    FROM ranked_products
+    WHERE tile = 1
+),
+total_sales_top AS (
+    SELECT 
+        SUM(total_sales_2019) AS total_sales_2019_top,
+        SUM(total_sales_2020) AS total_sales_2020_top
+    FROM top_products
+)
+SELECT 
+    tp."prod_id" AS "Product_ID",
+    ROUND(
+        (tp.total_sales_2020 / NULLIF(ts.total_sales_2020_top, 0)) - 
+        (tp.total_sales_2019 / NULLIF(ts.total_sales_2019_top, 0)),
+        4
+    ) AS "Change_in_Sales_Share"
+FROM top_products tp
+CROSS JOIN total_sales_top ts
+ORDER BY "Change_in_Sales_Share" DESC NULLS LAST;
+The error information is:
+ No data found for the specified query.
+
+2025-01-23 10:03:53 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 10:03:53 - root - INFO - It seems that the error "No data found for the specified query" is occurring because the condition `co."country_name" = 'United States'` may not be matching any records in your dataset. 
+
+To resolve this, we need to ensure that we're correctly filtering for the United States in your data. Based on the `COUNTRIES` table structure, it's possible that the country is listed with a different name or that we can use the ISO country code instead.
+
+Here's the corrected SQL query, using the ISO country code `'US'`:
+
+```sql
+WITH product_sales AS (
+    SELECT 
+        s."prod_id", 
+        SUM(CASE WHEN t."calendar_year" = 2019 THEN s."amount_sold" ELSE 0 END) AS total_sales_2019,
+        SUM(CASE WHEN t."calendar_year" = 2020 THEN s."amount_sold" ELSE 0 END) AS total_sales_2020,
+        SUM(s."amount_sold") AS total_sales
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t 
+        ON s."time_id" = t."time_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c 
+        ON s."cust_id" = c."cust_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co 
+        ON c."country_id" = co."country_id"
+    WHERE
+        t."calendar_year" IN (2019, 2020)
+        AND t."calendar_month_number" IN (10, 11, 12)
+        AND co."country_iso_code" = 'US'
+        AND s."promo_id" = 999
+        AND s."prod_id" NOT IN (
+            SELECT DISTINCT s2."prod_id"
+            FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s2
+            JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t2 
+                ON s2."time_id" = t2."time_id"
+            WHERE 
+                t2."calendar_year" IN (2019, 2020) 
+                AND t2."calendar_month_number" IN (10, 11, 12)
+                AND s2."promo_id" <> 999
+        )
+    GROUP BY s."prod_id"
+),
+ranked_products AS (
+    SELECT 
+        ps.*, 
+        NTILE(5) OVER (ORDER BY ps.total_sales DESC) AS tile
+    FROM product_sales ps
+),
+top_products AS (
+    SELECT *
+    FROM ranked_products
+    WHERE tile = 1
+),
+total_sales_top AS (
+    SELECT 
+        SUM(total_sales_2019) AS total_sales_2019_top,
+        SUM(total_sales_2020) AS total_sales_2020_top
+    FROM top_products
+)
+SELECT 
+    tp."prod_id" AS "Product_ID",
+    ROUND(
+        (tp.total_sales_2020 / NULLIF(ts.total_sales_2020_top, 0)) - 
+        (tp.total_sales_2019 / NULLIF(ts.total_sales_2019_top, 0)),
+        4
+    ) AS "Change_in_Sales_Share"
+FROM top_products tp
+CROSS JOIN total_sales_top ts
+ORDER BY "Change_in_Sales_Share" DESC NULLS LAST;
+```
+
+**Explanation of Changes:**
+
+1. **Adjusted Country Filter:**
+   - Changed `co."country_name" = 'United States'` to `co."country_iso_code" = 'US'`.
+   - This ensures we're correctly matching the United States based on its ISO country code.
+
+2. **Revalidated Data Presence:**
+   - If you're still receiving "No data found", consider running the following query to confirm available country codes:
+
+     ```sql
+     SELECT DISTINCT co."country_iso_code", co."country_name"
+     FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co
+     ORDER BY co."country_iso_code";
+     ```
+     
+   - Adjust the country code in the main query accordingly based on the actual value in your data.
+
+3. **Ensured Correct Promotion Codes:**
+   - Confirmed that `promo_id` of `999` indicates sales with **no promotions**.
+   - The condition `s."promo_id" = 999` selects only non-promotional sales.
+
+   - The subquery excludes products that had any promotional sales (`promo_id` not equal to `999`) during Q4 2019 or Q4 2020.
+
+4. **Handled Potential Division by Zero:**
+   - Used `NULLIF` in the denominator of the `ROUND` function to avoid division by zero errors.
+
+5. **Used NULLS LAST:**
+   - Added `NULLS LAST` to the `ORDER BY` clause to handle `NULL` values appropriately.
+
+**Result Format:**
+
+The query will return:
+
+```csv
+Product_ID,Change_in_Sales_Share
+product_id1:int,change1:float
+product_id2:int,change2:float
+...
+```
+
+- **Product_ID**: The unique identifier for each product.
+- **Change_in_Sales_Share**: The difference in the product's share of total sales between Q4 2019 and Q4 2020 among the top 20% of products.
+
+**Additional Notes:**
+
+- **Verifying Data Availability:**
+  - If the query still returns no data, it's possible that no products meet all the specified criteria.
+  - You might want to relax some conditions to check where data is getting filtered out. For instance, remove the country filter or the promotion filter temporarily to see if data is returned.
+
+- **Testing Individual Components:**
+  - Run individual parts of the query (e.g., the `product_sales` CTE) to verify that data is being returned at each stage.
+
+- **Confirming `promo_id` Values:**
+  - Execute the following query to see all `promo_id` values present in your `SALES` table:
+
+    ```sql
+    SELECT DISTINCT s."promo_id"
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    ORDER BY s."promo_id";
+    ```
+    
+  - Ensure that `999` indeed represents non-promotional sales.
+
+By making these adjustments, the query should now accurately reflect the data in your database and provide the desired output, showing the change in each product's share of total sales among the top 20% of products between Q4 2019 and Q4 2020 in the United States, including only products with no promotions in those periods.
+
+Please replace `'US'` in `co."country_iso_code" = 'US'` with the correct ISO code if your data uses a different one after verifying with the countries data.
+2025-01-23 10:03:53 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 10:03:53 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 10:03:53 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 10:03:55 - snowflake.connector.cursor - INFO - Number of results in first chunk: 13
+2025-01-23 10:03:55 - snowflake.connector.connection - INFO - closed
+2025-01-23 10:03:55 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 10:03:55 - root - INFO - itercount: 3
+2025-01-23 10:03:55 - root - INFO - 0
+2025-01-23 10:03:55 - root - INFO - results: 
+Product_ID,Change_in_Sales_Share
+20,0.1529
+37,0.0273
+28,0.0252
+25,0.0192
+29,0.0089
+130,0.0068
+13,0.0014
+118,-0.0165
+17,-0.0177
+14,-0.0274
+127,-0.031
+18,-0.0665
+15,-0.0826
+
+
+2025-01-23 10:03:55 - root - INFO - Please check the answer again by reviewing What is the change in each product’s share of total sales in the top 20% of products (by sales), between Q4 of 2019 and 2020, in the US? Include only products with no promotions in Q4 2019 or Q4 2020, and provide results in decreasing order of the change in sales share., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: To determine the change in each product’s share of total sales among the top 20% of products (by sales) between Q4 of 2019 and Q4 of 2020 in the US, while including only products with no promotions in those periods, the results are presented below in decreasing order of the change in sales share:
+
+```csv
+Product_ID,Change_in_Sales_Share
+product_id1:int,change1:float
+product_id2:int,change2:float
+...
+```
+
+**Explanation:**
+
+- **Product_ID**: The unique identifier for each product.
+- **Change_in_Sales_Share**: The difference in the product's share of total sales between Q4 2019 and Q4 2020. This value is calculated as:
+  
+  \[
+  \text{Change\_in\_Sales\_Share} = \left( \frac{\text{Product Sales in Q4 2020}}{\text{Total Sales in Q4 2020}} \right) - \left( \frac{\text{Product Sales in Q4 2019}}{\text{Total Sales in Q4 2019}} \right)
+  \]
+
+The products are listed in order from the greatest positive change in sales share to the least. Only products that were in the top 20% by sales and had no promotions in either Q4 2019 or Q4 2020 are included. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+Product_ID,Change_in_Sales_Share
+20,0.1529
+37,0.0273
+28,0.0252
+25,0.0192
+29,0.0089
+130,0.0068
+13,0.0014
+118,-0.0165
+17,-0.0177
+14,-0.0274
+127,-0.031
+18,-0.0665
+15,-0.0826
+Current sql:
+WITH product_sales AS (
+    SELECT 
+        s."prod_id", 
+        SUM(CASE WHEN t."calendar_year" = 2019 THEN s."amount_sold" ELSE 0 END) AS total_sales_2019,
+        SUM(CASE WHEN t."calendar_year" = 2020 THEN s."amount_sold" ELSE 0 END) AS total_sales_2020,
+        SUM(s."amount_sold") AS total_sales
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t 
+        ON s."time_id" = t."time_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c 
+        ON s."cust_id" = c."cust_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co 
+        ON c."country_id" = co."country_id"
+    WHERE
+        t."calendar_year" IN (2019, 2020)
+        AND t."calendar_month_number" IN (10, 11, 12)
+        AND co."country_iso_code" = 'US'
+        AND s."promo_id" = 999
+        AND s."prod_id" NOT IN (
+            SELECT DISTINCT s2."prod_id"
+            FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s2
+            JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t2 
+                ON s2."time_id" = t2."time_id"
+            WHERE 
+                t2."calendar_year" IN (2019, 2020) 
+                AND t2."calendar_month_number" IN (10, 11, 12)
+                AND s2."promo_id" <> 999
+        )
+    GROUP BY s."prod_id"
+),
+ranked_products AS (
+    SELECT 
+        ps.*, 
+        NTILE(5) OVER (ORDER BY ps.total_sales DESC) AS tile
+    FROM product_sales ps
+),
+top_products AS (
+    SELECT *
+    FROM ranked_products
+    WHERE tile = 1
+),
+total_sales_top AS (
+    SELECT 
+        SUM(total_sales_2019) AS total_sales_2019_top,
+        SUM(total_sales_2020) AS total_sales_2020_top
+    FROM top_products
+)
+SELECT 
+    tp."prod_id" AS "Product_ID",
+    ROUND(
+        (tp.total_sales_2020 / NULLIF(ts.total_sales_2020_top, 0)) - 
+        (tp.total_sales_2019 / NULLIF(ts.total_sales_2019_top, 0)),
+        4
+    ) AS "Change_in_Sales_Share"
+FROM top_products tp
+CROSS JOIN total_sales_top ts
+ORDER BY "Change_in_Sales_Share" DESC NULLS LAST;
+2025-01-23 10:04:34 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 10:04:34 - root - INFO - After reviewing the task, relevant tables, columns, and conditions, the following SQL query correctly calculates the change in each product’s share of total sales among the top 20% of products (by sales) between Q4 of 2019 and Q4 of 2020 in the US. It includes only products with no promotions in either Q4 2019 or Q4 2020 and presents the results in decreasing order of the change in sales share, keeping all decimals to four decimal places:
+
+```sql
+WITH product_sales AS (
+    SELECT 
+        s."prod_id", 
+        SUM(CASE WHEN t."calendar_year" = 2019 THEN s."amount_sold" ELSE 0 END) AS total_sales_2019,
+        SUM(CASE WHEN t."calendar_year" = 2020 THEN s."amount_sold" ELSE 0 END) AS total_sales_2020,
+        SUM(s."amount_sold") AS total_sales
+    FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t 
+        ON s."time_id" = t."time_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."CUSTOMERS" c 
+        ON s."cust_id" = c."cust_id"
+    JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."COUNTRIES" co 
+        ON c."country_id" = co."country_id"
+    WHERE
+        t."calendar_year" IN (2019, 2020)
+        AND t."calendar_month_number" IN (10, 11, 12)
+        AND co."country_iso_code" = 'US'
+        AND s."promo_id" = 999
+        AND s."prod_id" NOT IN (
+            SELECT DISTINCT s2."prod_id"
+            FROM "COMPLEX_ORACLE"."COMPLEX_ORACLE"."SALES" s2
+            JOIN "COMPLEX_ORACLE"."COMPLEX_ORACLE"."TIMES" t2 
+                ON s2."time_id" = t2."time_id"
+            WHERE 
+                t2."calendar_year" IN (2019, 2020) 
+                AND t2."calendar_month_number" IN (10, 11, 12)
+                AND s2."promo_id" <> 999
+        )
+    GROUP BY s."prod_id"
+),
+ranked_products AS (
+    SELECT 
+        ps.*, 
+        NTILE(5) OVER (ORDER BY ps.total_sales DESC) AS tile
+    FROM product_sales ps
+),
+top_products AS (
+    SELECT *
+    FROM ranked_products
+    WHERE tile = 1
+),
+total_sales_top AS (
+    SELECT 
+        SUM(total_sales_2019) AS total_sales_2019_top,
+        SUM(total_sales_2020) AS total_sales_2020_top
+    FROM top_products
+)
+SELECT 
+    tp."prod_id" AS "Product_ID",
+    ROUND(
+        (tp.total_sales_2020 / NULLIF(ts.total_sales_2020_top, 0)) - 
+        (tp.total_sales_2019 / NULLIF(ts.total_sales_2019_top, 0)),
+        4
+    ) AS "Change_in_Sales_Share"
+FROM top_products tp
+CROSS JOIN total_sales_top ts
+ORDER BY "Change_in_Sales_Share" DESC NULLS LAST;
+```
+2025-01-23 10:04:34 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 10:04:34 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 10:04:34 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 10:04:35 - snowflake.connector.cursor - INFO - Number of results in first chunk: 13
+2025-01-23 10:04:35 - snowflake.connector.connection - INFO - closed
+2025-01-23 10:04:36 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 10:04:36 - root - INFO - itercount: 4
+2025-01-23 10:04:36 - root - INFO - 0
+2025-01-23 10:04:36 - root - INFO - Total iteration counts: 4
