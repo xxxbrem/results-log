@@ -5036,3 +5036,72 @@ JOIN clinical_data cd
 The error information is:
  No data found for the specified query.
 
+2025-01-23 07:15:33 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 200 OK"
+2025-01-23 07:15:33 - root - INFO - ```sql
+WITH cdkn2a_mutations AS (
+  SELECT DISTINCT "sample_barcode_tumor" AS "sample_barcode"
+  FROM TCGA.TCGA_VERSIONED."SOMATIC_MUTATION_HG19_MC3_2017_02"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "Hugo_Symbol" = 'CDKN2A'
+),
+gene_expression AS (
+  SELECT "sample_barcode", "gene_name", "HTSeq__FPKM"
+  FROM TCGA.TCGA_VERSIONED."RNASEQ_HG38_GDC_R28"
+  WHERE "project_short_name" = 'TCGA-BLCA'
+    AND "gene_name" IN ('MDM2', 'TP53', 'CDKN1A', 'CCNE1')
+    AND "sample_barcode" IN (SELECT "sample_barcode" FROM cdkn2a_mutations)
+),
+gene_expression_pivot AS (
+  SELECT
+    "sample_barcode",
+    MAX(CASE WHEN "gene_name" = 'MDM2' THEN "HTSeq__FPKM" END) AS "MDM2_expression",
+    MAX(CASE WHEN "gene_name" = 'TP53' THEN "HTSeq__FPKM" END) AS "TP53_expression",
+    MAX(CASE WHEN "gene_name" = 'CDKN1A' THEN "HTSeq__FPKM" END) AS "CDKN1A_expression",
+    MAX(CASE WHEN "gene_name" = 'CCNE1' THEN "HTSeq__FPKM" END) AS "CCNE1_expression"
+  FROM gene_expression
+  GROUP BY "sample_barcode"
+),
+clinical_data AS (
+  SELECT
+    "submitter_id" AS "case_barcode",
+    "demo__gender" AS "gender",
+    "demo__race" AS "race",
+    "demo__ethnicity" AS "ethnicity",
+    "diag__age_at_diagnosis" AS "age_at_diagnosis",
+    "diag__ajcc_clinical_stage" AS "ajcc_clinical_stage"
+  FROM TCGA.TCGA_VERSIONED."CLINICAL_GDC_R28"
+  WHERE "proj__project_id" = 'TCGA-BLCA'
+)
+SELECT
+  gep."sample_barcode",
+  gep."MDM2_expression",
+  gep."TP53_expression",
+  gep."CDKN1A_expression",
+  gep."CCNE1_expression",
+  cd."gender",
+  cd."race",
+  cd."ethnicity",
+  cd."age_at_diagnosis",
+  cd."ajcc_clinical_stage"
+FROM gene_expression_pivot gep
+JOIN clinical_data cd
+  ON SUBSTRING(gep."sample_barcode", 1, 12) = cd."case_barcode";
+```
+
+**Explanation:**
+
+- **Adjusted Identifiers:** The issue may be due to mismatched identifiers. In the mutation data, we use `"sample_barcode_tumor"` to identify tumor samples with CDKN2A mutations. In the RNA expression data, the identifiers are `"sample_barcode"`.
+
+- **Matching Sample Barcodes:** We select `"sample_barcode"` from both datasets to ensure we are comparing the same samples.
+
+- **Joining Clinical Data:** The clinical data uses `"submitter_id"` (which corresponds to the `"case_barcode"`). We extract the first 12 characters of the `"sample_barcode"` to match the `"case_barcode"` in the clinical data since the sample barcode includes additional identifiers.
+
+- **Removed Filters Causing Data Loss:** We ensured that filters such as `"project_short_name"` are correctly applied and that identifiers match across datasets to prevent the query from returning no data.
+
+**Note:** Please ensure that the column names and table names match exactly with those in your database schema. Adjust the query accordingly if there are any discrepancies.
+2025-01-23 07:15:33 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-23 07:15:33 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-23 07:15:33 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-23 07:15:35 - snowflake.connector.connection - INFO - closed
+2025-01-23 07:15:35 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-23 07:15:35 - root - INFO - Total iteration counts: 10
