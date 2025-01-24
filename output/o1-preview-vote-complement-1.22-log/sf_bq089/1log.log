@@ -8035,3 +8035,62 @@ ORDER BY "number_of_vaccine_sites_per_1000_people" DESC NULLS LAST;
 The error information is:
  No data found for the specified query.
 
+2025-01-24 16:38:01 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-24 16:38:01 - root - INFO - ```sql
+SELECT
+    v."facility_sub_region_2" AS "county_name",
+    ROUND((v."vaccine_site_count" / p."total_pop") * 1000, 4) AS "number_of_vaccine_sites_per_1000_people"
+FROM
+    (
+        SELECT
+            "facility_sub_region_2",
+            COUNT(*) AS "vaccine_site_count"
+        FROM
+            "COVID19_USA"."COVID19_VACCINATION_ACCESS"."FACILITY_BOUNDARY_US_ALL"
+        WHERE
+            "facility_sub_region_1" = 'California'
+        GROUP BY
+            "facility_sub_region_2"
+    ) v
+JOIN
+    (
+        SELECT
+            SPLIT_PART("geo_id", ',', 1) AS "county_name",
+            "total_pop"
+        FROM
+            "COVID19_USA"."CENSUS_BUREAU_ACS"."COUNTY_2018_5YR"
+        WHERE
+            "geo_id" LIKE '0500000US06%'
+    ) p ON
+    v."county_name" = TRIM(REPLACE(p."county_name", ' County, California', ''))
+ORDER BY
+    "number_of_vaccine_sites_per_1000_people" DESC NULLS LAST;
+```
+
+This query calculates the number of vaccine sites per 1000 people for each county in California. It matches county names between the vaccine site data and the population data by extracting and transforming the county names from the `"geo_id"` field in the population data.
+
+**Explanation:**
+
+1. **Vaccine Site Counts (`v`):**
+   - Selects `"facility_sub_region_2"` (county name) and counts the number of vaccine sites per county from the `"FACILITY_BOUNDARY_US_ALL"` table for California.
+   - Groups the results by `"facility_sub_region_2"`.
+
+2. **Population Data (`p`):**
+   - Extracts the county name from the `"geo_id"` field in the `"COUNTY_2018_5YR"` table.
+     - Assumes that `"geo_id"` contains the county name in the format `"CountyName County, California"`.
+     - Uses `SPLIT_PART("geo_id", ',', 1)` to extract the county name portion.
+   - Filters for California counties using `"geo_id" LIKE '0500000US06%'`.
+
+3. **Joining and Calculation:**
+   - Joins the vaccine site counts (`v`) with the population data (`p`) on the transformed county names.
+     - Uses `TRIM(REPLACE(p."county_name", ' County, California', ''))` to clean the county name for matching.
+   - Calculates the number of vaccine sites per 1000 people.
+   - Orders the results in descending order of vaccine sites per 1000 people, placing any null values last.
+
+**Note:** This query assumes that the `"geo_id"` field contains the county name in a consistent and parseable format. Adjustments may be necessary based on the actual structure of the `"geo_id"` field in the `"COUNTY_2018_5YR"` table.
+2025-01-24 16:38:01 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-24 16:38:01 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-24 16:38:01 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-24 16:38:03 - snowflake.connector.connection - INFO - closed
+2025-01-24 16:38:03 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-24 16:38:03 - root - INFO - Total iteration counts: 10

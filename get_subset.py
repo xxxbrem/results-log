@@ -4,7 +4,7 @@ import json
 
 snow_close_list = [
     "sf_bq002", "sf_bq007", "sf_bq011", "sf_bq028", "sf_bq033", "sf_bq039", "sf_bq062", "sf_bq098", "sf_bq099", "sf_bq112", "sf_bq113", "sf_bq119", "sf_bq123", "sf_bq150", 
-    "sf_bq160", "sf_bq166", "sf_bq175", "sf_bq185", "sf_bq198", "sf_bq208", "sf_bq215", "sf_bq218", "sf_bq219", "sf_bq229", "sf_bq268", "sf_bq283", "sf_bq293", "sf_bq294", 
+    "sf_bq160", "sf_bq166", "sf_bq175", "sf_bq185", "sf_bq198", "sf_bq208", "sf_bq215", "sf_bq218", "sf_bq219", "sf_bq229", "sf_bq283", "sf_bq293", "sf_bq294", 
     "sf_bq309", "sf_bq321", "sf_bq330", "sf_bq338", "sf_bq346", "sf_bq350", "sf_bq354", "sf_bq356", "sf_bq363", "sf_bq374", "sf_bq380", "sf_bq383", "sf_bq400", 
     "sf_bq442", "sf_bq460", "sf_bq461", "sf_ga006", "sf_ga008", "sf_ga013", "sf_ga017", "sf_local004", "sf_local032", 
     "sf_local049", "sf_local059", "sf_local066", "sf_local068", "sf_local081", "sf_local085", "sf_local114", "sf_local130", "sf_local132", "sf_local152", 
@@ -24,14 +24,16 @@ snow_correct_list = [
 ]
 
 lite_close_list = [
-    "bq002", "sf_bq007", "bq011", "sf_bq028", "sf_bq033", "bq039", "sf_bq062", "bq098", "bq112", "bq113", "bq119", "bq123", 
-    "sf_bq160", "sf_bq166", "sf_bq175", "bq185", "bq198", "bq208", "sf_bq215", "bq218", "sf_bq219", "bq229", "bq235", "sf_bq283", "bq293", "sf_bq294", 
-    "bq309", "sf_bq321", "bq330", "bq338", "sf_bq346", "bq350", "bq354", "bq356", "bq363", "bq374", "sf_bq380", "bq383", "bq400", 
-    "bq442", "sf_bq460", "bq461", "ga006", "ga008", "ga013", "ga017", "local004", "local032", 
+    "bq002", "bq011", "bq039", "bq098", "bq112", "bq113", "bq119", "bq123", 
+    "bq185", "bq198", "bq208", "bq218", "bq229", "bq235", "bq293", 
+    "bq309", "bq330", "bq338", "bq350", "bq354", "bq356", "bq363", "bq374", "bq383", "bq400", 
+    "bq442", "bq461", "ga006", "ga008", "ga013", "ga017", "local004", "local032", 
     "local049", "local059", "local066", "local068", "local081", "local085", "local114", "local130", "local132", "local152", 
     "local195", "local196", "local197", "local201", "local212", "local219", "local220", "local264", "local272", "local300", "local311", "local330"
 ]
-
+# lite_close = [
+#     "sf_bq007", "sf_bq028", "sf_bq033", "sf_bq062", "sf_bq099", "sf_bq150", "sf_bq160", "sf_bq166", "sf_bq175", "sf_bq215", "sf_bq219", "sf_bq283", "sf_bq294", "sf_bq321", "sf_bq346", "sf_bq380", "sf_bq460"
+# ]
 # lite_correct_list = [
 #     "sf_bq056", "sf_bq091", "sf_bq121", "sf_bq135", "sf_bq158", "sf_bq176", "sf_bq210", "sf_bq211", "sf_bq213", "sf_bq214", "sf_bq216", "sf_bq224", 
 #     "sf_bq235", "sf_bq252", "sf_bq255", "sf_bq289", "sf_bq341", "sf_bq345",
@@ -42,7 +44,7 @@ lite_correct_list = [
     "bq001", "bq006", "bq010", "bq018", "bq021", "bq025", "bq032", "bq034", "bq035", "bq059", "bq060", "bq061", "bq066", "bq076", 
     "bq077", "bq081", "bq085", "bq090", "bq097", "bq103", "bq109", "bq115", "bq126", "bq130", "bq143", "bq151", 
     "bq161", "bq172", "bq227", "bq228", "bq268", "bq279",
-    "bq280", "bq281", "bq282", "bq284", "bq285", "bq286", "bq300", "bq302", "bq303", "bq308", "bq310", "bq327", "bq328", 
+    "bq280", "bq281", "bq282", "bq284", "bq285", "bq286", "bq300", "bq302", "bq303", "bq308", "bq310", "bq327", "bq328", "bq352"
     "bq355", "bq357", "bq362", "bq379", "bq389", "bq392", "bq394", "bq396", "bq398", "bq399", "bq406", "bq414", 
     "ga001", "ga002", "ga003", "ga004", "ga007", "ga010", "ga020", "local008", "local017", "local019", "local022", "local023", "local026", "local028", "local031", 
     "local038", "local039", "local041", "local054", "local056", "local058", "local065", "local067", "local071", "local072", "local074", "local075", "local078", "local099", 
