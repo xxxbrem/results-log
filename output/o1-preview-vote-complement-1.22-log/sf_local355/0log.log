@@ -3359,3 +3359,676 @@ The error information is:
 Unknown functions ARRAY_LENGTH, ARRAY_LENGTH, ARRAY_LENGTH
 Please correct it and output only 1 complete SQL query.Be careful of using GENERATOR. Don't use seq4(), use ROW_NUMBER().
 
+2025-01-25 03:07:49 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 03:07:49 - root - INFO - ```sql
+WITH all_rounds AS (
+    SELECT "year", "round"
+    FROM F1.F1."RACES"
+),
+driver_races AS (
+    SELECT DISTINCT r."driver_id", ra."year", ra."round"
+    FROM F1.F1."RESULTS" r
+    JOIN F1.F1."RACES" ra ON r."race_id" = ra."race_id"
+),
+driver_missed_rounds AS (
+    SELECT ar."year", ar."round", d."driver_id"
+    FROM F1.F1."DRIVERS" d
+    CROSS JOIN (SELECT DISTINCT "year" FROM F1.F1."RACES") y
+    JOIN all_rounds ar ON ar."year" = y."year"
+    LEFT JOIN driver_races dr ON dr."driver_id" = d."driver_id" AND dr."year" = ar."year" AND dr."round" = ar."round"
+    WHERE dr."driver_id" IS NULL
+),
+driver_missed_race_counts AS (
+    SELECT
+        dmr."driver_id",
+        dmr."year",
+        COUNT(*) AS missed_races
+    FROM driver_missed_rounds dmr
+    GROUP BY dmr."driver_id", dmr."year"
+),
+drivers_few_missed_races AS (
+    SELECT "driver_id", "year"
+    FROM driver_missed_race_counts
+    WHERE missed_races < 3 AND missed_races > 0
+),
+driver_missed_rounds_filtered AS (
+    SELECT dmr.*
+    FROM driver_missed_rounds dmr
+    JOIN drivers_few_missed_races dfmr ON dmr."driver_id" = dfmr."driver_id" AND dmr."year" = dfmr."year"
+),
+driver_missed_rounds_summary AS (
+    SELECT
+        "driver_id",
+        "year",
+        MIN("round") AS first_missed_round,
+        MAX("round") AS last_missed_round
+    FROM driver_missed_rounds_filtered
+    GROUP BY "driver_id", "year"
+),
+driver_drives AS (
+    SELECT
+        "driver_id",
+        "year",
+        "constructor_id",
+        "first_round",
+        "last_round"
+    FROM F1.F1."DRIVES"
+),
+numbers AS (
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY NULL) -1 AS n
+    FROM TABLE(GENERATOR(ROWCOUNT => 30))
+),
+driver_constructor_rounds AS (
+    SELECT
+        dd."driver_id",
+        dd."year",
+        dd."constructor_id",
+        dd."first_round" + n.n AS "round"
+    FROM driver_drives dd
+    JOIN numbers n ON n.n <= dd."last_round" - dd."first_round"
+),
+constructors_before_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" < dmrs.first_missed_round
+),
+constructors_after_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" > dmrs.last_missed_round
+),
+drivers_switched_teams AS (
+    SELECT
+        cba."driver_id",
+        cba."year"
+    FROM
+        (SELECT
+            dmrs."driver_id",
+            dmrs."year",
+            ARRAY_AGG(DISTINCT cbmr."constructor_id") AS constructors_before,
+            ARRAY_AGG(DISTINCT camr."constructor_id") AS constructors_after
+        FROM driver_missed_rounds_summary dmrs
+        LEFT JOIN constructors_before_missed_round cbmr ON dmrs."driver_id" = cbmr."driver_id" AND dmrs."year" = cbmr."year"
+        LEFT JOIN constructors_after_missed_round camr ON dmrs."driver_id" = camr."driver_id" AND dmrs."year" = camr."year"
+        GROUP BY dmrs."driver_id", dmrs."year") cba
+    WHERE
+        cba.constructors_before IS NOT NULL
+        AND cba.constructors_after IS NOT NULL
+        AND ARRAY_SIZE(cba.constructors_before) > 0
+        AND ARRAY_SIZE(cba.constructors_after) > 0
+        AND ARRAY_SIZE(ARRAY_INTERSECT(cba.constructors_before, cba.constructors_after)) = 0
+),
+qualified_drivers AS (
+    SELECT DISTINCT
+        cba."driver_id",
+        cba."year",
+        dmrs.first_missed_round,
+        dmrs.last_missed_round
+    FROM drivers_switched_teams cba
+    JOIN driver_missed_rounds_summary dmrs ON cba."driver_id" = dmrs."driver_id" AND cba."year" = dmrs."year"
+    JOIN drivers_few_missed_races dfmr ON cba."driver_id" = dfmr."driver_id" AND cba."year" = dfmr."year"
+)
+SELECT
+    qd."year",
+    ROUND(AVG(qd.first_missed_round), 4) AS "Average_First_Missed_Round",
+    ROUND(AVG(qd.last_missed_round), 4) AS "Average_Last_Missed_Round"
+FROM qualified_drivers qd
+GROUP BY qd."year"
+ORDER BY qd."year";
+```
+2025-01-25 03:07:49 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-25 03:07:49 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-25 03:07:49 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-25 03:07:50 - snowflake.connector.connection - INFO - closed
+2025-01-25 03:07:50 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-25 03:07:51 - root - INFO - itercount: 3
+2025-01-25 03:07:51 - root - INFO - 002140 (42601): 01b9f05b-0004-7d15-0001-11c300f9e9a2: SQL compilation error:
+Unknown function ARRAY_INTERSECT
+2025-01-25 03:07:51 - root - INFO - Input sql:
+WITH all_rounds AS (
+    SELECT "year", "round"
+    FROM F1.F1."RACES"
+),
+driver_races AS (
+    SELECT DISTINCT r."driver_id", ra."year", ra."round"
+    FROM F1.F1."RESULTS" r
+    JOIN F1.F1."RACES" ra ON r."race_id" = ra."race_id"
+),
+driver_missed_rounds AS (
+    SELECT ar."year", ar."round", d."driver_id"
+    FROM F1.F1."DRIVERS" d
+    CROSS JOIN (SELECT DISTINCT "year" FROM F1.F1."RACES") y
+    JOIN all_rounds ar ON ar."year" = y."year"
+    LEFT JOIN driver_races dr ON dr."driver_id" = d."driver_id" AND dr."year" = ar."year" AND dr."round" = ar."round"
+    WHERE dr."driver_id" IS NULL
+),
+driver_missed_race_counts AS (
+    SELECT
+        dmr."driver_id",
+        dmr."year",
+        COUNT(*) AS missed_races
+    FROM driver_missed_rounds dmr
+    GROUP BY dmr."driver_id", dmr."year"
+),
+drivers_few_missed_races AS (
+    SELECT "driver_id", "year"
+    FROM driver_missed_race_counts
+    WHERE missed_races < 3 AND missed_races > 0
+),
+driver_missed_rounds_filtered AS (
+    SELECT dmr.*
+    FROM driver_missed_rounds dmr
+    JOIN drivers_few_missed_races dfmr ON dmr."driver_id" = dfmr."driver_id" AND dmr."year" = dfmr."year"
+),
+driver_missed_rounds_summary AS (
+    SELECT
+        "driver_id",
+        "year",
+        MIN("round") AS first_missed_round,
+        MAX("round") AS last_missed_round
+    FROM driver_missed_rounds_filtered
+    GROUP BY "driver_id", "year"
+),
+driver_drives AS (
+    SELECT
+        "driver_id",
+        "year",
+        "constructor_id",
+        "first_round",
+        "last_round"
+    FROM F1.F1."DRIVES"
+),
+numbers AS (
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY NULL) -1 AS n
+    FROM TABLE(GENERATOR(ROWCOUNT => 30))
+),
+driver_constructor_rounds AS (
+    SELECT
+        dd."driver_id",
+        dd."year",
+        dd."constructor_id",
+        dd."first_round" + n.n AS "round"
+    FROM driver_drives dd
+    JOIN numbers n ON n.n <= dd."last_round" - dd."first_round"
+),
+constructors_before_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" < dmrs.first_missed_round
+),
+constructors_after_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" > dmrs.last_missed_round
+),
+drivers_switched_teams AS (
+    SELECT
+        cba."driver_id",
+        cba."year"
+    FROM
+        (SELECT
+            dmrs."driver_id",
+            dmrs."year",
+            ARRAY_AGG(DISTINCT cbmr."constructor_id") AS constructors_before,
+            ARRAY_AGG(DISTINCT camr."constructor_id") AS constructors_after
+        FROM driver_missed_rounds_summary dmrs
+        LEFT JOIN constructors_before_missed_round cbmr ON dmrs."driver_id" = cbmr."driver_id" AND dmrs."year" = cbmr."year"
+        LEFT JOIN constructors_after_missed_round camr ON dmrs."driver_id" = camr."driver_id" AND dmrs."year" = camr."year"
+        GROUP BY dmrs."driver_id", dmrs."year") cba
+    WHERE
+        cba.constructors_before IS NOT NULL
+        AND cba.constructors_after IS NOT NULL
+        AND ARRAY_SIZE(cba.constructors_before) > 0
+        AND ARRAY_SIZE(cba.constructors_after) > 0
+        AND ARRAY_SIZE(ARRAY_INTERSECT(cba.constructors_before, cba.constructors_after)) = 0
+),
+qualified_drivers AS (
+    SELECT DISTINCT
+        cba."driver_id",
+        cba."year",
+        dmrs.first_missed_round,
+        dmrs.last_missed_round
+    FROM drivers_switched_teams cba
+    JOIN driver_missed_rounds_summary dmrs ON cba."driver_id" = dmrs."driver_id" AND cba."year" = dmrs."year"
+    JOIN drivers_few_missed_races dfmr ON cba."driver_id" = dfmr."driver_id" AND cba."year" = dfmr."year"
+)
+SELECT
+    qd."year",
+    ROUND(AVG(qd.first_missed_round), 4) AS "Average_First_Missed_Round",
+    ROUND(AVG(qd.last_missed_round), 4) AS "Average_Last_Missed_Round"
+FROM qualified_drivers qd
+GROUP BY qd."year"
+ORDER BY qd."year";
+The error information is:
+002140 (42601): 01b9f05b-0004-7d15-0001-11c300f9e9a2: SQL compilation error:
+Unknown function ARRAY_INTERSECT
+Please correct it and output only 1 complete SQL query.Be careful of using GENERATOR. Don't use seq4(), use ROW_NUMBER().
+
+2025-01-25 03:08:49 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 03:08:50 - root - INFO - ```sql
+WITH all_rounds AS (
+    SELECT "year", "round"
+    FROM F1.F1."RACES"
+),
+driver_races AS (
+    SELECT DISTINCT r."driver_id", ra."year", ra."round"
+    FROM F1.F1."RESULTS" r
+    JOIN F1.F1."RACES" ra ON r."race_id" = ra."race_id"
+),
+driver_missed_rounds AS (
+    SELECT ar."year", ar."round", d."driver_id"
+    FROM F1.F1."DRIVERS" d
+    CROSS JOIN (SELECT DISTINCT "year" FROM F1.F1."RACES") y
+    JOIN all_rounds ar ON ar."year" = y."year"
+    LEFT JOIN driver_races dr ON dr."driver_id" = d."driver_id" AND dr."year" = ar."year" AND dr."round" = ar."round"
+    WHERE dr."driver_id" IS NULL
+),
+driver_missed_race_counts AS (
+    SELECT
+        dmr."driver_id",
+        dmr."year",
+        COUNT(*) AS missed_races
+    FROM driver_missed_rounds dmr
+    GROUP BY dmr."driver_id", dmr."year"
+),
+drivers_few_missed_races AS (
+    SELECT "driver_id", "year"
+    FROM driver_missed_race_counts
+    WHERE missed_races < 3 AND missed_races > 0
+),
+driver_missed_rounds_filtered AS (
+    SELECT dmr.*
+    FROM driver_missed_rounds dmr
+    JOIN drivers_few_missed_races dfmr ON dmr."driver_id" = dfmr."driver_id" AND dmr."year" = dfmr."year"
+),
+driver_missed_rounds_summary AS (
+    SELECT
+        "driver_id",
+        "year",
+        MIN("round") AS first_missed_round,
+        MAX("round") AS last_missed_round
+    FROM driver_missed_rounds_filtered
+    GROUP BY "driver_id", "year"
+),
+driver_drives AS (
+    SELECT
+        "driver_id",
+        "year",
+        "constructor_id",
+        "first_round",
+        "last_round"
+    FROM F1.F1."DRIVES"
+),
+numbers AS (
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY NULL) -1 AS n
+    FROM TABLE(GENERATOR(ROWCOUNT => 30))
+),
+driver_constructor_rounds AS (
+    SELECT
+        dd."driver_id",
+        dd."year",
+        dd."constructor_id",
+        dd."first_round" + n.n AS "round"
+    FROM driver_drives dd
+    JOIN numbers n ON n.n <= dd."last_round" - dd."first_round"
+),
+constructors_before_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" < dmrs.first_missed_round
+),
+constructors_after_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" > dmrs.last_missed_round
+),
+drivers_switched_teams AS (
+    SELECT
+        cba."driver_id",
+        cba."year"
+    FROM
+        (SELECT
+            dmrs."driver_id",
+            dmrs."year",
+            ARRAY_AGG(DISTINCT cbmr."constructor_id") AS constructors_before,
+            ARRAY_AGG(DISTINCT camr."constructor_id") AS constructors_after
+        FROM driver_missed_rounds_summary dmrs
+        LEFT JOIN constructors_before_missed_round cbmr ON dmrs."driver_id" = cbmr."driver_id" AND dmrs."year" = cbmr."year"
+        LEFT JOIN constructors_after_missed_round camr ON dmrs."driver_id" = camr."driver_id" AND dmrs."year" = camr."year"
+        GROUP BY dmrs."driver_id", dmrs."year") cba
+    WHERE
+        cba.constructors_before IS NOT NULL
+        AND cba.constructors_after IS NOT NULL
+        AND ARRAY_SIZE(cba.constructors_before) > 0
+        AND ARRAY_SIZE(cba.constructors_after) > 0
+        AND ARRAY_SIZE(ARRAY_INTERSECTION(cba.constructors_before, cba.constructors_after)) = 0
+),
+qualified_drivers AS (
+    SELECT DISTINCT
+        cba."driver_id",
+        cba."year",
+        dmrs.first_missed_round,
+        dmrs.last_missed_round
+    FROM drivers_switched_teams cba
+    JOIN driver_missed_rounds_summary dmrs ON cba."driver_id" = dmrs."driver_id" AND cba."year" = dmrs."year"
+    JOIN drivers_few_missed_races dfmr ON cba."driver_id" = dfmr."driver_id" AND cba."year" = dfmr."year"
+)
+SELECT
+    qd."year",
+    ROUND(AVG(qd.first_missed_round), 4) AS "Average_First_Missed_Round",
+    ROUND(AVG(qd.last_missed_round), 4) AS "Average_Last_Missed_Round"
+FROM qualified_drivers qd
+GROUP BY qd."year"
+ORDER BY qd."year";
+```
+2025-01-25 03:08:50 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-25 03:08:50 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-25 03:08:50 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-25 03:08:52 - snowflake.connector.cursor - INFO - Number of results in first chunk: 14
+2025-01-25 03:08:52 - snowflake.connector.connection - INFO - closed
+2025-01-25 03:08:52 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-25 03:08:52 - root - INFO - itercount: 4
+2025-01-25 03:08:52 - root - INFO - 0
+2025-01-25 03:08:52 - root - INFO - results: 
+year,Average_First_Missed_Round,Average_Last_Missed_Round
+1951,2.0000,2.5000
+1955,3.0000,5.0000
+1964,2.0000,6.0000
+1970,4.0000,6.0000
+1974,10.0000,10.5000
+1975,13.0000,13.0000
+1981,7.0000,7.0000
+1982,4.0000,4.0000
+1984,12.0000,15.0000
+1985,9.0000,9.0000
+1989,9.0000,9.6667
+1991,14.0000,15.0000
+2001,8.0000,12.0000
+2004,16.0000,16.0000
+
+
+2025-01-25 03:08:52 - root - INFO - Please check the answer again by reviewing Calculate the average first and last rounds of races missed by drivers each year. Only include drivers who missed fewer than three races annually and switched teams between their first and last missed races, reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+Keep all decimals to four decimal places.
+The answer format should be like: ```csv
+Year,Average_First_Missed_Round,Average_Last_Missed_Round
+year1:int,avg_first_missed_round1:float,avg_last_missed_round1:float
+year2:int,avg_first_missed_round2:float,avg_last_missed_round2:float
+...
+```
+
+This table shows the average of the first and last rounds missed by drivers each year who met the specified criteria. The drivers included are those who missed fewer than three races in a year and switched teams between their first and last missed races. Each row represents a year, with the average calculated from the qualifying drivers in that year. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+year,Average_First_Missed_Round,Average_Last_Missed_Round
+1951,2.0000,2.5000
+1955,3.0000,5.0000
+1964,2.0000,6.0000
+1970,4.0000,6.0000
+1974,10.0000,10.5000
+1975,13.0000,13.0000
+1981,7.0000,7.0000
+1982,4.0000,4.0000
+1984,12.0000,15.0000
+1985,9.0000,9.0000
+1989,9.0000,9.6667
+1991,14.0000,15.0000
+2001,8.0000,12.0000
+2004,16.0000,16.0000
+Current sql:
+WITH all_rounds AS (
+    SELECT "year", "round"
+    FROM F1.F1."RACES"
+),
+driver_races AS (
+    SELECT DISTINCT r."driver_id", ra."year", ra."round"
+    FROM F1.F1."RESULTS" r
+    JOIN F1.F1."RACES" ra ON r."race_id" = ra."race_id"
+),
+driver_missed_rounds AS (
+    SELECT ar."year", ar."round", d."driver_id"
+    FROM F1.F1."DRIVERS" d
+    CROSS JOIN (SELECT DISTINCT "year" FROM F1.F1."RACES") y
+    JOIN all_rounds ar ON ar."year" = y."year"
+    LEFT JOIN driver_races dr ON dr."driver_id" = d."driver_id" AND dr."year" = ar."year" AND dr."round" = ar."round"
+    WHERE dr."driver_id" IS NULL
+),
+driver_missed_race_counts AS (
+    SELECT
+        dmr."driver_id",
+        dmr."year",
+        COUNT(*) AS missed_races
+    FROM driver_missed_rounds dmr
+    GROUP BY dmr."driver_id", dmr."year"
+),
+drivers_few_missed_races AS (
+    SELECT "driver_id", "year"
+    FROM driver_missed_race_counts
+    WHERE missed_races < 3 AND missed_races > 0
+),
+driver_missed_rounds_filtered AS (
+    SELECT dmr.*
+    FROM driver_missed_rounds dmr
+    JOIN drivers_few_missed_races dfmr ON dmr."driver_id" = dfmr."driver_id" AND dmr."year" = dfmr."year"
+),
+driver_missed_rounds_summary AS (
+    SELECT
+        "driver_id",
+        "year",
+        MIN("round") AS first_missed_round,
+        MAX("round") AS last_missed_round
+    FROM driver_missed_rounds_filtered
+    GROUP BY "driver_id", "year"
+),
+driver_drives AS (
+    SELECT
+        "driver_id",
+        "year",
+        "constructor_id",
+        "first_round",
+        "last_round"
+    FROM F1.F1."DRIVES"
+),
+numbers AS (
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY NULL) -1 AS n
+    FROM TABLE(GENERATOR(ROWCOUNT => 30))
+),
+driver_constructor_rounds AS (
+    SELECT
+        dd."driver_id",
+        dd."year",
+        dd."constructor_id",
+        dd."first_round" + n.n AS "round"
+    FROM driver_drives dd
+    JOIN numbers n ON n.n <= dd."last_round" - dd."first_round"
+),
+constructors_before_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" < dmrs.first_missed_round
+),
+constructors_after_missed_round AS (
+    SELECT DISTINCT
+        dcr."driver_id",
+        dcr."year",
+        dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" > dmrs.last_missed_round
+),
+drivers_switched_teams AS (
+    SELECT
+        cba."driver_id",
+        cba."year"
+    FROM
+        (SELECT
+            dmrs."driver_id",
+            dmrs."year",
+            ARRAY_AGG(DISTINCT cbmr."constructor_id") AS constructors_before,
+            ARRAY_AGG(DISTINCT camr."constructor_id") AS constructors_after
+        FROM driver_missed_rounds_summary dmrs
+        LEFT JOIN constructors_before_missed_round cbmr ON dmrs."driver_id" = cbmr."driver_id" AND dmrs."year" = cbmr."year"
+        LEFT JOIN constructors_after_missed_round camr ON dmrs."driver_id" = camr."driver_id" AND dmrs."year" = camr."year"
+        GROUP BY dmrs."driver_id", dmrs."year") cba
+    WHERE
+        cba.constructors_before IS NOT NULL
+        AND cba.constructors_after IS NOT NULL
+        AND ARRAY_SIZE(cba.constructors_before) > 0
+        AND ARRAY_SIZE(cba.constructors_after) > 0
+        AND ARRAY_SIZE(ARRAY_INTERSECTION(cba.constructors_before, cba.constructors_after)) = 0
+),
+qualified_drivers AS (
+    SELECT DISTINCT
+        cba."driver_id",
+        cba."year",
+        dmrs.first_missed_round,
+        dmrs.last_missed_round
+    FROM drivers_switched_teams cba
+    JOIN driver_missed_rounds_summary dmrs ON cba."driver_id" = dmrs."driver_id" AND cba."year" = dmrs."year"
+    JOIN drivers_few_missed_races dfmr ON cba."driver_id" = dfmr."driver_id" AND cba."year" = dfmr."year"
+)
+SELECT
+    qd."year",
+    ROUND(AVG(qd.first_missed_round), 4) AS "Average_First_Missed_Round",
+    ROUND(AVG(qd.last_missed_round), 4) AS "Average_Last_Missed_Round"
+FROM qualified_drivers qd
+GROUP BY qd."year"
+ORDER BY qd."year";Be careful of using GENERATOR. Don't use seq4(), use ROW_NUMBER().
+
+2025-01-25 03:10:08 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 03:10:08 - root - INFO - ```sql
+WITH all_rounds AS (
+    SELECT DISTINCT "year", "round"
+    FROM F1.F1."RACES"
+),
+driver_races AS (
+    SELECT DISTINCT r."driver_id", ra."year", ra."round"
+    FROM F1.F1."RESULTS" r
+    JOIN F1.F1."RACES" ra ON r."race_id" = ra."race_id"
+),
+driver_missed_rounds AS (
+    SELECT dr."driver_id", ar."year", ar."round"
+    FROM (SELECT DISTINCT "driver_id" FROM F1.F1."DRIVERS") dr
+    JOIN all_rounds ar ON 1=1
+    LEFT JOIN driver_races drr ON drr."driver_id" = dr."driver_id" AND drr."year" = ar."year" AND drr."round" = ar."round"
+    WHERE drr."driver_id" IS NULL
+),
+driver_missed_counts AS (
+    SELECT "driver_id", "year", COUNT(*) AS missed_races
+    FROM driver_missed_rounds
+    GROUP BY "driver_id", "year"
+),
+drivers_few_missed_races AS (
+    SELECT "driver_id", "year"
+    FROM driver_missed_counts
+    WHERE missed_races < 3 AND missed_races > 0
+),
+driver_missed_rounds_summary AS (
+    SELECT "driver_id", "year", MIN("round") AS first_missed_round, MAX("round") AS last_missed_round
+    FROM driver_missed_rounds
+    WHERE ("driver_id", "year") IN (SELECT "driver_id", "year" FROM drivers_few_missed_races)
+    GROUP BY "driver_id", "year"
+),
+driver_drives AS (
+    SELECT
+        "driver_id",
+        "year",
+        "constructor_id",
+        "first_round",
+        "last_round"
+    FROM F1.F1."DRIVES"
+),
+numbers AS (
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY NULL) -1 AS n
+    FROM TABLE(GENERATOR(ROWCOUNT => 30))
+),
+driver_constructor_rounds AS (
+    SELECT
+        dd."driver_id",
+        dd."year",
+        dd."constructor_id",
+        dd."first_round" + n.n AS "round"
+    FROM driver_drives dd
+    JOIN numbers n ON n.n <= dd."last_round" - dd."first_round"
+),
+constructors_before AS (
+    SELECT DISTINCT dcr."driver_id", dcr."year", dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" < dmrs.first_missed_round
+),
+constructors_after AS (
+    SELECT DISTINCT dcr."driver_id", dcr."year", dcr."constructor_id"
+    FROM driver_constructor_rounds dcr
+    JOIN driver_missed_rounds_summary dmrs ON dcr."driver_id" = dmrs."driver_id" AND dcr."year" = dmrs."year"
+    WHERE dcr."round" > dmrs.last_missed_round
+),
+drivers_switched_teams AS (
+    SELECT cba."driver_id", cba."year"
+    FROM (
+        SELECT
+            dmrs."driver_id",
+            dmrs."year",
+            COUNT(DISTINCT cb."constructor_id") AS count_before,
+            COUNT(DISTINCT ca."constructor_id") AS count_after,
+            SUM(CASE WHEN cb."constructor_id" = ca."constructor_id" THEN 1 ELSE 0 END) AS common_constructors
+        FROM driver_missed_rounds_summary dmrs
+        LEFT JOIN constructors_before cb ON dmrs."driver_id" = cb."driver_id" AND dmrs."year" = cb."year"
+        LEFT JOIN constructors_after ca ON dmrs."driver_id" = ca."driver_id" AND dmrs."year" = ca."year"
+        GROUP BY dmrs."driver_id", dmrs."year"
+    ) cba
+    WHERE cba.count_before > 0 AND cba.count_after > 0 AND cba.common_constructors = 0
+),
+qualified_drivers AS (
+    SELECT DISTINCT ds."driver_id", ds."year", dmrs.first_missed_round, dmrs.last_missed_round
+    FROM drivers_switched_teams ds
+    JOIN driver_missed_rounds_summary dmrs ON ds."driver_id" = dmrs."driver_id" AND ds."year" = dmrs."year"
+)
+SELECT
+    qd."year",
+    ROUND(AVG(qd.first_missed_round), 4) AS "Average_First_Missed_Round",
+    ROUND(AVG(qd.last_missed_round), 4) AS "Average_Last_Missed_Round"
+FROM qualified_drivers qd
+GROUP BY qd."year"
+ORDER BY qd."year";
+```
+2025-01-25 03:10:08 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-25 03:10:08 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-25 03:10:08 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-25 03:10:10 - snowflake.connector.cursor - INFO - Number of results in first chunk: 14
+2025-01-25 03:10:10 - snowflake.connector.connection - INFO - closed
+2025-01-25 03:10:10 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-25 03:10:10 - root - INFO - itercount: 5
+2025-01-25 03:10:10 - root - INFO - 0
+2025-01-25 03:10:10 - root - INFO - Total iteration counts: 5
