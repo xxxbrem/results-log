@@ -1,0 +1,1025 @@
+2025-01-25 11:18:08 - openai._base_client - INFO - Retrying request to /chat/completions in 0.438223 seconds
+2025-01-25 11:18:58 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:19:49 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:19:49 - root - INFO - The error you're encountering occurs because the `pchembl_value` column in the `activities` table is of type **STRING**, and you're attempting to compare it numerically to an integer `10` using the `>` operator. SQL cannot perform arithmetic comparisons between strings and numeric types without explicit casting.
+
+To resolve this issue, you need to **cast** the `pchembl_value` column to a numeric type (such as `FLOAT64`) before performing the comparison.
+
+Here's how you can modify your query:
+
+```sql
+SELECT activity_id, molregno, assay_id, pchembl_value
+FROM `bigquery-public-data.ebi_chembl.activities`
+WHERE CAST(pchembl_value AS FLOAT64) > 10
+LIMIT 100;
+```
+
+**Explanation:**
+
+- **Casting `pchembl_value` to `FLOAT64`:** By using `CAST(pchembl_value AS FLOAT64)`, you convert the string values in `pchembl_value` into floating-point numbers, allowing for numeric comparison.
+- **Ensuring Valid Numeric Values:** If there's a possibility that some `pchembl_value` entries cannot be converted to numbers (e.g., they contain non-numeric characters or are `NULL`), you can use `SAFE_CAST` instead. This function returns `NULL` for invalid conversions, preventing runtime errors.
+
+Here's the query using `SAFE_CAST`:
+
+```sql
+SELECT activity_id, molregno, assay_id, pchembl_value
+FROM `bigquery-public-data.ebi_chembl.activities`
+WHERE SAFE_CAST(pchembl_value AS FLOAT64) > 10
+LIMIT 100;
+```
+
+**Additional Considerations:**
+
+- **Filtering Out Non-Numeric or NULL Values:**
+
+  To ensure that only valid numeric values are compared, you can filter out `NULL` or non-convertible values:
+
+  ```sql
+  SELECT activity_id, molregno, assay_id, pchembl_value
+  FROM `bigquery-public-data.ebi_chembl.activities`
+  WHERE pchembl_value IS NOT NULL
+    AND SAFE_CAST(pchembl_value AS FLOAT64) > 10
+  LIMIT 100;
+  ```
+
+- **Checking Data Types in BigQuery:**
+
+  You can verify the data type of `pchembl_value` using the `INFORMATION_SCHEMA.COLUMN_FIELD_PATHS` view:
+
+  ```sql
+  SELECT column_name, data_type
+  FROM `bigquery-public-data.ebi_chembl.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS`
+  WHERE table_name = 'activities'
+    AND column_name = 'pchembl_value';
+  ```
+
+  This will confirm that `pchembl_value` is of type `STRING`.
+
+**Revised Query from Original Task:**
+
+When applying this to your original task, ensure that any numeric comparisons involving `pchembl_value` include the necessary casting. For example, when finding activities with `pchembl_value` over 10:
+
+```sql
+SELECT a.activity_id, a.molregno, a.assay_id, a.pchembl_value, cp.heavy_atoms
+FROM `bigquery-public-data.ebi_chembl.activities` AS a
+JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+  ON a.molregno = cp.molregno
+WHERE cp.heavy_atoms BETWEEN 10 AND 15
+  AND CAST(a.pchembl_value AS FLOAT64) > 10
+LIMIT 100;
+```
+
+**Further Steps:**
+
+- **Ensure Compatibility Across All Queries:**
+
+  For any other queries where you compare `pchembl_value` numerically, apply the same casting approach.
+
+- **Handling Other Numeric Fields Stored as Strings:**
+
+  If you encounter other fields that are stored as strings but represent numeric data (like `standard_value` or `standard_relation`), you may need to cast them similarly.
+
+**Remember:** Always validate that your data can be cast successfully to avoid unexpected `NULL` values in your results.
+
+---
+
+**Reference for Casting in BigQuery:**
+
+- **CAST:** Converts data from one type to another.
+  - Syntax: `CAST(expression AS TYPE)`.
+  - Example: `CAST(pchembl_value AS FLOAT64)`.
+
+- **SAFE_CAST:** Similar to `CAST`, but returns `NULL` instead of an error if the conversion fails.
+  - Syntax: `SAFE_CAST(expression AS TYPE)`.
+  - Example: `SAFE_CAST(pchembl_value AS FLOAT64)`.
+
+**Note on Data Quality:**
+
+- **Data Cleaning:** If the dataset contains inconsistent entries (e.g., unexpected strings in numeric fields), consider data cleaning steps or consult the data documentation for guidance on handling such cases.
+2025-01-25 11:21:27 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:21:27 - root - INFO - SQL:
+SELECT activity_id, molregno, assay_id, pchembl_value
+FROM `bigquery-public-data.ebi_chembl.activities`
+WHERE CAST(pchembl_value AS FLOAT64) > 10
+LIMIT 100;
+Results:
+activity_id,molregno,assay_id,pchembl_value
+5202588,69834,717329,10.9
+1613058,329934,320167,10.13
+8059729,366521,806222,10.3
+1151003,13104,54735,10.62
+7853606,1251577,775934,10.2
+2496950,364368,517306,10.18
+3502945,707118,664979,10.5
+24781862,2765084,2216667,10.1
+6324610,1171649,763496,10.1
+23306533,2561082,2133588,10.08
+628386,190461,158035,10.1
+626046,55023,158035,10.7
+1798533,365146,422884,10.57
+1415790,298977,304076,10.66
+1415798,298977,313611,10.18
+969348,550662,178932,10.22
+7570623,13048,774355,10.12
+24865289,2775830,2237569,10.83
+18901602,2386997,1816919,10.52
+18901410,2423947,1816917,10.4
+18901544,2376245,1816918,10.52
+18901091,2357554,1816913,10.52
+18879667,2380611,1812155,10.8
+148690,191810,140179,10.19
+13860521,1610702,1281519,10.4
+1074392,238251,143097,10.29
+1711923,345594,352426,10.13
+1493284,317915,303683,10.3
+1063087,661796,138212,10.1
+117176,121691,104539,11
+1606641,328413,321001,10.33
+1211126,226128,145346,10.28
+716386,642681,47645,10.52
+916950,39075,65652,10.7
+932631,72548,146368,10.06
+155352,254414,29122,10.03
+2370135,442250,534712,10.96
+2155087,83838,466620,10.15
+2983915,579805,596273,10.59
+1204367,1542055,146518,10.14
+566560,151384,101923,11
+915673,147835,33736,10.17
+1185183,154668,143855,10.33
+8041648,1279130,803919,10.04
+178343,250697,157715,10.27
+1707849,345215,347906,10.1
+16258924,1980444,1534673,10.4
+178119,236845,64004,10.68
+12170921,1446610,883124,10.52
+15617266,1947799,1498307,10.1
+10978341,1356484,830845,10.7
+15748008,1967900,1522885,10.52
+17663834,1983438,1528909,10.55
+
+2025-01-25 11:22:07 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:22:07 - root - INFO - The error you're encountering arises because the `heavy_atoms` column in the `compound_properties` table is of type **STRING**, and you're attempting to perform a numeric comparison using the `BETWEEN` operator with integer values (`10` and `15`). SQL cannot perform numeric comparisons between strings and numeric types without explicit casting.
+
+To fix this error, you need to **cast** the `heavy_atoms` column to a numeric type (such as `INT64`) before performing the comparison. Additionally, to handle any potential non-numeric or `NULL` values in the `heavy_atoms` column, it's safer to use `SAFE_CAST`, which returns `NULL` if the cast fails instead of throwing an error.
+
+Here's the corrected query:
+
+```sql
+SELECT molregno, heavy_atoms
+FROM `bigquery-public-data.ebi_chembl.compound_properties`
+WHERE SAFE_CAST(heavy_atoms AS INT64) BETWEEN 10 AND 15
+LIMIT 100;
+```
+
+**Explanation:**
+
+- **Using `SAFE_CAST`:** This function attempts to convert `heavy_atoms` to an `INT64`. If the conversion fails (e.g., due to non-numeric strings or `NULL` values), it returns `NULL` instead of causing an error.
+- **Filtering with `BETWEEN`:** The `BETWEEN` operator will only consider rows where `SAFE_CAST(heavy_atoms AS INT64)` returns a valid integer. Rows where the casting results in `NULL` are effectively ignored in the comparison.
+- **Ensuring Valid Comparisons:** By casting `heavy_atoms` to a numeric type, you allow the `BETWEEN` operator to perform a valid numeric comparison between the casted value and the integers `10` and `15`.
+
+**Additional Considerations:**
+
+- **Data Type Verification:** You can verify the data type of the `heavy_atoms` column using the `INFORMATION_SCHEMA.COLUMN_FIELD_PATHS` view:
+
+  ```sql
+  SELECT column_name, data_type
+  FROM `bigquery-public-data.ebi_chembl.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS`
+  WHERE table_name = 'compound_properties'
+    AND column_name = 'heavy_atoms';
+  ```
+
+  This query will confirm that `heavy_atoms` is indeed of type `STRING`.
+
+- **Handling Non-Numeric Values:** If there are any non-numeric values or anomalies in the `heavy_atoms` column, `SAFE_CAST` will prevent your query from failing by returning `NULL` for those rows.
+
+- **Sample Results:**
+
+  After running the corrected query, your results might look like:
+
+  ```plaintext
+  molregno    heavy_atoms
+  --------    -----------
+  123456      12
+  234567      15
+  345678      10
+  ...
+  ```
+
+**Applying Corrections to Other Queries:**
+
+As you've requested, if similar errors occur in other queries, you should apply the same approach of casting string columns to appropriate numeric types before performing numeric comparisons or operations.
+
+**For Example:**
+
+- **Query Involving `pchembl_value`:**
+
+  Original Query:
+
+  ```sql
+  SELECT a.activity_id, a.molregno, a.assay_id, a.pchembl_value, cp.heavy_atoms
+  FROM `bigquery-public-data.ebi_chembl.activities` AS a
+  JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+    ON a.molregno = cp.molregno
+  WHERE cp.heavy_atoms BETWEEN 10 AND 15
+    AND a.pchembl_value > 10
+  LIMIT 100;
+  ```
+
+  **Correction:**
+
+  ```sql
+  SELECT a.activity_id, a.molregno, a.assay_id, a.pchembl_value, cp.heavy_atoms
+  FROM `bigquery-public-data.ebi_chembl.activities` AS a
+  JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+    ON a.molregno = cp.molregno
+  WHERE SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+    AND SAFE_CAST(a.pchembl_value AS FLOAT64) > 10
+  LIMIT 100;
+  ```
+
+  **Explanation:**
+
+  - **Casting `cp.heavy_atoms` to `INT64`** using `SAFE_CAST` for the `BETWEEN` comparison.
+  - **Casting `a.pchembl_value` to `FLOAT64`** using `SAFE_CAST` for the `>` comparison.
+
+**General Guidance:**
+
+- **Always Check Column Data Types:** When performing operations that require numeric types, ensure that the columns you're using are indeed numeric.
+- **Use `CAST` or `SAFE_CAST`:** If a column is stored as a string but represents numeric data, cast it to the appropriate numeric type.
+  - Use `CAST` when you're certain all values can be converted.
+  - Use `SAFE_CAST` when there might be invalid or non-numeric entries, as it prevents the query from failing due to conversion errors.
+
+**Conclusion:**
+
+By applying `SAFE_CAST` to the `heavy_atoms` column in your query, you resolve the data type mismatch error and can successfully perform the numeric comparison within the `BETWEEN` clause.
+
+**Corrected Query:**
+
+```sql
+SELECT molregno, heavy_atoms
+FROM `bigquery-public-data.ebi_chembl.compound_properties`
+WHERE SAFE_CAST(heavy_atoms AS INT64) BETWEEN 10 AND 15
+LIMIT 100;
+```
+
+This should resolve the error, and your query should now run successfully.
+2025-01-25 11:23:34 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:23:34 - root - INFO - SQL:
+SELECT molregno, heavy_atoms
+FROM `bigquery-public-data.ebi_chembl.compound_properties`
+WHERE SAFE_CAST(heavy_atoms AS INT64) BETWEEN 10 AND 15
+LIMIT 100;
+Results:
+molregno,heavy_atoms
+182193,14
+1160340,13
+1294143,15
+1674518,12
+305967,15
+483099,15
+2426064,10
+1294222,15
+1940449,11
+1314606,14
+1619965,15
+130320,14
+171100,14
+1287729,13
+1301308,13
+1322725,15
+1494138,15
+1672706,15
+505881,15
+2269258,14
+1678124,14
+377605,14
+1674938,10
+1819906,13
+2474592,15
+13570,15
+481624,14
+1303142,11
+498105,11
+1676200,15
+2523647,14
+323348,11
+1160318,15
+322485,12
+1825886,14
+1494407,15
+323136,12
+1160324,15
+1296716,14
+1489024,14
+2377228,12
+498190,14
+2214081,12
+1082102,13
+1325750,13
+832643,15
+1102374,13
+829811,14
+361880,11
+1160322,14
+915804,10
+1476836,14
+1677187,12
+13540,13
+175105,15
+446330,10
+42652,12
+1674960,15
+305982,15
+464938,14
+1674198,13
+2279427,15
+1041793,15
+322238,12
+43292,12
+204524,14
+1287443,15
+396902,12
+1675866,10
+896268,13
+1160056,11
+1486374,10
+1678099,15
+159518,12
+573522,13
+570639,10
+929616,15
+49260,13
+2512512,14
+744684,15
+1822380,12
+2208751,13
+2125885,15
+573523,14
+374944,15
+1120586,15
+31838,14
+1229486,15
+2475010,15
+1289563,13
+1086009,15
+405082,14
+2231462,13
+216001,15
+272839,14
+1739824,10
+576108,14
+1834170,13
+1763714,14
+1737325,15
+
+2025-01-25 11:23:36 - root - INFO - SQL:
+SELECT molregno, heavy_atoms
+FROM `bigquery-public-data.ebi_chembl.compound_properties`
+WHERE SAFE_CAST(heavy_atoms AS INT64) BETWEEN 10 AND 15
+LIMIT 100
+Results:
+molregno,heavy_atoms
+464937,14
+483559,15
+1671881,11
+2538796,15
+484507,10
+1325560,14
+175134,15
+445046,15
+1314442,12
+114042,14
+1286457,15
+1475548,15
+1673788,10
+203507,14
+1317298,15
+2255490,14
+2340700,15
+1321417,12
+1095259,12
+2265549,14
+999519,10
+1674481,11
+16594,10
+651111,12
+1091457,10
+2226961,14
+246601,13
+483073,15
+1754744,11
+1829971,15
+195884,14
+439315,12
+204484,14
+1675790,11
+322976,12
+1592517,11
+474440,15
+1767940,10
+1331133,13
+13725,12
+1294020,15
+2170325,15
+443892,14
+1329911,14
+1943708,15
+2436703,15
+67104,14
+1318801,15
+1750632,10
+1331075,15
+222789,14
+462454,13
+654929,12
+1180717,15
+1614916,15
+1677750,10
+502829,14
+1329674,11
+455882,13
+1282647,15
+1096271,14
+9983,11
+1083500,14
+2346005,12
+456874,14
+32139,13
+1346912,15
+1346905,12
+31696,15
+2320588,14
+2236016,15
+1288873,15
+1768034,15
+1765179,15
+1764496,15
+1728952,10
+1152980,13
+869678,15
+1766003,10
+1355936,14
+754196,15
+1764720,15
+1026296,14
+544925,13
+667497,13
+667088,13
+524512,14
+1355935,15
+1834182,14
+2085206,13
+35694,15
+10413,14
+2085207,15
+2678627,15
+59214,12
+1916501,15
+1677265,14
+1304010,15
+2413487,13
+444999,12
+
+2025-01-25 11:23:38 - root - INFO - SQL:
+SELECT assay_id, COUNT(*) AS activity_count
+FROM `bigquery-public-data.ebi_chembl.activities`
+GROUP BY assay_id
+HAVING COUNT(*) < 5
+LIMIT 100
+Results:
+assay_id,activity_count
+1837592,1
+2047650,1
+2114459,1
+578720,1
+1515666,1
+2024382,3
+2166111,4
+607836,1
+694323,2
+1353952,4
+833886,1
+1545901,1
+1615538,1
+993192,1
+1611934,1
+976529,1
+1713346,1
+678410,1
+1986226,2
+2166112,4
+2115546,1
+1460393,1
+1736718,1
+756487,1
+2034833,1
+2205337,2
+1919592,3
+1650352,4
+1481045,4
+1823227,1
+1442523,1
+1780383,3
+693697,1
+1617480,2
+224055,3
+2071026,4
+232348,1
+1987529,1
+819770,1
+1927252,1
+1518349,1
+794482,4
+1512802,1
+753331,1
+979571,2
+1916612,1
+1700479,1
+1814575,1
+2203140,4
+672884,1
+746132,3
+748545,1
+657036,1
+671541,2
+647930,2
+683885,3
+810266,1
+992399,4
+1281610,1
+964460,1
+1564199,1
+800006,4
+1276437,3
+1497536,2
+875057,1
+1615087,4
+878283,4
+1590710,1
+798060,1
+1469228,1
+1512271,1
+1613510,1
+831816,4
+913788,1
+1979675,1
+2113072,1
+1438401,1
+874759,2
+812539,1
+985228,1
+2015628,1
+2247179,3
+2123744,1
+1652110,3
+1910955,1
+2083887,1
+2108886,4
+1878555,1
+1475057,2
+1510848,3
+1540971,2
+1790148,1
+1738706,3
+1793602,2
+1656499,3
+1284980,3
+768674,4
+894660,1
+1853125,2
+2028042,2
+
+2025-01-25 11:23:40 - root - INFO - SQL:
+SELECT activity_id, molregno, assay_id, standard_value
+FROM `bigquery-public-data.ebi_chembl.activities`
+WHERE standard_value IS NOT NULL
+LIMIT 100
+Results:
+activity_id,molregno,assay_id,standard_value
+18917068,277989,1822540,1.9
+17968836,112090,1646511,21.7
+1090569,90387,18149,4.81
+331062,92730,224302,0.57
+405828,258570,224520,353
+498398,156747,69486,-44
+1041960,7840,209764,45
+103276,24000,209581,340
+18507090,2293098,1755732,0.69
+18786971,2316268,1799593,1.13
+15235147,75901,1475457,2.73
+18383394,2276566,1730884,0.34
+18383513,2265861,1730895,0.24
+18562978,2294941,1766797,1.94
+23215414,2564639,2114481,0.97
+18079642,2210656,1667385,0.54
+18977836,2457794,1838363,0.2
+18982762,2380147,1839188,0.05
+24899574,5985,2246090,1.04
+19008736,470511,1844641,0.35
+22912342,2534898,2078731,1
+18973892,2381467,1837577,0.6
+18079695,2206917,1667412,0.49
+18563013,2288266,1766787,0.43
+18383671,2264310,1730909,0.17
+82543,31974,63312,0.9
+13979056,1612615,1301343,0.84
+814656,72666,226560,0.54
+2691834,561990,578719,10000
+6351969,1174283,765160,-2.3
+2705900,555595,580934,3.1
+3002429,578943,595052,340
+3060078,594486,603853,0.69
+5114128,458557,697349,2
+11010782,1365507,840412,4
+13359415,1567287,967130,3.1
+16740798,2158763,1615128,-0.1003
+18309420,2277887,1716724,-1.615
+18496063,182042,1753597,1
+19006788,2375368,1844162,1.2
+19128606,2401507,1873120,10
+19359368,2350023,1919506,17.74
+22485183,2531976,2034324,1.8
+22791436,2487955,2054562,7.83
+22848639,2521621,2067543,8.13
+23261822,2208807,2123942,0.1
+24746696,2750134,2206812,2.5
+24812769,2755861,2223825,4
+2629144,501242,523785,10
+3484099,334337,669838,8
+5130120,1058296,700231,3.87
+6228795,419616,752189,2.1
+
+2025-01-25 11:24:09 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:24:09 - root - INFO - ```sql
+SELECT molregno, assay_id, standard_value, COUNT(*) AS duplicate_count
+FROM `bigquery-public-data.ebi_chembl.activities`
+WHERE standard_value IS NOT NULL
+GROUP BY molregno, assay_id, standard_value
+HAVING COUNT(*) > 1
+LIMIT 100;
+```
+2025-01-25 11:25:21 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:25:21 - root - INFO - SQL:
+SELECT molregno, assay_id, standard_value, COUNT(*) AS duplicate_count
+FROM `bigquery-public-data.ebi_chembl.activities`
+WHERE standard_value IS NOT NULL
+GROUP BY molregno, assay_id, standard_value
+HAVING COUNT(*) > 1
+LIMIT 100;
+Results:
+molregno,assay_id,standard_value,duplicate_count
+365189,1640262,1.8,8
+835863,1640263,1.2,14
+29989,1640262,1.3,4
+2468853,1640263,0.9,36
+14440,1640263,1.9,6
+88232,1640263,2.4,7
+51056,1640263,1.3,7
+579567,596087,1000,2
+1291395,809262,501.19,2
+1286951,809220,199.53,2
+1293875,809128,63.1,2
+466228,530772,100000,2
+1724727,1331205,100000,4
+2362758,1810109,100000,4
+1828090,1461354,100000,2
+1968051,1522993,10000,2
+455652,496044,100000,2
+455573,496043,100000,2
+255904,545772,1900,2
+1908725,1998107,100000,2
+1177256,768623,100000,2
+1732119,1339358,100000,2
+2101116,1631563,100000,2
+376679,432650,100000,2
+376671,432618,100000,2
+189045,140498,2.734,2
+108367,232313,2.48,2
+1294209,809349,100000,2
+1316824,809349,100000,2
+1290400,809428,100000,2
+1296104,809062,100000,2
+1293375,809393,100000,2
+1288895,809370,100000,2
+1304425,809018,100000,2
+1299337,809101,100000,2
+2394525,809370,100000,2
+1340512,809351,100000,2
+1296568,809035,100000,2
+1323573,809316,100000,2
+39709,809022,100000,2
+82161,809099,100000,2
+820907,809059,100000,2
+1297236,809086,100000,3
+705374,809308,100000,2
+1287386,809062,100000,2
+1316816,809057,100000,2
+1220372,809014,100000,2
+2280976,2069961,0,4
+2215189,2069960,0,10
+2509983,2069961,1,5
+312618,2069964,0,9
+437629,2069961,0,6
+2103704,2069960,0,6
+543658,2069960,0,8
+
+2025-01-25 11:25:22 - root - INFO - SQL:
+SELECT molregno, canonical_smiles
+FROM `bigquery-public-data.ebi_chembl.compound_structures`
+LIMIT 100
+Results:
+molregno,canonical_smiles
+1822592,CCn1nccc1Oc1cc(CCCCOC)cnc1NC(=O)NC
+128,O=c1oc2c(F)c(F)ccc2c2cc(O)c(O)cc12
+6538,COc1c(C)cnc(C[S+]([O-])c2nc3ccccc3n2CCN2CCOCC2)c1C
+9678,C/C=C(\NC(=O)C(CCC)CCC)C(=O)O
+10298,CCNS(=O)(=O)c1ccc2c(c1)C(n1ccccc1=O)=CC(C)(C)O2
+1833716,CCCCCCCCCCCCCCCC(=O)Oc1ccc(/C=C2\CCC/C(=C\c3ccc(OC(=O)CCCCCCCCCCCCCCC)c(OC)c3)C2=O)cc1OC
+1834533,CNC(=O)[C@@]12C[C@@H]1[C@@H](n1cnc3c(NC)nc(C#Cc4ccsc4)nc31)[C@H](O)[C@@H]2O
+1838408,CCOC(=O)c1ccc2cc(C(=O)/C=C/c3ccccc3)sc2c1
+1840256,Fc1cccc(-n2cc(NCCN3CCOCC3)nn2)c1
+24961,CC[C@@H](C)[C@@H](NC(=O)[C@@H](C)NC(=O)[C@@H](CCC(=O)O)NC(=O)[C@@H](CC(C)C)NC(=O)[C@@H](Cc1ccccc1)NC(=O)[C@H](N)CCSC)C(=O)N1CCC[C@H]1C(=O)N[C@@H](CCSC)C(=O)O
+1861143,CCn1cc(Cl)c(C(=O)NCc2cnn(C)c2)n1
+39040,CCc1cc(-c2cc(C(F)(F)F)nn2-c2ccc(S(N)(=O)=O)cc2)ccc1OC
+42807,CC(=O)c1c(-c2ccc(Cl)cc2)c(-c2ccc(Cl)cc2)nn(CCCCCCN2C(=O)c3ccccc3C2=O)c1=O
+1886886,CN1C(=O)CC(c2ccccc2)C12CCN(c1ncccn1)CC2
+1892689,CCC(C)N(Cc1cccnc1)C(=O)c1ccc(OC)cc1O
+64248,COc1ccc(S(=O)(=O)C(CCCCc2ccc3c(c2)OCO3)CC(=O)NO)cc1OC
+68360,COc1cnc(C)c2[nH]c3ccccc3c12
+1897419,COc1cccc(C2CCCN2C(=O)CC2=CSC3=NCCCN23)c1
+77870,Cc1cc(C)c(C2=NOC(C(=O)Nc3ccc(-c4ccccc4S(N)(=O)=O)cc3)C2)cc1C
+78299,c1ccc(Cn2cncc2CCNCC23CC(c4ccccc42)c2ccccc23)cc1
+82695,O=C(COc1ccccc1)N(O)CCc1ccccc1
+1909093,Cc1cc(C(=O)N2CCCC(n3cncn3)C2)c(C)n1CC1CC1
+1910145,CC(=O)N1CCCC1C(=O)NCCOc1cc(C)cc(C)c1
+1910181,Cc1nn(C)c(C)c1C1COCCN1C(=O)c1ccccc1
+1938013,O[C@@H]1C[C@@](CNCc2ccc(F)cc2)(COc2cccnc2)C[C@@H]1O
+1939614,O=C1C[C@@H]2[C@H](CCN2Cc2ccccn2)N1Cc1ccncc1
+1941547,C[C@H]1CN([C@@H](C)CO)C(=O)c2c(c3ccccc3n2C)-c2ccccc2CO[C@@H]1CN(C)Cc1cccc2c1OCCCO2
+1943401,O=C(C1CC1)N1CC(=O)N2[C@H](C1)[C@@H](c1ccc(C#CCc3ccccc3)cc1)[C@@H]2CO
+104146,COc1cc(OC)nc(OC(C(=O)O)C(OC)(c2ccc(Cl)cc2)c2ccc(Cl)cc2)n1
+111374,COc1nsnc1C1=C(C)CCN(C)C1
+112108,Cc1ccc(O)c2[nH]c(-c3ccc(N(C)C)cc3)nc12
+117277,O=C(O)CC/C=C/C(CS)CCCCC(=O)O
+117301,CC(=O)/C=C/c1ccccc1
+1964971,Cc1nn2c(-c3nc4cc(C)c(C)cc4[nH]3)c(-c3ccccc3)nc2s1
+1974481,CNc1nc(Nc2ccc(C(=O)NC3CC3)cc2OC)ncc1Cl
+123418,CCCCCCc1noc([C@H](CC)NC(=O)[C@H](Cc2ccc(OP(=O)(O)O)cc2)NC(C)=O)n1
+139230,O=c1ccc2cc(CBr)ccc2o1
+1981159,CC1(C)CCN(Cc2ccc3c(c2)C[C@H](NC(=O)c2ccc(OC[C@@H]4CCCO4)cc2)C3)CC1
+1982654,CO[C@@H]1C[C@@H](C(C)C)N(c2nc3cc(-c4noc(=O)[nH]4)nc(-c4cncc(Cl)c4)c3n2C[C@H]2CC[C@H](C)CC2)C1
+1998302,Cn1c2c(c3ccc(-n4ncc(OCc5ccc(C(F)(F)F)nc5)cc4=O)cc31)CCNCC2
+2006372,CCNC1CCc2ccc(CCCNS(=O)(=O)CC3CC3)cc2C1Cc1ccccc1
+167023,COc1cc(C(C)=O)ccc1OCCCN1CCC(C(c2ccc(F)cc2)C2CCCCC2)CC1
+167283,COc1c(Br)c(C(=O)O)c(-c2c3c(c(OC)c(Br)c2C(=O)O)OCO3)c2c1OCO2
+2016718,O=C(c1nn([C@H]2CCCN(CCN3CCOCC3)C2)c2c1CS(=O)(=O)c1c(F)cccc1-2)N1CCOCC1
+170968,CCN(C)CC#CCCC(=O)C(O)(c1ccccc1)C1CCC1
+180064,C=C[C@@]1(C)CCC2[C@@H](CC[C@@H]3[C@](C)(C(=O)O)CCC[C@@]23C)C1
+2021633,Nc1cnc(-c2ccc(-c3ccccc3S(=O)(=O)N3CCN(C4CC4)CC3)cc2F)cn1
+2025765,CC(C)(O)C#Cc1cc2c(cc1F)C1CC(C1)n1c-2nc(C(N)=O)c1-c1nc(C2CC2)no1
+2026947,Cc1cccc(C)c1Nc1ccc(C(=O)NCCCCCCC(=O)NO)cc1
+2036919,OC1CS[C@@H](n2cnc3c(NCc4cccc(F)c4)nc(Cl)nc32)[C@H]1O
+196758,CCC(Cc1ccc(OC)c(C(=O)NCc2ccc(OCc3ccccc3)cc2)c1)C(=O)O
+199883,CCCC[C@H](NC(=O)[C@H](CCC(=O)O)NC(=O)[C@H](CC(C)C)NC(=O)[C@@H](NC(=O)[C@H](CCC(=O)O)NC(=O)[C@H](CCCN=C(N)N)NC(=O)[C@H](CC(C)C)NC(=O)[C@H](CC(C)C)NC(=O)[C@H]1CCCCNC(=O)CC[C@@H](NC(=O)[C@@H](N)CC(=O)O)C(=O)N[C@H]([C@@H](C)O)C(=O)N[C@H](Cc2ccccc2)C(=O)N1)C(C)C)C(=O)N[C@@H](C)C(=O)N[C@@H](CCCN=C(N)N)C(=O)N[C@@H](C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CCC(N)=O)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](C)C(=O)N[C@@H](CCC(N)=O)C(=O)N[C@@H](CCC(N)=O)C(=O)N[C@@H](C)C(=O)N[C@@H](Cc1c[nH]cn1)C(=O)N[C@@H](CO)C(=O)N[C@@H](CC(N)=O)C(=O)N[C@@H](CCCN=C(N)N)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H](CC(C)C)C(=O)N[C@@H](CCCC)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@H](C(=O)N[C@H](C(N)=O)[C@@H](C)CC)[C@@H](C)CC
+
+2025-01-25 11:25:24 - root - INFO - SQL:
+SELECT activity_id, molregno, standard_relation, standard_value
+FROM `bigquery-public-data.ebi_chembl.activities`
+LIMIT 100
+Results:
+activity_id,molregno,standard_relation,standard_value
+400977,283276,=,2
+794406,71172,,
+1701575,343251,,
+13396471,1573031,,
+12637343,1514445,,
+12158150,1439464,,
+18504295,2295532,,
+17976504,2207621,,
+19435805,2347062,,
+1806663,344830,,
+2525916,519898,,
+1438653,306007,=,207000
+332642,279527,=,1400
+18704824,2324239,,
+15662164,44752,,
+18086941,1442794,,
+657519,62237,=,0.44
+861547,270463,=,19.1
+338886,92405,=,1.48
+1157210,219000,=,5
+1157203,218764,,
+560071,188591,<,0.02
+16790180,2106746,,
+858689,53624,=,31
+1066743,24135,=,2.7
+1079735,24641,=,40
+18383410,2263184,=,0.16
+487542,230820,=,0.303
+15250312,1844385,=,0.3
+15250258,1844385,=,0.61
+16599444,315023,=,1.056
+15250247,1844385,=,1.09
+15250272,1844385,=,0.67
+15107936,1819359,=,0.33
+18977791,2457794,=,0.42
+18973907,2381467,=,0.8
+18383306,2279019,=,0.24
+18982714,2374995,=,0.5
+18079815,2206917,=,0.19
+22762152,1296181,=,0.92
+18079637,2228187,=,0.43
+18221676,436875,=,1.12
+23215408,2543852,=,0.47
+22912350,2505171,<,1
+23215427,2564639,=,0.39
+16878655,1449226,,
+23277653,444971,=,0.81
+18383580,2272237,=,0.41
+18383415,2264310,=,0.26
+23215373,2564639,=,0.58
+
+2025-01-25 11:25:26 - root - INFO - SQL:
+SELECT doc_id, journal, year, first_page
+FROM `bigquery-public-data.ebi_chembl.docs`
+WHERE year IS NOT NULL AND first_page IS NOT NULL
+LIMIT 100
+Results:
+doc_id,journal,year,first_page
+56167,,2008,161
+100132,,2011,1899
+100133,,2001,1924
+100159,,2011,1899
+100161,,2011,1899
+98939,Gut,1996,63
+64734,AIDS,2000,1287
+64415,AIDS,2002,1743
+64790,AIDS,2002,2295
+64423,AIDS,2003,1092
+64300,Cell,1994,491
+64047,Gene,2000,117
+64035,Blood,1992,1528
+64507,Blood,2004,2940
+64632,Blood,2004,3739
+52618,Blood,2009,2984
+52805,AAPS J,2006,E204
+116897,Nature,2010,1067
+116900,Nature,2010,1067
+64403,Nature,1994,549
+45680,Nature,2000,962
+39334,Nature,2007,387
+39355,Nature,2007,541
+39458,Nature,2007,1091
+38686,Nature,2007,959
+39231,Nature,2007,817
+39232,Nature,2007,864
+39460,Nature,2007,87
+39252,Nature,2007,775
+39361,Nature,2007,952
+38623,Nature,2007,1001
+39445,Nature,2007,553
+39462,Nature,2007,712
+48285,Nature,2010,305
+49166,Nature,2010,311
+61375,Nature,2012,62
+71005,Farmaco,2000,338
+71007,Farmaco,2002,135
+71013,Farmaco,2004,673
+64591,Nat Med,1999,1048
+116887,Sci Adv,2015,e1500723
+116894,Sci Adv,2016,e1600760
+91875,Sci Rep,2013,1
+124727,Sci Rep,2019,13802
+124758,Sci Rep,2021,12290
+124759,Sci Rep,2021,1312
+64822,Science,1995,866
+46300,Science,1997,955
+46301,Science,1998,533
+46024,Science,2003,875
+45681,Science,2005,223
+46025,Science,2005,1318
+35871,Science,2007,1759
+35870,Science,2007,516
+35884,Science,2007,236
+35894,Science,2007,1390
+46057,Science,2008,520
+46073,Science,2008,259
+46074,Science,2008,1078
+46075,Science,2008,1493
+46076,Science,2008,1673
+46599,Science,2008,1392
+52804,Science,2010,1175
+57966,Science,2011,1372
+64105,Genomics,1999,209
+
+2025-01-25 11:25:28 - root - INFO - SQL:
+SELECT a.activity_id, a.molregno, a.assay_id, a.pchembl_value, cp.heavy_atoms
+FROM `bigquery-public-data.ebi_chembl.activities` AS a
+JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+  ON a.molregno = cp.molregno
+WHERE SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+  AND SAFE_CAST(a.pchembl_value AS FLOAT64) > 10
+LIMIT 100
+Results:
+activity_id,molregno,assay_id,pchembl_value,heavy_atoms
+539387,222071,142899,10.44,15
+385898,271730,158186,10.68,14
+1074399,238953,143097,10.57,15
+1807736,310308,424280,10.35,14
+1214077,154061,143855,10.12,13
+91850,154061,217460,10.6,13
+1193141,154588,143855,10.18,13
+1214075,154575,143855,10.24,13
+1198202,155348,143855,10.6,14
+1435444,305181,304960,10.1,13
+13932454,1620794,1292393,10.1,14
+13393223,1572658,972539,10.4,14
+12092086,117779,860161,10.59,14
+656094,86151,143717,10.74,14
+499051,86151,32664,10.74,14
+656096,86151,143720,10.24,14
+714051,86151,223087,10.26,14
+714050,86151,143865,10.24,14
+1445340,86151,303413,11,14
+16450928,86151,1552371,10.52,14
+714052,86151,143862,10.59,14
+1719941,86151,360240,10.74,14
+1807730,86151,424280,10.7,14
+1457094,310542,303639,10.3,14
+2006402,86489,452154,10.59,14
+721094,86489,223088,10.26,14
+15760674,86489,1522503,10.37,14
+1719927,86489,360240,10.59,14
+1807729,86489,424280,10.72,14
+17760201,86489,1641553,10.74,14
+3193036,86489,615093,10.74,14
+1493172,86489,303683,10.3,14
+650003,86489,143720,10.35,14
+15760696,86489,1522511,10.35,14
+3193035,86489,615093,10.59,14
+1445339,86489,303413,10.7,14
+721093,86489,143870,10.35,14
+650001,86489,143717,10.59,14
+721095,86489,143871,10.74,14
+1074392,238251,143097,10.29,15
+1996735,404476,450798,10.4,15
+1996736,404476,450798,10.4,15
+1908973,386258,439959,10.33,14
+1908974,386258,439959,10.33,14
+
+2025-01-25 11:25:29 - root - INFO - SQL:
+SELECT a.activity_id, a.molregno, a.assay_id, a.pchembl_value, cp.heavy_atoms
+FROM `bigquery-public-data.ebi_chembl.activities` AS a
+JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+  ON a.molregno = cp.molregno
+WHERE SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+  AND SAFE_CAST(a.pchembl_value AS FLOAT64) > 10
+LIMIT 100
+Results:
+activity_id,molregno,assay_id,pchembl_value,heavy_atoms
+539387,222071,142899,10.44,15
+385898,271730,158186,10.68,14
+1074399,238953,143097,10.57,15
+1807736,310308,424280,10.35,14
+1214077,154061,143855,10.12,13
+91850,154061,217460,10.6,13
+1193141,154588,143855,10.18,13
+1214075,154575,143855,10.24,13
+1198202,155348,143855,10.6,14
+1435444,305181,304960,10.1,13
+13932454,1620794,1292393,10.1,14
+13393223,1572658,972539,10.4,14
+12092086,117779,860161,10.59,14
+656094,86151,143717,10.74,14
+499051,86151,32664,10.74,14
+656096,86151,143720,10.24,14
+714051,86151,223087,10.26,14
+714050,86151,143865,10.24,14
+1445340,86151,303413,11,14
+16450928,86151,1552371,10.52,14
+714052,86151,143862,10.59,14
+1719941,86151,360240,10.74,14
+1807730,86151,424280,10.7,14
+1457094,310542,303639,10.3,14
+2006402,86489,452154,10.59,14
+721094,86489,223088,10.26,14
+15760674,86489,1522503,10.37,14
+1719927,86489,360240,10.59,14
+1807729,86489,424280,10.72,14
+17760201,86489,1641553,10.74,14
+3193036,86489,615093,10.74,14
+1493172,86489,303683,10.3,14
+650003,86489,143720,10.35,14
+15760696,86489,1522511,10.35,14
+3193035,86489,615093,10.59,14
+1445339,86489,303413,10.7,14
+721093,86489,143870,10.35,14
+650001,86489,143717,10.59,14
+721095,86489,143871,10.74,14
+1074392,238251,143097,10.29,15
+1996735,404476,450798,10.4,15
+1996736,404476,450798,10.4,15
+1908973,386258,439959,10.33,14
+1908974,386258,439959,10.33,14
+
