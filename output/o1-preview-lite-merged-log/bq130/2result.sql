@@ -11,7 +11,15 @@ WITH state_daily_new_cases AS (
   WHERE
     date BETWEEN '2020-03-01' AND '2020-05-31'
 ),
-top5_states_daily AS (
+state_daily_new_cases_non_negative AS (
+  SELECT
+    date,
+    state_name,
+    GREATEST(daily_new_cases, 0) AS daily_new_cases
+  FROM
+    state_daily_new_cases
+),
+top_states_per_day AS (
   SELECT
     date,
     state_name,
@@ -19,30 +27,28 @@ top5_states_daily AS (
     ROW_NUMBER() OVER (
       PARTITION BY date
       ORDER BY daily_new_cases DESC
-    ) AS rank
+    ) AS state_rank
   FROM
-    state_daily_new_cases
-  WHERE
-    daily_new_cases IS NOT NULL
+    state_daily_new_cases_non_negative
 ),
 state_top5_counts AS (
   SELECT
     state_name,
     COUNT(*) AS top5_appearances
   FROM
-    top5_states_daily
+    top_states_per_day
   WHERE
-    rank <= 5
+    state_rank <= 5
   GROUP BY
     state_name
 ),
-state_top5_ranked AS (
+state_ranking AS (
   SELECT
     state_name,
     top5_appearances,
-    ROW_NUMBER() OVER (
+    DENSE_RANK() OVER (
       ORDER BY top5_appearances DESC
-    ) AS state_rank
+    ) AS state_overall_rank
   FROM
     state_top5_counts
 ),
@@ -50,58 +56,60 @@ fourth_ranked_state AS (
   SELECT
     state_name
   FROM
-    state_top5_ranked
+    state_ranking
   WHERE
-    state_rank = 4
+    state_overall_rank = 4
 ),
 county_daily_new_cases AS (
   SELECT
     date,
-    CONCAT(county, ' County') AS county_name,
+    county,
     confirmed_cases - LAG(confirmed_cases) OVER (
       PARTITION BY county
       ORDER BY date
     ) AS daily_new_cases
   FROM
-    `bigquery-public-data.covid19_nyt.us_counties` AS uc
-  JOIN
-    fourth_ranked_state AS frs
-  ON
-    uc.state_name = frs.state_name
+    `bigquery-public-data.covid19_nyt.us_counties`
   WHERE
-    date BETWEEN '2020-03-01' AND '2020-05-31'
+    state_name IN (SELECT state_name FROM fourth_ranked_state)
+    AND date BETWEEN '2020-03-01' AND '2020-05-31'
 ),
-top5_counties_daily AS (
+county_daily_new_cases_non_negative AS (
   SELECT
     date,
-    county_name,
+    county,
+    GREATEST(daily_new_cases, 0) AS daily_new_cases
+  FROM
+    county_daily_new_cases
+),
+top_counties_per_day AS (
+  SELECT
+    date,
+    county,
     daily_new_cases,
     ROW_NUMBER() OVER (
       PARTITION BY date
       ORDER BY daily_new_cases DESC
-    ) AS rank
+    ) AS county_rank
   FROM
-    county_daily_new_cases
-  WHERE
-    daily_new_cases IS NOT NULL
+    county_daily_new_cases_non_negative
 ),
 county_top5_counts AS (
   SELECT
-    county_name,
+    county,
     COUNT(*) AS top5_appearances
   FROM
-    top5_counties_daily
+    top_counties_per_day
   WHERE
-    rank <= 5
+    county_rank <= 5
   GROUP BY
-    county_name
+    county
 )
 SELECT
-  county_name AS top_five_counties,
+  county AS top_five_counties,
   top5_appearances AS count
 FROM
   county_top5_counts
 ORDER BY
   count DESC
-LIMIT
-  5;
+LIMIT 5;

@@ -1,100 +1,17 @@
-Comparing the two SQL queries and their results, we can observe the following:
+After comparing the two SQL queries and their results, I have determined that **`1result.sql`** is the correct answer.
 
-### **1. SQL Queries Comparison**
+**Reasoning:**
 
-**First Query (`1result.sql`):**
+- **Efficient Computation:** The SQL query in `1result.sql` precomputes the maximum wins for each season using a subquery and then joins this result with the main table. This approach is more efficient than computing the maximum wins within the WHERE clause for each row, as seen in `0result.sql`.
 
-```sql
-SELECT s.market AS Team_Market, s.name AS Team_Name, COUNT(*) AS Times_Max_Wins
-FROM `bigquery-public-data.ncaa_basketball.mbb_historical_teams_seasons` s
-JOIN (
-  SELECT season, MAX(wins) AS max_wins
-  FROM `bigquery-public-data.ncaa_basketball.mbb_historical_teams_seasons`
-  WHERE season BETWEEN 1900 AND 2000
-  GROUP BY season
-) m ON s.season = m.season AND s.wins = m.max_wins
-WHERE s.season BETWEEN 1900 AND 2000
-GROUP BY Team_Market, Team_Name
-ORDER BY Times_Max_Wins DESC
-LIMIT 5;
-```
+- **Accurate Results:** By joining on both the season and the maximum wins, `1result.sql` accurately identifies all teams that had the maximum number of wins in each season. This ensures that teams sharing the maximum wins in a season are all counted.
 
-**Second Query (`2result.sql`):**
+- **Consistent Ordering:** The `ORDER BY` clause in `1result.sql` includes `s.market` after ordering by `num_max_wins DESC`. This provides a consistent and deterministic ordering when teams have the same number of maximum wins, which is important for reproducible results.
 
-```sql
-SELECT
-  hs.market AS Team_Market,
-  hs.name AS Team_Name,
-  COUNT(*) AS Times_Max_Wins
-FROM
-  `bigquery-public-data.ncaa_basketball.mbb_historical_teams_seasons` hs
-JOIN (
-  SELECT
-    season,
-    MAX(wins) AS max_wins
-  FROM
-    `bigquery-public-data.ncaa_basketball.mbb_historical_teams_seasons`
-  WHERE
-    season BETWEEN 1900 AND 2000
-  GROUP BY
-    season
-) mw
-ON
-  hs.season = mw.season
-  AND hs.wins = mw.max_wins
-WHERE
-  hs.season BETWEEN 1900 AND 2000
-GROUP BY
-  hs.market,
-  hs.name
-ORDER BY
-  Times_Max_Wins DESC
-LIMIT
-  5;
-```
+- **Handling of Null Values:** The query properly accounts for any null or empty `market` values in the data, ensuring that teams are correctly identified and counted.
 
-**Observations:**
-
-- **Aliases and Formatting:**
-  - The first query uses `s` and `m` as aliases, while the second uses `hs` and `mw`.
-  - The second query has more structured formatting, which can improve readability.
-
-- **Logic and Functionality:**
-  - Both queries perform the same operations:
-    - They identify the maximum number of wins (`MAX(wins)`) for each season between 1900 and 2000.
-    - They join this result back to the main table to find teams that had these maximum wins.
-    - They count the number of times each team appears in this list (i.e., the number of times they had the maximum wins in a season).
-    - They order the results in descending order of `Times_Max_Wins` and limit the output to the top 5 teams.
-
-- **Filtering Conditions:**
-  - Both queries filter seasons between 1900 and 2000.
-  - Neither query explicitly filters out teams with null `market` or `name` values.
-
-### **2. Results Comparison**
-
-Both queries yield the same results:
-
-```csv
-Team_Market,Team_Name,Times_Max_Wins
-University of Kentucky,Wildcats,6
-"University of California, Los Angeles",Bruins,6
-,,5
-University of Pennsylvania,Quakers,5
-Texas Southern University,Tigers,5
-```
-
-- **Note:** The third row has empty `Team_Market` and `Team_Name`, indicating that there are entries in the data with missing team information but counted in the results. This suggests the need for additional filtering to exclude records with null or empty team names.
-
-### **3. Conclusion**
-
-While both SQL queries are functionally equivalent and correctly address the task, the second query (`2result.sql`) has better formatting and readability, which is important for code maintenance and comprehension. Therefore, it is preferable.
-
-Moreover, to improve the accuracy of the results and avoid entries with missing team names, it would be beneficial to add conditions to exclude null or empty `market` and `name` fields. However, given the provided queries, `2result.sql` stands out due to its clarity.
-
----
-
-Therefore, the correct SQL query is:
+**Therefore, the correct SQL is:**
 
 ```plaintext
-2result.sql
+1result.sql
 ```

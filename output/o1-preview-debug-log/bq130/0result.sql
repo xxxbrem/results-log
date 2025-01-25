@@ -1,117 +1,119 @@
-WITH state_daily_new_cases AS (
-  SELECT 
+WITH daily_state_cases AS (
+  SELECT
     date,
     state_name,
     confirmed_cases,
-    confirmed_cases - LAG(confirmed_cases) OVER (PARTITION BY state_name ORDER BY date) AS daily_new_cases
-  FROM 
+    LAG(confirmed_cases) OVER (
+      PARTITION BY state_name
+      ORDER BY date
+    ) AS prev_confirmed_cases
+  FROM
     `bigquery-public-data.covid19_nyt.us_states`
-  WHERE 
+  WHERE
     date BETWEEN '2020-03-01' AND '2020-05-31'
 ),
-state_top5_daily AS (
-  SELECT 
+daily_new_state_cases AS (
+  SELECT
+    date,
+    state_name,
+    IFNULL(confirmed_cases - prev_confirmed_cases, confirmed_cases) AS daily_new_cases
+  FROM
+    daily_state_cases
+),
+state_daily_top5 AS (
+  SELECT
     date,
     state_name,
     daily_new_cases,
-    RANK() OVER (PARTITION BY date ORDER BY daily_new_cases DESC) AS state_rank
-  FROM 
-    state_daily_new_cases
-  WHERE 
-    daily_new_cases IS NOT NULL AND daily_new_cases >= 0
+    ROW_NUMBER() OVER (
+      PARTITION BY date
+      ORDER BY daily_new_cases DESC
+    ) AS state_rank
+  FROM
+    daily_new_state_cases
 ),
-state_top5_only AS (
-  SELECT 
-    date,
-    state_name,
-    daily_new_cases
-  FROM 
-    state_top5_daily
-  WHERE 
-    state_rank <= 5
-),
-state_top5_counts AS (
+state_top_counts AS (
   SELECT
     state_name,
-    COUNT(*) AS appearances
+    COUNT(*) AS top5_count
   FROM
-    state_top5_only
+    state_daily_top5
+  WHERE
+    state_rank <= 5
   GROUP BY
     state_name
 ),
-state_overall_ranking AS (
+state_rankings AS (
   SELECT
     state_name,
-    appearances,
-    ROW_NUMBER() OVER (ORDER BY appearances DESC) AS overall_rank
+    top5_count,
+    ROW_NUMBER() OVER (
+      ORDER BY top5_count DESC
+    ) AS state_rank
   FROM
-    state_top5_counts
+    state_top_counts
 ),
-state_ranked_fourth AS (
+fourth_state AS (
   SELECT
     state_name
   FROM
-    state_overall_ranking
+    state_rankings
   WHERE
-    overall_rank = 4
+    state_rank = 4
+),
+county_daily_cases AS (
+  SELECT
+    c.date,
+    c.county,
+    c.confirmed_cases,
+    LAG(c.confirmed_cases) OVER (
+      PARTITION BY c.county
+      ORDER BY c.date
+    ) AS prev_confirmed_cases
+  FROM
+    `bigquery-public-data.covid19_nyt.us_counties` AS c
+  JOIN
+    fourth_state AS fs
+    ON c.state_name = fs.state_name
+  WHERE
+    c.date BETWEEN '2020-03-01' AND '2020-05-31'
 ),
 county_daily_new_cases AS (
-  SELECT 
+  SELECT
     date,
     county,
-    confirmed_cases,
-    confirmed_cases - LAG(confirmed_cases) OVER (PARTITION BY state_name, county ORDER BY date) AS daily_new_cases
-  FROM 
-    `bigquery-public-data.covid19_nyt.us_counties`
-  WHERE 
-    date BETWEEN '2020-03-01' AND '2020-05-31'
-    AND state_name = (SELECT state_name FROM state_ranked_fourth)
+    IFNULL(confirmed_cases - prev_confirmed_cases, confirmed_cases) AS daily_new_cases
+  FROM
+    county_daily_cases
 ),
-county_top5_daily AS (
-  SELECT 
+county_daily_top5 AS (
+  SELECT
     date,
     county,
     daily_new_cases,
-    RANK() OVER (PARTITION BY date ORDER BY daily_new_cases DESC) AS county_rank
-  FROM 
+    ROW_NUMBER() OVER (
+      PARTITION BY date
+      ORDER BY daily_new_cases DESC
+    ) AS county_rank
+  FROM
     county_daily_new_cases
-  WHERE 
-    daily_new_cases IS NOT NULL AND daily_new_cases >= 0
 ),
-county_top5_only AS (
-  SELECT 
-    date,
-    county,
-    daily_new_cases
-  FROM 
-    county_top5_daily
-  WHERE 
-    county_rank <= 5
-),
-county_top5_counts AS (
+county_top_counts AS (
   SELECT
     county,
-    COUNT(*) AS appearances
+    COUNT(*) AS top5_count
   FROM
-    county_top5_only
+    county_daily_top5
+  WHERE
+    county_rank <= 5
   GROUP BY
     county
-),
-county_overall_ranking AS (
-  SELECT
-    county,
-    appearances,
-    ROW_NUMBER() OVER (ORDER BY appearances DESC) AS overall_rank
-  FROM
-    county_top5_counts
+  ORDER BY
+    top5_count DESC
 )
--- Final result: Top 5 counties in the fourth-ranked state by appearances in daily top 5 new case counts
 SELECT
-  county AS Top_five_counties,
-  appearances AS count
+  county AS top_five_counties,
+  top5_count AS count
 FROM
-  county_overall_ranking
-WHERE
-  overall_rank <= 5
-ORDER BY
-  appearances DESC;
+  county_top_counts
+LIMIT 5;
