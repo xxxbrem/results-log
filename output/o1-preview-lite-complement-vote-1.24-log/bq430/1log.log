@@ -4541,3 +4541,1013 @@ Location: US
 Job ID: f24df932-fc57-48fc-bd88-1a5d2bcc057f
 
 Please correct it and output only 1 complete SQL query.
+2025-01-25 11:29:30 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:29:30 - root - INFO - ```sql
+WITH candidate_activities AS (
+    SELECT
+        a.activity_id,
+        a.assay_id,
+        a.standard_type,
+        a.molregno,
+        CAST(a.standard_value AS FLOAT64) AS standard_value,
+        a.standard_relation,
+        CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+        a.doc_id,
+        CAST(cp.heavy_atoms AS INT64) AS heavy_atoms
+    FROM `bigquery-public-data.ebi_chembl.activities` AS a
+    JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+        ON a.molregno = cp.molregno
+    WHERE a.standard_value IS NOT NULL
+      AND CAST(a.pchembl_value AS FLOAT64) > 10
+      AND CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+),
+activity_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        COUNT(*) AS activity_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno
+),
+duplicate_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        standard_value,
+        standard_relation,
+        COUNT(*) AS duplicate_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno, standard_value, standard_relation
+),
+filtered_activities AS (
+    SELECT ca.*
+    FROM candidate_activities AS ca
+    JOIN activity_counts AS ac
+        ON ca.assay_id = ac.assay_id AND ca.molregno = ac.molregno
+    JOIN duplicate_counts AS dc
+        ON ca.assay_id = dc.assay_id AND ca.molregno = dc.molregno
+           AND ca.standard_value = dc.standard_value AND ca.standard_relation = dc.standard_relation
+    WHERE ac.activity_count < 5
+      AND dc.duplicate_count < 2
+),
+docs_publication_dates AS (
+    SELECT
+        d.doc_id,
+        CAST(d.year AS INT64) AS year,
+        d.journal,
+        CAST(d.first_page AS INT64) AS first_page,
+        ROW_NUMBER() OVER (
+            PARTITION BY d.journal, CAST(d.year AS INT64)
+            ORDER BY CAST(d.first_page AS INT64)
+        ) AS doc_rank,
+        COUNT(*) OVER (PARTITION BY d.journal, CAST(d.year AS INT64)) AS total_docs
+    FROM `bigquery-public-data.ebi_chembl.docs` AS d
+    WHERE d.year IS NOT NULL AND d.year != ''
+      AND d.first_page IS NOT NULL AND REGEXP_CONTAINS(d.first_page, r'^\d+$')
+),
+publication_dates AS (
+    SELECT
+        doc_id,
+        DATE(
+            IFNULL(year, 1970),
+            CAST(
+                IFNULL(FLOOR(
+                    CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END
+                * 11), 0) + 1 AS INT64
+            ),
+            CAST(
+                MOD(
+                    FLOOR(
+                        CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END
+                    * 308
+                    ), 28
+                ) + 1 AS INT64
+            )
+        ) AS publication_date
+    FROM docs_publication_dates
+),
+canonical_smiles AS (
+    SELECT molregno, canonical_smiles
+    FROM `bigquery-public-data.ebi_chembl.compound_structures`
+    WHERE canonical_smiles IS NOT NULL AND canonical_smiles != ''
+),
+molecule_data AS (
+    SELECT
+        fa.*,
+        pd.publication_date,
+        cs.canonical_smiles
+    FROM filtered_activities AS fa
+    LEFT JOIN publication_dates AS pd
+        ON fa.doc_id = pd.doc_id
+    LEFT JOIN canonical_smiles AS cs
+        ON fa.molregno = cs.molregno
+),
+molecule_pairs AS (
+    SELECT
+        md1.assay_id,
+        md1.standard_type,
+        md1.molregno AS molregno1,
+        md1.activity_id AS activity_id1,
+        md1.standard_value AS standard_value1,
+        md1.standard_relation AS standard_relation1,
+        md1.pchembl_value AS pchembl_value1,
+        md1.doc_id AS doc_id1,
+        md1.heavy_atoms AS heavy_atoms1,
+        md1.publication_date AS publication_date1,
+        md1.canonical_smiles AS canonical_smiles1,
+        md2.molregno AS molregno2,
+        md2.activity_id AS activity_id2,
+        md2.standard_value AS standard_value2,
+        md2.standard_relation AS standard_relation2,
+        md2.pchembl_value AS pchembl_value2,
+        md2.doc_id AS doc_id2,
+        md2.heavy_atoms AS heavy_atoms2,
+        md2.publication_date AS publication_date2,
+        md2.canonical_smiles AS canonical_smiles2
+    FROM molecule_data AS md1
+    JOIN molecule_data AS md2
+        ON md1.assay_id = md2.assay_id
+        AND md1.standard_type = md2.standard_type
+        AND md1.molregno < md2.molregno
+)
+SELECT
+    GREATEST(mp.heavy_atoms1, mp.heavy_atoms2) AS Max_heavy_atom_count,
+    FORMAT_DATE('%Y-%m-%d', GREATEST(mp.publication_date1, mp.publication_date2)) AS Latest_publication_date,
+    GREATEST(CAST(mp.doc_id1 AS INT64), CAST(mp.doc_id2 AS INT64)) AS Highest_doc_id,
+    CASE
+        WHEN mp.standard_relation1 = '=' AND mp.standard_relation2 = '=' THEN
+            CASE
+                WHEN mp.standard_value1 > mp.standard_value2 THEN 'decrease'
+                WHEN mp.standard_value1 < mp.standard_value2 THEN 'increase'
+                WHEN mp.standard_value1 = mp.standard_value2 THEN 'no-change'
+                ELSE 'unknown'
+            END
+        ELSE 'unknown'
+    END AS Change_classification,
+    TO_HEX(MD5(TO_JSON_STRING(STRUCT(mp.activity_id1, mp.activity_id2)))) AS UUID
+FROM molecule_pairs AS mp
+LIMIT 100
+```
+2025-01-25 11:29:31 - root - INFO - itercount: 2
+2025-01-25 11:29:31 - root - INFO - 400 No matching signature for function MOD
+  Argument types: FLOAT64, INT64
+  Signature: MOD(INT64, INT64)
+    Argument 1: Unable to coerce type FLOAT64 to expected type INT64
+  Signature: MOD(NUMERIC, NUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type NUMERIC
+  Signature: MOD(BIGNUMERIC, BIGNUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type BIGNUMERIC at [74:17]; reason: invalidQuery, location: query, message: No matching signature for function MOD
+  Argument types: FLOAT64, INT64
+  Signature: MOD(INT64, INT64)
+    Argument 1: Unable to coerce type FLOAT64 to expected type INT64
+  Signature: MOD(NUMERIC, NUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type NUMERIC
+  Signature: MOD(BIGNUMERIC, BIGNUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type BIGNUMERIC at [74:17]
+
+Location: US
+Job ID: 6a52de33-5a8e-45c4-b3c4-1fdc998b5228
+
+2025-01-25 11:29:31 - root - INFO - Input sql:
+WITH candidate_activities AS (
+    SELECT
+        a.activity_id,
+        a.assay_id,
+        a.standard_type,
+        a.molregno,
+        CAST(a.standard_value AS FLOAT64) AS standard_value,
+        a.standard_relation,
+        CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+        a.doc_id,
+        CAST(cp.heavy_atoms AS INT64) AS heavy_atoms
+    FROM `bigquery-public-data.ebi_chembl.activities` AS a
+    JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+        ON a.molregno = cp.molregno
+    WHERE a.standard_value IS NOT NULL
+      AND CAST(a.pchembl_value AS FLOAT64) > 10
+      AND CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+),
+activity_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        COUNT(*) AS activity_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno
+),
+duplicate_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        standard_value,
+        standard_relation,
+        COUNT(*) AS duplicate_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno, standard_value, standard_relation
+),
+filtered_activities AS (
+    SELECT ca.*
+    FROM candidate_activities AS ca
+    JOIN activity_counts AS ac
+        ON ca.assay_id = ac.assay_id AND ca.molregno = ac.molregno
+    JOIN duplicate_counts AS dc
+        ON ca.assay_id = dc.assay_id AND ca.molregno = dc.molregno
+           AND ca.standard_value = dc.standard_value AND ca.standard_relation = dc.standard_relation
+    WHERE ac.activity_count < 5
+      AND dc.duplicate_count < 2
+),
+docs_publication_dates AS (
+    SELECT
+        d.doc_id,
+        CAST(d.year AS INT64) AS year,
+        d.journal,
+        CAST(d.first_page AS INT64) AS first_page,
+        ROW_NUMBER() OVER (
+            PARTITION BY d.journal, CAST(d.year AS INT64)
+            ORDER BY CAST(d.first_page AS INT64)
+        ) AS doc_rank,
+        COUNT(*) OVER (PARTITION BY d.journal, CAST(d.year AS INT64)) AS total_docs
+    FROM `bigquery-public-data.ebi_chembl.docs` AS d
+    WHERE d.year IS NOT NULL AND d.year != ''
+      AND d.first_page IS NOT NULL AND REGEXP_CONTAINS(d.first_page, r'^\d+$')
+),
+publication_dates AS (
+    SELECT
+        doc_id,
+        DATE(
+            IFNULL(year, 1970),
+            CAST(
+                IFNULL(FLOOR(
+                    CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END
+                * 11), 0) + 1 AS INT64
+            ),
+            CAST(
+                MOD(
+                    FLOOR(
+                        CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END
+                    * 308
+                    ), 28
+                ) + 1 AS INT64
+            )
+        ) AS publication_date
+    FROM docs_publication_dates
+),
+canonical_smiles AS (
+    SELECT molregno, canonical_smiles
+    FROM `bigquery-public-data.ebi_chembl.compound_structures`
+    WHERE canonical_smiles IS NOT NULL AND canonical_smiles != ''
+),
+molecule_data AS (
+    SELECT
+        fa.*,
+        pd.publication_date,
+        cs.canonical_smiles
+    FROM filtered_activities AS fa
+    LEFT JOIN publication_dates AS pd
+        ON fa.doc_id = pd.doc_id
+    LEFT JOIN canonical_smiles AS cs
+        ON fa.molregno = cs.molregno
+),
+molecule_pairs AS (
+    SELECT
+        md1.assay_id,
+        md1.standard_type,
+        md1.molregno AS molregno1,
+        md1.activity_id AS activity_id1,
+        md1.standard_value AS standard_value1,
+        md1.standard_relation AS standard_relation1,
+        md1.pchembl_value AS pchembl_value1,
+        md1.doc_id AS doc_id1,
+        md1.heavy_atoms AS heavy_atoms1,
+        md1.publication_date AS publication_date1,
+        md1.canonical_smiles AS canonical_smiles1,
+        md2.molregno AS molregno2,
+        md2.activity_id AS activity_id2,
+        md2.standard_value AS standard_value2,
+        md2.standard_relation AS standard_relation2,
+        md2.pchembl_value AS pchembl_value2,
+        md2.doc_id AS doc_id2,
+        md2.heavy_atoms AS heavy_atoms2,
+        md2.publication_date AS publication_date2,
+        md2.canonical_smiles AS canonical_smiles2
+    FROM molecule_data AS md1
+    JOIN molecule_data AS md2
+        ON md1.assay_id = md2.assay_id
+        AND md1.standard_type = md2.standard_type
+        AND md1.molregno < md2.molregno
+)
+SELECT
+    GREATEST(mp.heavy_atoms1, mp.heavy_atoms2) AS Max_heavy_atom_count,
+    FORMAT_DATE('%Y-%m-%d', GREATEST(mp.publication_date1, mp.publication_date2)) AS Latest_publication_date,
+    GREATEST(CAST(mp.doc_id1 AS INT64), CAST(mp.doc_id2 AS INT64)) AS Highest_doc_id,
+    CASE
+        WHEN mp.standard_relation1 = '=' AND mp.standard_relation2 = '=' THEN
+            CASE
+                WHEN mp.standard_value1 > mp.standard_value2 THEN 'decrease'
+                WHEN mp.standard_value1 < mp.standard_value2 THEN 'increase'
+                WHEN mp.standard_value1 = mp.standard_value2 THEN 'no-change'
+                ELSE 'unknown'
+            END
+        ELSE 'unknown'
+    END AS Change_classification,
+    TO_HEX(MD5(TO_JSON_STRING(STRUCT(mp.activity_id1, mp.activity_id2)))) AS UUID
+FROM molecule_pairs AS mp
+LIMIT 100
+The error information is:
+400 No matching signature for function MOD
+  Argument types: FLOAT64, INT64
+  Signature: MOD(INT64, INT64)
+    Argument 1: Unable to coerce type FLOAT64 to expected type INT64
+  Signature: MOD(NUMERIC, NUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type NUMERIC
+  Signature: MOD(BIGNUMERIC, BIGNUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type BIGNUMERIC at [74:17]; reason: invalidQuery, location: query, message: No matching signature for function MOD
+  Argument types: FLOAT64, INT64
+  Signature: MOD(INT64, INT64)
+    Argument 1: Unable to coerce type FLOAT64 to expected type INT64
+  Signature: MOD(NUMERIC, NUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type NUMERIC
+  Signature: MOD(BIGNUMERIC, BIGNUMERIC)
+    Argument 1: Unable to coerce type FLOAT64 to expected type BIGNUMERIC at [74:17]
+
+Location: US
+Job ID: 6a52de33-5a8e-45c4-b3c4-1fdc998b5228
+
+Please correct it and output only 1 complete SQL query.
+2025-01-25 11:30:23 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:30:23 - root - INFO - ```sql
+WITH candidate_activities AS (
+    SELECT
+        a.activity_id,
+        a.assay_id,
+        a.standard_type,
+        a.molregno,
+        CAST(a.standard_value AS FLOAT64) AS standard_value,
+        a.standard_relation,
+        CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+        a.doc_id,
+        CAST(cp.heavy_atoms AS INT64) AS heavy_atoms
+    FROM `bigquery-public-data.ebi_chembl.activities` AS a
+    JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+        ON a.molregno = cp.molregno
+    WHERE a.standard_value IS NOT NULL
+      AND CAST(a.pchembl_value AS FLOAT64) > 10
+      AND CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+),
+activity_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        COUNT(*) AS activity_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno
+),
+duplicate_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        standard_value,
+        standard_relation,
+        COUNT(*) AS duplicate_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno, standard_value, standard_relation
+),
+filtered_activities AS (
+    SELECT ca.*
+    FROM candidate_activities AS ca
+    JOIN activity_counts AS ac
+        ON ca.assay_id = ac.assay_id AND ca.molregno = ac.molregno
+    JOIN duplicate_counts AS dc
+        ON ca.assay_id = dc.assay_id AND ca.molregno = dc.molregno
+           AND ca.standard_value = dc.standard_value AND ca.standard_relation = dc.standard_relation
+    WHERE ac.activity_count < 5
+      AND dc.duplicate_count < 2
+),
+docs_publication_dates AS (
+    SELECT
+        d.doc_id,
+        CAST(d.year AS INT64) AS year,
+        d.journal,
+        CAST(d.first_page AS INT64) AS first_page,
+        ROW_NUMBER() OVER (
+            PARTITION BY d.journal, CAST(d.year AS INT64)
+            ORDER BY CAST(d.first_page AS INT64)
+        ) AS doc_rank,
+        COUNT(*) OVER (PARTITION BY d.journal, CAST(d.year AS INT64)) AS total_docs
+    FROM `bigquery-public-data.ebi_chembl.docs` AS d
+    WHERE d.year IS NOT NULL AND d.year != ''
+      AND d.first_page IS NOT NULL AND REGEXP_CONTAINS(d.first_page, r'^\d+$')
+),
+publication_dates AS (
+    SELECT
+        doc_id,
+        DATE(
+            IFNULL(year, 1970),
+            CAST(
+                IFNULL(
+                    FLOOR(
+                        (CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END) * 11
+                    ), 0
+                ) + 1 AS INT64
+            ),
+            CAST(
+                MOD(
+                    CAST(
+                        FLOOR(
+                            (CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END) * 308
+                        ) AS INT64
+                    ), 28
+                ) + 1 AS INT64
+            )
+        ) AS publication_date
+    FROM docs_publication_dates
+),
+canonical_smiles AS (
+    SELECT molregno, canonical_smiles
+    FROM `bigquery-public-data.ebi_chembl.compound_structures`
+    WHERE canonical_smiles IS NOT NULL AND canonical_smiles != ''
+),
+molecule_data AS (
+    SELECT
+        fa.*,
+        pd.publication_date,
+        cs.canonical_smiles
+    FROM filtered_activities AS fa
+    LEFT JOIN publication_dates AS pd
+        ON fa.doc_id = pd.doc_id
+    LEFT JOIN canonical_smiles AS cs
+        ON fa.molregno = cs.molregno
+),
+molecule_pairs AS (
+    SELECT
+        md1.assay_id,
+        md1.standard_type,
+        md1.molregno AS molregno1,
+        md1.activity_id AS activity_id1,
+        md1.standard_value AS standard_value1,
+        md1.standard_relation AS standard_relation1,
+        md1.pchembl_value AS pchembl_value1,
+        md1.doc_id AS doc_id1,
+        md1.heavy_atoms AS heavy_atoms1,
+        md1.publication_date AS publication_date1,
+        md1.canonical_smiles AS canonical_smiles1,
+        md2.molregno AS molregno2,
+        md2.activity_id AS activity_id2,
+        md2.standard_value AS standard_value2,
+        md2.standard_relation AS standard_relation2,
+        md2.pchembl_value AS pchembl_value2,
+        md2.doc_id AS doc_id2,
+        md2.heavy_atoms AS heavy_atoms2,
+        md2.publication_date AS publication_date2,
+        md2.canonical_smiles AS canonical_smiles2
+    FROM molecule_data AS md1
+    JOIN molecule_data AS md2
+        ON md1.assay_id = md2.assay_id
+        AND md1.standard_type = md2.standard_type
+        AND md1.molregno < md2.molregno
+)
+SELECT
+    GREATEST(mp.heavy_atoms1, mp.heavy_atoms2) AS Max_heavy_atom_count,
+    FORMAT_DATE('%Y-%m-%d', GREATEST(mp.publication_date1, mp.publication_date2)) AS Latest_publication_date,
+    GREATEST(CAST(mp.doc_id1 AS INT64), CAST(mp.doc_id2 AS INT64)) AS Highest_doc_id,
+    CASE
+        WHEN mp.standard_relation1 = '=' AND mp.standard_relation2 = '=' THEN
+            CASE
+                WHEN mp.standard_value1 > mp.standard_value2 THEN 'decrease'
+                WHEN mp.standard_value1 < mp.standard_value2 THEN 'increase'
+                WHEN mp.standard_value1 = mp.standard_value2 THEN 'no-change'
+                ELSE 'unknown'
+            END
+        ELSE 'unknown'
+    END AS Change_classification,
+    TO_HEX(MD5(TO_JSON_STRING(STRUCT(mp.activity_id1, mp.activity_id2)))) AS UUID
+FROM molecule_pairs AS mp
+LIMIT 100
+```
+2025-01-25 11:30:29 - root - INFO - itercount: 3
+2025-01-25 11:30:29 - root - INFO - 0
+2025-01-25 11:30:29 - root - INFO - results: 
+Max_heavy_atom_count,Latest_publication_date,Highest_doc_id,Change_classification,UUID
+14,2007-06-24,36133,increase,6142806e3b5e75abe1a21f8b4f448f39
+14,2007-06-24,36133,decrease,c4bd61440a95edea4e1253eae2e06478
+14,2007-06-24,36133,decrease,8d3bad6466ce6abd616390bead10ce4f
+14,2007-06-24,36133,increase,375c8ea26732ce08a1a469da65cc6fa7
+14,2007-06-24,36133,increase,9f923e6d763fe4957a0c9c490de38810
+14,2007-06-24,36133,decrease,10ffd93e81e02c889446858a7bb0cc3f
+14,2007-06-24,36133,decrease,4a03bce7d2c197bf701f08708b44f81e
+14,2007-06-24,36133,increase,38e70eb896fb01b9bce5ed3573a21a10
+14,2007-06-24,36133,increase,4b34daba2375d8a355e02db6f1c34d48
+14,2007-06-24,36133,increase,a438159dad31fc1689770a8987c0e15e
+15,1998-09-09,2811,increase,f69493bb9b864a7ab074d2de0be1996c
+15,1998-09-09,2811,increase,14d74aba39dc4324cbfbeaa54856445e
+13,1998-09-09,2811,decrease,54328e72084b60a57153e8764d59acc8
+13,1998-09-09,2811,decrease,16f5897c51e6ca683b19fa2350a833c8
+13,1998-09-09,2811,decrease,496f769c5decc3d1d4cab4c960b9ca25
+13,1998-09-09,2811,no-change,53a845bc9e28f087e61e1ce949b8cc93
+14,2004-04-15,6774,increase,02b90b92ac9b3c71de4feee15ab175e3
+14,2003-05-02,16992,decrease,a5be8d1e556e749149637804de517c4c
+15,2007-06-24,36133,decrease,3e90db66c81f6f4a94675734db6d8aea
+15,2007-06-24,36133,decrease,1c0e54602f37582825936a998048213a
+15,2007-06-24,36133,increase,dbbc6c80942c8291cc8991347b88971e
+15,2007-06-24,36133,decrease,0edab04836c3b7da44ac446b0d3a3a43
+15,2007-06-24,36133,decrease,f29ba71a0555ba2e7a5df58df5020520
+15,2007-06-24,36133,increase,443bca712c1ad6d053e423c82dfa437c
+15,2007-06-24,36133,increase,d38b924ce0832aaeaac3be26b31c2ac5
+15,2007-06-24,36133,decrease,46cd9a695ed860be8c6c7b744194261f
+15,2007-06-24,36133,decrease,62a3dda970ed73c8c3b332a44acac945
+15,2007-06-24,36133,increase,4f2670331c9cd8ce4b55fd9e75d6e721
+15,2007-06-24,36133,increase,8d45d6c42ef9e6859d568203ca567579
+15,2007-06-24,36133,increase,a627fc628c963b3bcfab5cea01fd947d
+15,1998-09-09,2811,no-change,5ce01ecbb4615eca0ae79fbe3bc90084
+15,1998-09-09,2811,decrease,b04ff92e74c4e3c4f4cb5e68dc05d96e
+15,1998-09-09,2811,decrease,4b856ae8e0a074e07d401296b16c12be
+15,1998-09-17,14663,increase,cd4050d21eb5672f57c42387b4ec0bd6
+14,1998-09-17,14663,increase,d0122a9347967301e7cdd2b02472c2d9
+14,1998-09-17,14663,increase,baabd8ced5830c35d12071f639fd057d
+14,2007-06-24,36133,increase,7846b9d7243080890387e0fa4352fc4e
+14,2007-06-24,36133,increase,ca3e818757d3ddd7389f475d8f6b95ce
+14,2007-06-24,36133,increase,a65995d0dbe42638e9aa4ce7b1062851
+14,2007-06-24,36133,increase,1feebccdbd83f1abb59ae8f526454115
+15,2007-06-24,36133,decrease,f1dc5d2f19deedd1c29ee98ba91a85d1
+15,2007-06-24,36133,decrease,ee1e8ce7583f688e7dd213b997fe2bbc
+15,2007-06-24,36133,decrease,a91b3311662ee1cb5bba2788dabdf73d
+15,2007-06-24,36133,decrease,efc6cb527faa743c4012981e1e9a4c68
+15,2007-06-24,36133,decrease,4cdd4ca0bda5d2efbe4d37bccf92d2f0
+15,2007-06-24,36133,decrease,ea2e6d09b3f3874eb1b2a688f1d7d5e2
+15,2007-06-24,36133,decrease,6025103d4ecfb1f8c4b3ecacbef4d2b2
+15,2007-06-24,36133,decrease,7889a169a32e8195770cee7aa061017f
+15,2007-06-24,36133,decrease,18112c93caaadea955c3461e5cf0051b
+15,2007-06-24,36133,decrease,d35b7c06df0187c1b6e680f3e63c0622
+15,2007-06-24,36133,decrease,e19168474354827472748a4dc12f9ad0
+15,2007-06-24,36133,decrease,56ae150690adf849dec91d686382a693
+15,2007-06-24,36133,decrease,8a291e98dc239eef1a1399162564b0e5
+15,2007-06-24,36133,decrease,1b18233c078650e497de701190d143ae
+15,2007-06-24,36133,decrease,460778b02de6a795338a7c9fc305d278
+15,2007-06-24,36133,decrease,70e9b3d1856cbb69b7da31b3b59e3938
+14,2005-02-18,21501,increase,85fa21532e47b7d923360f6d6389cbdd
+14,2005-02-18,21501,increase,d1d8ee15bf702d34a0fd6c2ae75e6727
+14,2005-02-18,21501,increase,0a96751e1a8a9446516fb2c2ca562ab8
+14,2007-06-24,36133,increase,0e185ff05a0d487b094503b5eda6d477
+14,2007-06-24,36133,increase,d01fcd2d61ecbd10f66abfb08053130d
+15,2007-06-24,36133,increase,ca80caf60b4416bcf07e7f56b00059fe
+14,2007-06-24,36133,increase,ade7829eca34c499a753e4ddf399709f
+14,2007-06-24,36133,decrease,5d201101ee8e638fff23104d0ae883b9
+14,2007-06-24,36133,decrease,f98fe0db45add2e48348ff1fcb82a0e3
+14,2007-06-24,36133,increase,a9dae028c02095afcb9cdbede5865a35
+14,2007-06-24,36133,increase,007c7e74bd4916de65c620a619ca82d9
+15,2007-06-24,36133,increase,eebd2eed7e8ce77a7af9fd76ba8ff62f
+14,2007-06-24,36133,decrease,e0c2040fc28513447461a678e651642b
+14,2007-06-24,36133,decrease,81ada53ed4eff1c0e946931c51e37f92
+14,2007-06-24,36133,increase,4d40d4454ed441626e2cd09ea2d3fdfe
+14,2007-06-24,36133,increase,c65b64553b981805b426c43f45f3d68f
+14,2007-06-24,36133,increase,5a90ef8e2eb7d72a0afeb5cfd5e425f5
+15,2003-05-02,16992,increase,b83e3e05c0ce496c823db392afb0df9e
+15,2003-05-02,16992,increase,a4cd3f07ebf463448fa045544a322ffa
+15,2003-05-02,16992,increase,b3f8fc59b408af97f0c1050a79eb00ac
+15,2003-05-02,16992,increase,99be5ddd8fe0e52760b59ab50fcabdaf
+15,2003-05-02,16992,increase,87dcc5d11084e7121585784df91267de
+14,1998-09-09,2811,decrease,7ca3cd607386a61f85dd61a4e8ab1ee3
+14,1998-09-09,2811,decrease,e0a1d50b2da6d446e409b598f3128f49
+15,1998-09-09,2811,decrease,6435294055ce8a989fcf8227cde633e4
+14,1998-09-09,2811,decrease,3b74be48bf9e441e163aaf7e20cfc33e
+14,1998-09-09,2811,decrease,98b95c6f53de8c79c408c13af487f76e
+14,1998-09-09,2811,decrease,76fbfe839edd7faf0bfa4631ee013175
+14,1998-09-09,2811,decrease,9aad46db7ab989f088e6ebf27924e35d
+15,1998-09-09,2811,decrease,7ca83fdfcf482bf41598a3b769626326
+14,1998-09-09,2811,decrease,c1c317ac1a771da418beeb338298f49e
+14,1998-09-09,2811,decrease,bd3e414f89ea359651b32229b690786f
+14,1998-09-09,2811,decrease,13586b35d269c57f8d556a9cd0164f5d
+14,1998-09-09,2811,decrease,7a9ff8d1a791df5bd28a7e71ee5915fb
+14,1998-09-09,2811,decrease,886ce9d69550ec8a0891bdf3c6911f3e
+14,1998-09-09,2811,decrease,1ec1df84bfe6a57c1c2d242f612ad557
+14,1998-09-09,2811,decrease,ca1ce54f28490fab3b3118e773bdc0de
+14,1998-09-09,2811,decrease,2345befc87b7f8e2c5280aacfff3ca88
+14,2007-06-24,36133,increase,2be8362de460b6997f1f0989736bda17
+14,2007-06-24,36133,increase,ef50bf5196c1e2cc24d24a288bb36c59
+14,2007-06-24,36133,increase,1682d8ed5d91e731aee33d3cfefd8d18
+14,2007-06-24,36133,increase,6f6033f7de5d52411e64e04af1caf629
+14,2008-11-05,45856,increase,0c50049584bd9bc255f77583bc2e1c50
+14,2004-08-07,21068,no-change,01d0a34524639eac2997994f8a319c9f
+
+
+2025-01-25 11:30:29 - root - INFO - Please check the answer again by reviewing Find pairs of different molecules tested in the same assay and standard type, where both have 10–15 heavy atoms, fewer than 5 activities in that assay, fewer than 2 duplicate activities, non-null standard values, and pChEMBL values over 10. For each pair, report the maximum heavy atom count, the latest publication date (calculated based on the document's rank within the same journal and year, and map it to a synthetic month and day), the highest document ID, classify the change in standard values as 'increase', 'decrease', or 'no-change' based on their values and relations, and generate UUIDs from their activity IDs and canonical SMILES., reviewing Relevant Tables and Columns and Possible Conditions and then give the final SQL query. Don't output other queries. If you think the answer is right, just output the current SQL.
+If the task description does not specify the number of decimal places, retain all decimals to four places.
+The answer format should be like: ```csv
+Max_heavy_atom_count,Latest_publication_date,Highest_doc_id,Change_classification,UUID
+count:int between 10 and 15,date:YYYY-MM-DD,id:int >0,classification:str (increase/decrease/no-change),uuid:str
+count:int between 10 and 15,date:YYYY-MM-DD,id:int >0,classification:str (increase/decrease/no-change),uuid:str
+...
+```
+
+This table displays pairs of different molecules that were tested in the same assay and standard type, meeting the specified criteria:
+
+- **Max_heavy_atom_count**: The maximum number of heavy atoms (non-hydrogen atoms) in the pair of molecules, ranging between 10 and 15.
+- **Latest_publication_date**: The latest publication date among the documents associated with the molecules, calculated based on the method described for assigning synthetic months and days.
+- **Highest_doc_id**: The highest document ID among the documents associated with the molecules.
+- **Change_classification**: Indicates whether the standard value between the two molecules has increased, decreased, or stayed the same ('increase', 'decrease', or 'no-change') based on their values and relations.
+- **UUID**: A unique identifier generated from the activity IDs and canonical SMILES of the molecule pair.
+
+Each row represents a pair of molecules satisfying all the conditions specified in the task. The answer should match the number of rows, the column name of the format and the filled values in the format (e.g. filled year or month). Don't output extra rows or nested rows!
+Current snswer: 
+Max_heavy_atom_count,Latest_publication_date,Highest_doc_id,Change_classification,UUID
+14,2007-06-24,36133,increase,6142806e3b5e75abe1a21f8b4f448f39
+14,2007-06-24,36133,decrease,c4bd61440a95edea4e1253eae2e06478
+14,2007-06-24,36133,decrease,8d3bad6466ce6abd616390bead10ce4f
+14,2007-06-24,36133,increase,375c8ea26732ce08a1a469da65cc6fa7
+14,2007-06-24,36133,increase,9f923e6d763fe4957a0c9c490de38810
+14,2007-06-24,36133,decrease,10ffd93e81e02c889446858a7bb0cc3f
+14,2007-06-24,36133,decrease,4a03bce7d2c197bf701f08708b44f81e
+14,2007-06-24,36133,increase,38e70eb896fb01b9bce5ed3573a21a10
+14,2007-06-24,36133,increase,4b34daba2375d8a355e02db6f1c34d48
+14,2007-06-24,36133,increase,a438159dad31fc1689770a8987c0e15e
+15,1998-09-09,2811,increase,f69493bb9b864a7ab074d2de0be1996c
+15,1998-09-09,2811,increase,14d74aba39dc4324cbfbeaa54856445e
+13,1998-09-09,2811,decrease,54328e72084b60a57153e8764d59acc8
+13,1998-09-09,2811,decrease,16f5897c51e6ca683b19fa2350a833c8
+13,1998-09-09,2811,decrease,496f769c5decc3d1d4cab4c960b9ca25
+13,1998-09-09,2811,no-change,53a845bc9e28f087e61e1ce949b8cc93
+14,2004-04-15,6774,increase,02b90b92ac9b3c71de4feee15ab175e3
+14,2003-05-02,16992,decrease,a5be8d1e556e749149637804de517c4c
+15,2007-06-24,36133,decrease,3e90db66c81f6f4a94675734db6d8aea
+15,2007-06-24,36133,decrease,1c0e54602f37582825936a998048213a
+15,2007-06-24,36133,increase,dbbc6c80942c8291cc8991347b88971e
+15,2007-06-24,36133,decrease,0edab04836c3b7da44ac446b0d3a3a43
+15,2007-06-24,36133,decrease,f29ba71a0555ba2e7a5df58df5020520
+15,2007-06-24,36133,increase,443bca712c1ad6d053e423c82dfa437c
+15,2007-06-24,36133,increase,d38b924ce0832aaeaac3be26b31c2ac5
+15,2007-06-24,36133,decrease,46cd9a695ed860be8c6c7b744194261f
+15,2007-06-24,36133,decrease,62a3dda970ed73c8c3b332a44acac945
+15,2007-06-24,36133,increase,4f2670331c9cd8ce4b55fd9e75d6e721
+15,2007-06-24,36133,increase,8d45d6c42ef9e6859d568203ca567579
+15,2007-06-24,36133,increase,a627fc628c963b3bcfab5cea01fd947d
+15,1998-09-09,2811,no-change,5ce01ecbb4615eca0ae79fbe3bc90084
+15,1998-09-09,2811,decrease,b04ff92e74c4e3c4f4cb5e68dc05d96e
+15,1998-09-09,2811,decrease,4b856ae8e0a074e07d401296b16c12be
+15,1998-09-17,14663,increase,cd4050d21eb5672f57c42387b4ec0bd6
+14,1998-09-17,14663,increase,d0122a9347967301e7cdd2b02472c2d9
+14,1998-09-17,14663,increase,baabd8ced5830c35d12071f639fd057d
+14,2007-06-24,36133,increase,7846b9d7243080890387e0fa4352fc4e
+14,2007-06-24,36133,increase,ca3e818757d3ddd7389f475d8f6b95ce
+14,2007-06-24,36133,increase,a65995d0dbe42638e9aa4ce7b1062851
+14,2007-06-24,36133,increase,1feebccdbd83f1abb59ae8f526454115
+15,2007-06-24,36133,decrease,f1dc5d2f19deedd1c29ee98ba91a85d1
+15,2007-06-24,36133,decrease,ee1e8ce7583f688e7dd213b997fe2bbc
+15,2007-06-24,36133,decrease,a91b3311662ee1cb5bba2788dabdf73d
+15,2007-06-24,36133,decrease,efc6cb527faa743c4012981e1e9a4c68
+15,2007-06-24,36133,decrease,4cdd4ca0bda5d2efbe4d37bccf92d2f0
+15,2007-06-24,36133,decrease,ea2e6d09b3f3874eb1b2a688f1d7d5e2
+15,2007-06-24,36133,decrease,6025103d4ecfb1f8c4b3ecacbef4d2b2
+15,2007-06-24,36133,decrease,7889a169a32e8195770cee7aa061017f
+15,2007-06-24,36133,decrease,18112c93caaadea955c3461e5cf0051b
+15,2007-06-24,36133,decrease,d35b7c06df0187c1b6e680f3e63c0622
+15,2007-06-24,36133,decrease,e19168474354827472748a4dc12f9ad0
+15,2007-06-24,36133,decrease,56ae150690adf849dec91d686382a693
+15,2007-06-24,36133,decrease,8a291e98dc239eef1a1399162564b0e5
+15,2007-06-24,36133,decrease,1b18233c078650e497de701190d143ae
+15,2007-06-24,36133,decrease,460778b02de6a795338a7c9fc305d278
+15,2007-06-24,36133,decrease,70e9b3d1856cbb69b7da31b3b59e3938
+14,2005-02-18,21501,increase,85fa21532e47b7d923360f6d6389cbdd
+14,2005-02-18,21501,increase,d1d8ee15bf702d34a0fd6c2ae75e6727
+14,2005-02-18,21501,increase,0a96751e1a8a9446516fb2c2ca562ab8
+14,2007-06-24,36133,increase,0e185ff05a0d487b094503b5eda6d477
+14,2007-06-24,36133,increase,d01fcd2d61ecbd10f66abfb08053130d
+15,2007-06-24,36133,increase,ca80caf60b4416bcf07e7f56b00059fe
+14,2007-06-24,36133,increase,ade7829eca34c499a753e4ddf399709f
+14,2007-06-24,36133,decrease,5d201101ee8e638fff23104d0ae883b9
+14,2007-06-24,36133,decrease,f98fe0db45add2e48348ff1fcb82a0e3
+14,2007-06-24,36133,increase,a9dae028c02095afcb9cdbede5865a35
+14,2007-06-24,36133,increase,007c7e74bd4916de65c620a619ca82d9
+15,2007-06-24,36133,increase,eebd2eed7e8ce77a7af9fd76ba8ff62f
+14,2007-06-24,36133,decrease,e0c2040fc28513447461a678e651642b
+14,2007-06-24,36133,decrease,81ada53ed4eff1c0e946931c51e37f92
+14,2007-06-24,36133,increase,4d40d4454ed441626e2cd09ea2d3fdfe
+14,2007-06-24,36133,increase,c65b64553b981805b426c43f45f3d68f
+14,2007-06-24,36133,increase,5a90ef8e2eb7d72a0afeb5cfd5e425f5
+15,2003-05-02,16992,increase,b83e3e05c0ce496c823db392afb0df9e
+15,2003-05-02,16992,increase,a4cd3f07ebf463448fa045544a322ffa
+15,2003-05-02,16992,increase,b3f8fc59b408af97f0c1050a79eb00ac
+15,2003-05-02,16992,increase,99be5ddd8fe0e52760b59ab50fcabdaf
+15,2003-05-02,16992,increase,87dcc5d11084e7121585784df91267de
+14,1998-09-09,2811,decrease,7ca3cd607386a61f85dd61a4e8ab1ee3
+14,1998-09-09,2811,decrease,e0a1d50b2da6d446e409b598f3128f49
+15,1998-09-09,2811,decrease,6435294055ce8a989fcf8227cde633e4
+14,1998-09-09,2811,decrease,3b74be48bf9e441e163aaf7e20cfc33e
+14,1998-09-09,2811,decrease,98b95c6f53de8c79c408c13af487f76e
+14,1998-09-09,2811,decrease,76fbfe839edd7faf0bfa4631ee013175
+14,1998-09-09,2811,decrease,9aad46db7ab989f088e6ebf27924e35d
+15,1998-09-09,2811,decrease,7ca83fdfcf482bf41598a3b769626326
+14,1998-09-09,2811,decrease,c1c317ac1a771da418beeb338298f49e
+14,1998-09-09,2811,decrease,bd3e414f89ea359651b32229b690786f
+14,1998-09-09,2811,decrease,13586b35d269c57f8d556a9cd0164f5d
+14,1998-09-09,2811,decrease,7a9ff8d1a791df5bd28a7e71ee5915fb
+14,1998-09-09,2811,decrease,886ce9d69550ec8a0891bdf3c6911f3e
+14,1998-09-09,2811,decrease,1ec1df84bfe6a57c1c2d242f612ad557
+14,1998-09-09,2811,decrease,ca1ce54f28490fab3b3118e773bdc0de
+14,1998-09-09,2811,decrease,2345befc87b7f8e2c5280aacfff3ca88
+14,2007-06-24,36133,increase,2be8362de460b6997f1f0989736bda17
+14,2007-06-24,36133,increase,ef50bf5196c1e2cc24d24a288bb36c59
+14,2007-06-24,36133,increase,1682d8ed5d91e731aee33d3cfefd8d18
+14,2007-06-24,36133,increase,6f6033f7de5d52411e64e04af1caf629
+14,2008-11-05,45856,increase,0c50049584bd9bc255f77583bc2e1c50
+14,2004-08-07,21068,no-change,01d0a34524639eac2997994f8a319c9f
+Current sql:
+WITH candidate_activities AS (
+    SELECT
+        a.activity_id,
+        a.assay_id,
+        a.standard_type,
+        a.molregno,
+        CAST(a.standard_value AS FLOAT64) AS standard_value,
+        a.standard_relation,
+        CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+        a.doc_id,
+        CAST(cp.heavy_atoms AS INT64) AS heavy_atoms
+    FROM `bigquery-public-data.ebi_chembl.activities` AS a
+    JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+        ON a.molregno = cp.molregno
+    WHERE a.standard_value IS NOT NULL
+      AND CAST(a.pchembl_value AS FLOAT64) > 10
+      AND CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+),
+activity_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        COUNT(*) AS activity_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno
+),
+duplicate_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        standard_value,
+        standard_relation,
+        COUNT(*) AS duplicate_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno, standard_value, standard_relation
+),
+filtered_activities AS (
+    SELECT ca.*
+    FROM candidate_activities AS ca
+    JOIN activity_counts AS ac
+        ON ca.assay_id = ac.assay_id AND ca.molregno = ac.molregno
+    JOIN duplicate_counts AS dc
+        ON ca.assay_id = dc.assay_id AND ca.molregno = dc.molregno
+           AND ca.standard_value = dc.standard_value AND ca.standard_relation = dc.standard_relation
+    WHERE ac.activity_count < 5
+      AND dc.duplicate_count < 2
+),
+docs_publication_dates AS (
+    SELECT
+        d.doc_id,
+        CAST(d.year AS INT64) AS year,
+        d.journal,
+        CAST(d.first_page AS INT64) AS first_page,
+        ROW_NUMBER() OVER (
+            PARTITION BY d.journal, CAST(d.year AS INT64)
+            ORDER BY CAST(d.first_page AS INT64)
+        ) AS doc_rank,
+        COUNT(*) OVER (PARTITION BY d.journal, CAST(d.year AS INT64)) AS total_docs
+    FROM `bigquery-public-data.ebi_chembl.docs` AS d
+    WHERE d.year IS NOT NULL AND d.year != ''
+      AND d.first_page IS NOT NULL AND REGEXP_CONTAINS(d.first_page, r'^\d+$')
+),
+publication_dates AS (
+    SELECT
+        doc_id,
+        DATE(
+            IFNULL(year, 1970),
+            CAST(
+                IFNULL(
+                    FLOOR(
+                        (CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END) * 11
+                    ), 0
+                ) + 1 AS INT64
+            ),
+            CAST(
+                MOD(
+                    CAST(
+                        FLOOR(
+                            (CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END) * 308
+                        ) AS INT64
+                    ), 28
+                ) + 1 AS INT64
+            )
+        ) AS publication_date
+    FROM docs_publication_dates
+),
+canonical_smiles AS (
+    SELECT molregno, canonical_smiles
+    FROM `bigquery-public-data.ebi_chembl.compound_structures`
+    WHERE canonical_smiles IS NOT NULL AND canonical_smiles != ''
+),
+molecule_data AS (
+    SELECT
+        fa.*,
+        pd.publication_date,
+        cs.canonical_smiles
+    FROM filtered_activities AS fa
+    LEFT JOIN publication_dates AS pd
+        ON fa.doc_id = pd.doc_id
+    LEFT JOIN canonical_smiles AS cs
+        ON fa.molregno = cs.molregno
+),
+molecule_pairs AS (
+    SELECT
+        md1.assay_id,
+        md1.standard_type,
+        md1.molregno AS molregno1,
+        md1.activity_id AS activity_id1,
+        md1.standard_value AS standard_value1,
+        md1.standard_relation AS standard_relation1,
+        md1.pchembl_value AS pchembl_value1,
+        md1.doc_id AS doc_id1,
+        md1.heavy_atoms AS heavy_atoms1,
+        md1.publication_date AS publication_date1,
+        md1.canonical_smiles AS canonical_smiles1,
+        md2.molregno AS molregno2,
+        md2.activity_id AS activity_id2,
+        md2.standard_value AS standard_value2,
+        md2.standard_relation AS standard_relation2,
+        md2.pchembl_value AS pchembl_value2,
+        md2.doc_id AS doc_id2,
+        md2.heavy_atoms AS heavy_atoms2,
+        md2.publication_date AS publication_date2,
+        md2.canonical_smiles AS canonical_smiles2
+    FROM molecule_data AS md1
+    JOIN molecule_data AS md2
+        ON md1.assay_id = md2.assay_id
+        AND md1.standard_type = md2.standard_type
+        AND md1.molregno < md2.molregno
+)
+SELECT
+    GREATEST(mp.heavy_atoms1, mp.heavy_atoms2) AS Max_heavy_atom_count,
+    FORMAT_DATE('%Y-%m-%d', GREATEST(mp.publication_date1, mp.publication_date2)) AS Latest_publication_date,
+    GREATEST(CAST(mp.doc_id1 AS INT64), CAST(mp.doc_id2 AS INT64)) AS Highest_doc_id,
+    CASE
+        WHEN mp.standard_relation1 = '=' AND mp.standard_relation2 = '=' THEN
+            CASE
+                WHEN mp.standard_value1 > mp.standard_value2 THEN 'decrease'
+                WHEN mp.standard_value1 < mp.standard_value2 THEN 'increase'
+                WHEN mp.standard_value1 = mp.standard_value2 THEN 'no-change'
+                ELSE 'unknown'
+            END
+        ELSE 'unknown'
+    END AS Change_classification,
+    TO_HEX(MD5(TO_JSON_STRING(STRUCT(mp.activity_id1, mp.activity_id2)))) AS UUID
+FROM molecule_pairs AS mp
+LIMIT 100
+2025-01-25 11:31:16 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 11:31:16 - root - INFO - ```sql
+WITH candidate_activities AS (
+    SELECT
+        a.activity_id,
+        a.assay_id,
+        a.standard_type,
+        a.molregno,
+        CAST(a.standard_value AS FLOAT64) AS standard_value,
+        a.standard_relation,
+        CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+        a.doc_id,
+        CAST(cp.heavy_atoms AS INT64) AS heavy_atoms
+    FROM `bigquery-public-data.ebi_chembl.activities` AS a
+    JOIN `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+        ON a.molregno = cp.molregno
+    WHERE a.standard_value IS NOT NULL
+      AND CAST(a.pchembl_value AS FLOAT64) > 10
+      AND CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+),
+activity_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        COUNT(*) AS activity_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno
+),
+duplicate_counts AS (
+    SELECT
+        assay_id,
+        molregno,
+        standard_value,
+        standard_relation,
+        COUNT(*) AS duplicate_count
+    FROM candidate_activities
+    GROUP BY assay_id, molregno, standard_value, standard_relation
+),
+filtered_activities AS (
+    SELECT ca.*
+    FROM candidate_activities AS ca
+    JOIN activity_counts AS ac
+        ON ca.assay_id = ac.assay_id AND ca.molregno = ac.molregno
+    JOIN duplicate_counts AS dc
+        ON ca.assay_id = dc.assay_id AND ca.molregno = dc.molregno
+           AND ca.standard_value = dc.standard_value AND ca.standard_relation = dc.standard_relation
+    WHERE ac.activity_count < 5
+      AND dc.duplicate_count < 2
+),
+docs_publication_dates AS (
+    SELECT
+        d.doc_id,
+        CAST(d.year AS INT64) AS year,
+        d.journal,
+        CAST(d.first_page AS INT64) AS first_page,
+        ROW_NUMBER() OVER (
+            PARTITION BY d.journal, CAST(d.year AS INT64)
+            ORDER BY CAST(d.first_page AS INT64)
+        ) AS doc_rank,
+        COUNT(*) OVER (PARTITION BY d.journal, CAST(d.year AS INT64)) AS total_docs
+    FROM `bigquery-public-data.ebi_chembl.docs` AS d
+    WHERE d.year IS NOT NULL AND d.year != ''
+      AND d.first_page IS NOT NULL AND REGEXP_CONTAINS(d.first_page, r'^\d+$')
+),
+publication_dates AS (
+    SELECT
+        doc_id,
+        DATE(
+            IFNULL(year, 1970),
+            CAST(
+                IFNULL(
+                    FLOOR(
+                        (CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END) * 11
+                    ), 0
+                ) + 1 AS INT64
+            ),
+            CAST(
+                MOD(
+                    CAST(
+                        FLOOR(
+                            (CASE WHEN total_docs > 1 THEN (doc_rank - 1)/(total_docs - 1) ELSE 0 END) * 308
+                        ) AS INT64
+                    ), 28
+                ) + 1 AS INT64
+            )
+        ) AS publication_date
+    FROM docs_publication_dates
+),
+canonical_smiles AS (
+    SELECT molregno, canonical_smiles
+    FROM `bigquery-public-data.ebi_chembl.compound_structures`
+    WHERE canonical_smiles IS NOT NULL AND canonical_smiles != ''
+),
+molecule_data AS (
+    SELECT
+        fa.*,
+        pd.publication_date,
+        cs.canonical_smiles
+    FROM filtered_activities AS fa
+    LEFT JOIN publication_dates AS pd
+        ON fa.doc_id = pd.doc_id
+    LEFT JOIN canonical_smiles AS cs
+        ON fa.molregno = cs.molregno
+),
+molecule_pairs AS (
+    SELECT
+        md1.assay_id,
+        md1.standard_type,
+        md1.molregno AS molregno1,
+        md1.activity_id AS activity_id1,
+        md1.standard_value AS standard_value1,
+        md1.standard_relation AS standard_relation1,
+        md1.pchembl_value AS pchembl_value1,
+        md1.doc_id AS doc_id1,
+        md1.heavy_atoms AS heavy_atoms1,
+        md1.publication_date AS publication_date1,
+        md1.canonical_smiles AS canonical_smiles1,
+        md2.molregno AS molregno2,
+        md2.activity_id AS activity_id2,
+        md2.standard_value AS standard_value2,
+        md2.standard_relation AS standard_relation2,
+        md2.pchembl_value AS pchembl_value2,
+        md2.doc_id AS doc_id2,
+        md2.heavy_atoms AS heavy_atoms2,
+        md2.publication_date AS publication_date2,
+        md2.canonical_smiles AS canonical_smiles2
+    FROM molecule_data AS md1
+    JOIN molecule_data AS md2
+        ON md1.assay_id = md2.assay_id
+        AND md1.standard_type = md2.standard_type
+        AND md1.molregno < md2.molregno
+)
+SELECT
+    GREATEST(mp.heavy_atoms1, mp.heavy_atoms2) AS Max_heavy_atom_count,
+    FORMAT_DATE('%Y-%m-%d', GREATEST(mp.publication_date1, mp.publication_date2)) AS Latest_publication_date,
+    GREATEST(CAST(mp.doc_id1 AS INT64), CAST(mp.doc_id2 AS INT64)) AS Highest_doc_id,
+    CASE
+        WHEN mp.standard_relation1 = '=' AND mp.standard_relation2 = '=' THEN
+            CASE
+                WHEN mp.standard_value1 > mp.standard_value2 THEN 'decrease'
+                WHEN mp.standard_value1 < mp.standard_value2 THEN 'increase'
+                WHEN mp.standard_value1 = mp.standard_value2 THEN 'no-change'
+                ELSE 'unknown'
+            END
+        ELSE 'unknown'
+    END AS Change_classification,
+    TO_HEX(MD5(TO_JSON_STRING(STRUCT(mp.activity_id1, mp.activity_id2)))) AS UUID
+FROM molecule_pairs AS mp
+LIMIT 100
+```
+2025-01-25 11:31:17 - root - INFO - itercount: 4
+2025-01-25 11:31:17 - root - INFO - 0
+2025-01-25 11:31:17 - root - INFO - Total iteration counts: 4
