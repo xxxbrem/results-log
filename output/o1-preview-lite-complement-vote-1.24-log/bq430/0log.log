@@ -1023,3 +1023,513 @@ activity_id,molregno,assay_id,pchembl_value,heavy_atoms
 1908973,386258,439959,10.33,14
 1908974,386258,439959,10.33,14
 
+2025-01-25 17:26:43 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 17:26:43 - root - INFO - ```sql
+WITH filtered_activities AS (
+  SELECT
+    a.activity_id,
+    a.molregno,
+    a.assay_id,
+    a.standard_type,
+    SAFE_CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+    SAFE_CAST(cp.heavy_atoms AS INT64) AS heavy_atoms,
+    a.standard_value,
+    a.standard_relation
+  FROM
+    `bigquery-public-data.ebi_chembl.activities` AS a
+  JOIN
+    `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+  ON
+    a.molregno = cp.molregno
+  WHERE
+    heavy_atoms BETWEEN 10 AND 15
+    AND pchembl_value > 10
+    AND a.standard_value IS NOT NULL
+    AND a.standard_relation IS NOT NULL
+),
+
+assay_activity_counts AS (
+  SELECT
+    assay_id,
+    COUNT(DISTINCT activity_id) AS activity_count
+  FROM
+    filtered_activities
+  GROUP BY
+    assay_id
+  HAVING
+    activity_count < 5
+),
+
+filtered_activities_limited AS (
+  SELECT
+    fa.*
+  FROM
+    filtered_activities AS fa
+  WHERE
+    fa.assay_id IN (SELECT assay_id FROM assay_activity_counts)
+),
+
+distinct_pairs AS (
+  SELECT DISTINCT
+    fa1.activity_id AS activity_id1,
+    fa2.activity_id AS activity_id2,
+    fa1.molregno AS molregno1,
+    fa2.molregno AS molregno2,
+    fa1.assay_id,
+    fa1.standard_type,
+    GREATEST(fa1.heavy_atoms, fa2.heavy_atoms) AS Max_heavy_atom_count,
+    fa1.standard_value AS standard_value1,
+    fa1.standard_relation AS relation1,
+    fa2.standard_value AS standard_value2,
+    fa2.standard_relation AS relation2
+  FROM
+    filtered_activities_limited AS fa1
+  JOIN
+    filtered_activities_limited AS fa2
+  ON
+    fa1.assay_id = fa2.assay_id
+    AND fa1.standard_type = fa2.standard_type
+    AND fa1.molregno < fa2.molregno
+)
+
+SELECT
+  dp.activity_id1,
+  dp.activity_id2,
+  dp.molregno1,
+  dp.molregno2,
+  dp.assay_id,
+  dp.standard_type,
+  dp.Max_heavy_atom_count,
+  dp.standard_value1,
+  dp.relation1,
+  dp.standard_value2,
+  dp.relation2
+FROM
+  distinct_pairs AS dp
+LIMIT 100;
+```
+2025-01-25 17:27:37 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 17:27:37 - root - INFO - The error you're encountering is due to the use of column aliases (`heavy_atoms` and `pchembl_value`) in the `WHERE` clause of the same subquery where these aliases are defined. In SQL, you cannot reference a column alias in the `WHERE` clause at the same level; instead, you need to use the actual expressions or wrap the query in another subquery.
+
+**Explanation:**
+
+In your query, inside the CTE `filtered_activities`, you have:
+
+```sql
+SELECT
+  a.activity_id,
+  a.molregno,
+  a.assay_id,
+  a.standard_type,
+  SAFE_CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+  SAFE_CAST(cp.heavy_atoms AS INT64) AS heavy_atoms,
+  a.standard_value,
+  a.standard_relation
+FROM
+  `bigquery-public-data.ebi_chembl.activities` AS a
+JOIN
+  `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+ON
+  a.molregno = cp.molregno
+WHERE
+  heavy_atoms BETWEEN 10 AND 15
+  AND pchembl_value > 10
+  AND a.standard_value IS NOT NULL
+  AND a.standard_relation IS NOT NULL
+```
+
+Here, `heavy_atoms` and `pchembl_value` are aliases defined in the `SELECT` clause. However, you cannot use these aliases in the `WHERE` clause of the same query. This causes the error because SQL evaluates the `WHERE` clause before the `SELECT` clause, and thus the aliases are not yet recognized.
+
+**Solution:**
+
+Replace the aliases in the `WHERE` clause with the actual expressions used to define them. Here's the corrected query:
+
+```sql
+WITH filtered_activities AS (
+  SELECT
+    a.activity_id,
+    a.molregno,
+    a.assay_id,
+    a.standard_type,
+    SAFE_CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+    SAFE_CAST(cp.heavy_atoms AS INT64) AS heavy_atoms,
+    a.standard_value,
+    a.standard_relation
+  FROM
+    `bigquery-public-data.ebi_chembl.activities` AS a
+  JOIN
+    `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+  ON
+    a.molregno = cp.molregno
+  WHERE
+    SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+    AND SAFE_CAST(a.pchembl_value AS FLOAT64) > 10
+    AND a.standard_value IS NOT NULL
+    AND a.standard_relation IS NOT NULL
+),
+
+assay_activity_counts AS (
+  SELECT
+    assay_id,
+    COUNT(DISTINCT activity_id) AS activity_count
+  FROM
+    filtered_activities
+  GROUP BY
+    assay_id
+  HAVING
+    activity_count < 5
+),
+
+filtered_activities_limited AS (
+  SELECT
+    fa.*
+  FROM
+    filtered_activities AS fa
+  WHERE
+    fa.assay_id IN (SELECT assay_id FROM assay_activity_counts)
+),
+
+distinct_pairs AS (
+  SELECT DISTINCT
+    fa1.activity_id AS activity_id1,
+    fa2.activity_id AS activity_id2,
+    fa1.molregno AS molregno1,
+    fa2.molregno AS molregno2,
+    fa1.assay_id,
+    fa1.standard_type,
+    GREATEST(fa1.heavy_atoms, fa2.heavy_atoms) AS Max_heavy_atom_count,
+    fa1.standard_value AS standard_value1,
+    fa1.standard_relation AS relation1,
+    fa2.standard_value AS standard_value2,
+    fa2.standard_relation AS relation2
+  FROM
+    filtered_activities_limited AS fa1
+  JOIN
+    filtered_activities_limited AS fa2
+  ON
+    fa1.assay_id = fa2.assay_id
+    AND fa1.standard_type = fa2.standard_type
+    AND fa1.molregno < fa2.molregno
+)
+
+SELECT
+  dp.activity_id1,
+  dp.activity_id2,
+  dp.molregno1,
+  dp.molregno2,
+  dp.assay_id,
+  dp.standard_type,
+  dp.Max_heavy_atom_count,
+  dp.standard_value1,
+  dp.relation1,
+  dp.standard_value2,
+  dp.relation2
+FROM
+  distinct_pairs AS dp
+LIMIT 100;
+```
+
+**Key Changes:**
+
+- **Use Actual Expressions in `WHERE` Clause:**
+
+  - Replaced `heavy_atoms` with `SAFE_CAST(cp.heavy_atoms AS INT64)`.
+  - Replaced `pchembl_value` with `SAFE_CAST(a.pchembl_value AS FLOAT64)`.
+
+- **Why This Works:**
+
+  - By using the actual expressions, we ensure that the `WHERE` clause can evaluate the conditions without relying on aliases that aren't yet available at that point in the query processing.
+
+**Additional Considerations:**
+
+- **Data Types:**
+  - Ensure that the data types match during casting to prevent any runtime errors.
+  - If there might be invalid data that can't be cast, consider using `SAFE_CAST` as we've done to avoid query failures due to casting errors.
+
+- **Performance:**
+  - Large datasets and complex joins can lead to long execution times or timeouts.
+  - To optimize performance:
+    - Limit the dataset early by adding more filters if possible.
+    - Ensure that joins are on indexed fields or consider restructuring the query.
+
+- **Timeout Issue:**
+
+  - If you continue to experience timeouts:
+    - Reduce the dataset size further by applying more selective filters.
+    - Increase the `LIMIT` gradually to test performance.
+    - Use `EXPLAIN` to analyze the query plan and identify bottlenecks.
+
+**Testing the Query:**
+
+Before running the full query, you might want to test each CTE individually to ensure it works as expected:
+
+1. **Test `filtered_activities` CTE:**
+
+   ```sql
+   SELECT *
+   FROM (
+     SELECT
+       a.activity_id,
+       a.molregno,
+       a.assay_id,
+       a.standard_type,
+       SAFE_CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+       SAFE_CAST(cp.heavy_atoms AS INT64) AS heavy_atoms,
+       a.standard_value,
+       a.standard_relation
+     FROM
+       `bigquery-public-data.ebi_chembl.activities` AS a
+     JOIN
+       `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+     ON
+       a.molregno = cp.molregno
+     WHERE
+       SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+       AND SAFE_CAST(a.pchembl_value AS FLOAT64) > 10
+       AND a.standard_value IS NOT NULL
+       AND a.standard_relation IS NOT NULL
+   )
+   LIMIT 100;
+   ```
+
+2. **Test `assay_activity_counts` CTE:**
+
+   ```sql
+   SELECT *
+   FROM (
+     SELECT
+       assay_id,
+       COUNT(DISTINCT activity_id) AS activity_count
+     FROM
+       filtered_activities
+     GROUP BY
+       assay_id
+     HAVING
+       activity_count < 5
+   )
+   LIMIT 100;
+   ```
+
+**Summary:**
+
+- **Use expressions instead of aliases in the `WHERE` clause.**
+- **Ensure data types are properly cast where necessary.**
+- **Test each part of the query incrementally to identify and resolve issues.**
+
+Let me know if you have any further questions or need additional assistance!
+2025-01-25 17:28:27 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-25 17:28:27 - root - INFO - It appears there's some confusion between the error message you're receiving and the query you've provided. The error message indicates a problem with the `BETWEEN` operator at `[17:15]`, but the query you've shared doesn't contain a `BETWEEN` operator.
+
+**Let's address the issue step by step:**
+
+---
+
+### **1. Mismatch Between Query and Error Message**
+
+- **Error Message:**
+
+  ```
+  400 No matching signature for operator BETWEEN
+    Argument types: STRING, INT64, INT64
+    Signature: (T1) BETWEEN (T1) AND (T1)
+      Unable to find common supertype for templated argument <T1>
+        Input types for <T1>: {INT64, STRING} at [17:15]; 
+  ```
+
+- **Provided Query:**
+
+  ```sql
+  SELECT DISTINCT
+    a1.activity_id AS activity_id1,
+    a2.activity_id AS activity_id2,
+    a1.molregno AS molregno1,
+    a2.molregno AS molregno2,
+    a1.assay_id,
+    a1.standard_type
+  FROM `bigquery-public-data.ebi_chembl.activities` AS a1
+  JOIN `bigquery-public-data.ebi_chembl.activities` AS a2
+    ON a1.assay_id = a2.assay_id
+    AND a1.standard_type = a2.standard_type
+    AND SAFE_CAST(a1.molregno AS INT64) < SAFE_CAST(a2.molregno AS INT64)
+  LIMIT 100
+  ```
+
+- **Observation:**
+
+  The error references the `BETWEEN` operator at line `[17:15]`, but your query is only 13 lines and doesn't contain a `BETWEEN` operator.
+
+---
+
+### **2. Possible Explanations and Solutions**
+
+**a. You're Running a Different Query**
+
+- It's possible that the error message corresponds to a different query than the one you've provided.
+- **Action:** Please double-check the query you're executing and ensure it matches the one you've shared.
+
+**b. Additional Code Before or After the Query**
+
+- If there are additional CTEs or SQL statements before or after the query snippet you've provided, the error might be occurring there.
+- **Action:** Provide the full query, including any CTEs or preceding code, so we can accurately diagnose the issue.
+
+**c. Line Number Discrepancies**
+
+- The line number in the error message `[17:15]` implies the error is at line 17, character 15.
+- Since your query only has 13 lines, the error might be in additional code not shown.
+- **Action:** Review the full script to locate line 17 and see if that's where the `BETWEEN` operator and error reside.
+
+---
+
+### **3. Common Causes of the BETWEEN Operator Error**
+
+- The error indicates a mismatched data type in the `BETWEEN` operator:
+
+  ```
+  No matching signature for operator BETWEEN
+    Argument types: STRING, INT64, INT64
+  ```
+
+- **Explanation:**
+
+  - The `BETWEEN` operator expects all operands to be of the same data type.
+  - In this case, it seems a `STRING` is being compared to `INT64` values.
+
+- **Typical Scenario:**
+
+  - Using `BETWEEN` on a column of type `STRING` without casting it to a numeric type.
+  - For example: `WHERE string_column BETWEEN 1 AND 10`
+
+---
+
+### **4. Suggested Steps to Resolve the Issue**
+
+**a. Verify Data Types in the BETWEEN Clause**
+
+- **Identify the Column:**
+
+  - The error mentions a `STRING` type being compared with `INT64`.
+  - Likely, a column like `heavy_atoms` or `pchembl_value` is of type `STRING`.
+
+- **Correct Usage:**
+
+  - Ensure that when using `BETWEEN` with numeric values, all operands are of a numeric type.
+  - Use `SAFE_CAST` or `CAST` to convert the `STRING` column to `INT64` or `FLOAT64`.
+
+- **Example Correction:**
+
+  ```sql
+  WHERE
+    SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+  ```
+
+**b. Check for Aliases in WHERE Clause**
+
+- **Issue:**
+
+  - Using column aliases in the `WHERE` clause of the same query level where they're defined is invalid.
+
+- **Solution:**
+
+  - Use the full expressions instead of aliases in the `WHERE` clause.
+  - Or wrap the query in an additional subquery or CTE.
+
+**c. Provide the Complete Query**
+
+- To accurately diagnose and fix the error, it's essential to see the entire query.
+
+---
+
+### **5. Example of a Corrected Query**
+
+Based on the previous steps, here's how you might adjust your query:
+
+```sql
+WITH filtered_activities AS (
+  SELECT
+    a.activity_id,
+    a.molregno,
+    a.assay_id,
+    a.standard_type,
+    SAFE_CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+    SAFE_CAST(cp.heavy_atoms AS INT64) AS heavy_atoms,
+    a.standard_value,
+    a.standard_relation
+  FROM
+    `bigquery-public-data.ebi_chembl.activities` AS a
+  JOIN
+    `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+  ON
+    a.molregno = cp.molregno
+  WHERE
+    SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+    AND SAFE_CAST(a.pchembl_value AS FLOAT64) > 10
+    AND a.standard_value IS NOT NULL
+    AND a.standard_relation IS NOT NULL
+),
+
+-- Other CTEs
+
+SELECT DISTINCT
+  a1.activity_id AS activity_id1,
+  a2.activity_id AS activity_id2,
+  a1.molregno AS molregno1,
+  a2.molregno AS molregno2,
+  a1.assay_id,
+  a1.standard_type
+FROM filtered_activities AS a1
+JOIN filtered_activities AS a2
+  ON a1.assay_id = a2.assay_id
+  AND a1.standard_type = a2.standard_type
+  AND SAFE_CAST(a1.molregno AS INT64) < SAFE_CAST(a2.molregno AS INT64)
+LIMIT 100;
+```
+
+**Notes:**
+
+- Replaced any aliases in `WHERE` clauses with the actual expressions.
+- Made sure to `SAFE_CAST` any `STRING` types to numeric types where necessary.
+- Used CTEs to structure the query for clarity.
+
+---
+
+### **6. Next Steps**
+
+- **Provide the Full Query:**
+
+  - If the error persists, please share the complete query, including all CTEs and additional code, so that I can help you pinpoint the exact issue.
+
+- **Check Data Types:**
+
+  - Ensure that all columns used in numeric comparisons are properly cast to numeric types.
+
+- **Test Incrementally:**
+
+  - Run parts of your query step by step to isolate where the error occurs.
+  - For instance, test the `filtered_activities` CTE separately.
+
+---
+
+### **7. Additional Tips**
+
+- **Using SAFE_CAST:**
+
+  - `SAFE_CAST` ensures that if the conversion fails (e.g., due to non-numeric strings), it returns `NULL` instead of throwing an error.
+
+- **Validating Data:**
+
+  - Sometimes, data inconsistencies can cause conversion failures.
+  - You might want to include checks or filters to handle such cases.
+
+- **Example of Handling Non-Numeric Data:**
+
+  ```sql
+  WHERE
+    REGEXP_CONTAINS(cp.heavy_atoms, r'^\d+$') -- Ensures heavy_atoms contains only digits
+    AND SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+  ```
+
+---
+
+### **Conclusion**
+
+By carefully reviewing the complete query and ensuring that all data types are correctly handled, we can resolve the error you're encountering. Please let me know if you can provide the full query or if you need further assistance in debugging this issue.
