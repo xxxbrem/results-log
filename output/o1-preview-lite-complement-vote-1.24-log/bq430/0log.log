@@ -1779,3 +1779,244 @@ count:int between 10 and 15,date:YYYY-MM-DD,id:int >0,classification:str (increa
 - Filtering early and reducing the amount of data processed in joins can greatly improve query performance.
 
 If you encounter any further issues or need additional assistance, feel free to ask!
+2025-01-26 11:15:35 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-26 11:15:35 - root - INFO - **Understanding the Issue:**
+
+The error you're encountering indicates that your query is exceeding BigQuery's resource limits:
+
+```
+500 Operation timed out after 6.0 hours. Consider reducing the amount of work performed by your operation so that it can complete within this limit.
+```
+
+This is happening because you're performing a **self-join** on the entire `activities` table without sufficient filtering. The `activities` table in the `ebi_chembl` dataset is very large, containing millions of records. Joining it with itself can result in an enormous number of rows, causing the query to run for an extended period and eventually time out.
+
+**Why the Query Times Out:**
+
+Your query attempts to find all pairs of activities with the same `assay_id` and `standard_type`, where the `molregno` values are different:
+
+```sql
+SELECT DISTINCT
+  a1.activity_id AS activity_id1,
+  a2.activity_id AS activity_id2,
+  a1.molregno AS molregno1,
+  a2.molregno AS molregno2,
+  a1.assay_id,
+  a1.standard_type
+FROM `bigquery-public-data.ebi_chembl.activities` AS a1
+JOIN `bigquery-public-data.ebi_chembl.activities` AS a2
+  ON a1.assay_id = a2.assay_id
+  AND a1.standard_type = a2.standard_type
+  AND SAFE_CAST(a1.molregno AS INT64) < SAFE_CAST(a2.molregno AS INT64)
+LIMIT 100
+```
+
+Without filtering, this join generates a vast number of combinations, leading to the timeout.
+
+**Solution: Filter the Data Before Joining**
+
+To resolve this issue, you need to:
+
+1. **Filter the activities to include only those that meet your criteria.**
+2. **Reduce the dataset size before performing the join.**
+
+**Steps to Optimize the Query:**
+
+Below is an optimized query that incorporates all the criteria from your task:
+
+1. **Select activities where:**
+
+   - The molecule has 10–15 heavy atoms.
+   - The pChEMBL value is over 10.
+   - The standard value is not null.
+   - There are fewer than 5 activities in that assay.
+   - Fewer than 2 duplicate activities.
+   - Limit the number of assays to those with fewer activities.
+
+2. **Perform the self-join on this filtered dataset.**
+
+3. **Calculate the required fields for the pairs.**
+
+---
+
+**Optimized Query:**
+
+```sql
+-- Step 1: Filter activities based on the criteria
+WITH filtered_activities AS (
+  SELECT
+    a.activity_id,
+    a.molregno,
+    a.assay_id,
+    a.standard_type,
+    SAFE_CAST(a.pchembl_value AS FLOAT64) AS pchembl_value,
+    SAFE_CAST(cp.heavy_atoms AS INT64) AS heavy_atoms,
+    a.standard_value,
+    a.standard_relation,
+    a.doc_id
+  FROM
+    `bigquery-public-data.ebi_chembl.activities` AS a
+  JOIN
+    `bigquery-public-data.ebi_chembl.compound_properties` AS cp
+    ON a.molregno = cp.molregno
+  WHERE
+    SAFE_CAST(cp.heavy_atoms AS INT64) BETWEEN 10 AND 15
+    AND SAFE_CAST(a.pchembl_value AS FLOAT64) > 10
+    AND a.standard_value IS NOT NULL
+    AND a.standard_relation IS NOT NULL
+),
+
+-- Step 2: Identify assays with fewer than 5 activities
+assays_with_few_activities AS (
+  SELECT
+    assay_id,
+    COUNT(DISTINCT activity_id) AS activity_count
+  FROM
+    filtered_activities
+  GROUP BY
+    assay_id
+  HAVING
+    activity_count < 5
+),
+
+-- Step 3: Identify duplicates (less than 2 duplicate activities)
+activities_without_duplicates AS (
+  SELECT
+    fa.*
+  FROM
+    filtered_activities AS fa
+  LEFT JOIN (
+    SELECT
+      molregno,
+      assay_id,
+      standard_value,
+      COUNT(*) AS dup_count
+    FROM
+      filtered_activities
+    GROUP BY
+      molregno, assay_id, standard_value
+    HAVING
+      COUNT(*) >= 2
+  ) AS duplicates
+  ON fa.molregno = duplicates.molregno
+     AND fa.assay_id = duplicates.assay_id
+     AND fa.standard_value = duplicates.standard_value
+  WHERE
+    duplicates.molregno IS NULL
+),
+
+-- Step 4: Select activities from assays with fewer than 5 activities
+final_filtered_activities AS (
+  SELECT
+    fa.*
+  FROM
+    activities_without_duplicates AS fa
+  WHERE
+    fa.assay_id IN (SELECT assay_id FROM assays_with_few_activities)
+)
+
+-- Step 5: Perform the self-join on the filtered dataset
+SELECT DISTINCT
+  fa1.activity_id AS activity_id1,
+  fa2.activity_id AS activity_id2,
+  fa1.molregno AS molregno1,
+  fa2.molregno AS molregno2,
+  fa1.assay_id,
+  fa1.standard_type,
+  GREATEST(fa1.heavy_atoms, fa2.heavy_atoms) AS Max_heavy_atom_count,
+  -- Additional fields
+  fa1.standard_value AS standard_value1,
+  fa1.standard_relation AS relation1,
+  fa2.standard_value AS standard_value2,
+  fa2.standard_relation AS relation2,
+  -- For latest publication date and highest doc_id
+  GREATEST(fa1.doc_id, fa2.doc_id) AS Highest_doc_id
+FROM
+  final_filtered_activities AS fa1
+JOIN
+  final_filtered_activities AS fa2
+  ON fa1.assay_id = fa2.assay_id
+     AND fa1.standard_type = fa2.standard_type
+     AND fa1.molregno < fa2.molregno
+LIMIT 100;
+```
+
+**Explanation:**
+
+- **`filtered_activities`:** Filters activities based on heavy atom count, pChEMBL value, and ensures non-null standard values and relations.
+
+- **`assays_with_few_activities`:** Identifies assays that have fewer than 5 activities.
+
+- **`activities_without_duplicates`:** Excludes activities that have 2 or more duplicates.
+
+- **`final_filtered_activities`:** Contains activities that meet all criteria.
+
+- **Self-Join on `final_filtered_activities`:** Finds pairs of different molecules tested in the same assay and standard type.
+
+- **Calculates:** Maximum heavy atom count, highest `doc_id`.
+
+**Note on Calculating Latest Publication Date:**
+
+To calculate the latest publication date based on the document's rank within the same journal and year, you would need to:
+
+1. Join the `docs` table to get publication details.
+
+2. Use window functions to rank documents within each journal and year.
+
+3. Map the rank to synthetic months and days as per the provided method.
+
+**Additional Steps to Include in the Query:**
+
+- **Join with `docs` Table:**
+
+  ```sql
+  LEFT JOIN `bigquery-public-data.ebi_chembl.docs` AS d1 ON fa1.doc_id = d1.doc_id
+  LEFT JOIN `bigquery-public-data.ebi_chembl.docs` AS d2 ON fa2.doc_id = d2.doc_id
+  ```
+
+- **Calculate `Latest_publication_date` and `Highest_doc_id`:**
+
+  - Use `GREATEST` function for `Highest_doc_id`.
+  - Use the method described to compute the synthetic publication date.
+
+- **Classify the Change in Standard Values:**
+
+  - Compare `standard_value1` and `standard_value2` along with their `relation1` and `relation2` to determine if it's an 'increase', 'decrease', or 'no-change'.
+
+- **Generate UUIDs from Activity IDs and Canonical SMILES:**
+
+  - Join with `compound_structures` to get `canonical_smiles`.
+  - Use `MD5` function to generate UUIDs.
+
+**Example of Generating UUID:**
+
+```sql
+-- Assuming you have the canonical_smiles
+SELECT
+  TO_HEX(MD5(TO_JSON_STRING(ARRAY[fa1.activity_id, fa2.activity_id, cs1.canonical_smiles, cs2.canonical_smiles]))) AS UUID
+FROM
+  ...
+JOIN `bigquery-public-data.ebi_chembl.compound_structures` AS cs1 ON fa1.molregno = cs1.molregno
+JOIN `bigquery-public-data.ebi_chembl.compound_structures` AS cs2 ON fa2.molregno = cs2.molregno
+```
+
+**Final Notes:**
+
+- **Limit the Data Early:** Applying filters before the join significantly reduces the amount of data, preventing timeouts.
+
+- **Monitor Resource Usage:** Use the BigQuery UI to monitor the query's resource consumption.
+
+- **Incremental Testing:** Start with a smaller dataset or stricter criteria and gradually expand.
+
+- **Adjust the `LIMIT`:** Initially use a small `LIMIT`, such as 10, to ensure the query runs successfully.
+
+**Moving Forward:**
+
+By refining the query to include all necessary filters before the self-join, you should be able to execute it without timeouts. Remember to:
+
+- **Test Each Step Individually:** Execute each CTE separately to verify the results.
+
+- **Ensure Data Types Match:** Use `SAFE_CAST` where appropriate.
+
+- **Handle Nulls and Edge Cases:** Check for any potential null values that could affect joins or calculations.
+
+If you need further assistance with specific parts of the query, such as calculating the publication date or classifying the standard value changes, feel free to ask!
