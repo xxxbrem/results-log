@@ -1,0 +1,126 @@
+2025-01-26 17:23:55 - openai._base_client - INFO - Retrying request to /chat/completions in 0.393878 seconds
+2025-01-26 17:25:14 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-26 17:25:16 - root - INFO - SQL:
+SELECT DISTINCT disease_code
+   FROM `isb-cgc.TCGA_bioclin_v0.Clinical`
+   LIMIT 100
+Results:
+disease_code
+OV
+GBM
+LUAD
+LUSC
+PRAD
+UCEC
+BLCA
+TGCT
+ESCA
+PAAD
+KIRP
+LIHC
+CESC
+SARC
+BRCA
+THYM
+MESO
+COAD
+STAD
+SKCM
+CHOL
+KIRC
+THCA
+HNSC
+LAML
+READ
+LGG
+DLBC
+KICH
+UCS
+ACC
+PCPG
+UVM
+
+2025-01-26 17:25:18 - root - INFO - SQL:
+SELECT DISTINCT classification
+   FROM `isb-cgc.TCGA_bioclin_v0.Annotations`
+   LIMIT 100
+Results:
+classification
+Notification
+CenterNotification
+Observation
+Redaction
+
+2025-01-26 17:25:20 - root - INFO - SQL:
+SELECT DISTINCT category
+   FROM `isb-cgc.TCGA_bioclin_v0.Annotations`
+   LIMIT 100
+Results:
+category
+Item is noncanonical
+Item flagged DNU
+History of unacceptable prior treatment related to a prior/other malignancy
+Item does not meet study protocol
+Item may not meet study protocol
+Synchronous malignancy
+History of acceptable prior treatment related to a prior/other malignancy
+General
+Tumor type incorrect
+Prior malignancy
+Neoadjuvant therapy
+Subject identity unknown
+Biospecimen identity unknown
+Genotype mismatch
+Barcode incorrect
+Molecular analysis outside specification
+Duplicate item
+Subject withdrew consent
+Center QC failed
+Case submitted is found to be a recurrence after submission
+Qualification metrics changed
+Item in special subset
+Pathology outside specification
+Inadvertently shipped
+Item Flagged Low Quality
+Tumor tissue origin incorrect
+Qualified in error
+Normal class but appears diseased
+Permanently missing item or object
+Tumor class but appears normal
+Normal tissue origin incorrect
+Alternate sample pipeline
+WGA Failure
+Sample compromised
+BCR Notification
+Duplicate case
+Administrative Compliance
+Acceptable treatment for TCGA tumor
+
+2025-01-26 17:26:07 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-26 17:26:07 - root - INFO - ```sql
+SELECT DISTINCT c.case_barcode, g.file_gdc_url
+FROM `isb-cgc.TCGA_bioclin_v0.Clinical` c
+JOIN `isb-cgc.TCGA_bioclin_v0.Annotations` a ON c.case_barcode = a.case_barcode
+JOIN `isb-cgc.GDC_metadata.rel14_fileData_current` f ON c.case_gdc_id = f.cases__case_id
+JOIN `isb-cgc.GDC_metadata.rel14_GDCfileID_to_GCSurl` g ON f.file_gdc_id = g.file_gdc_id
+WHERE c.gender = 'Female' 
+  AND c.age_at_diagnosis <= 40 
+  AND c.disease_code = 'BRCA'
+  AND (LOWER(a.category) LIKE '%prior malignancy%' 
+       OR LOWER(a.category) LIKE '%unacceptable prior treatment%')
+LIMIT 100
+```
+2025-01-26 17:27:01 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-26 17:27:01 - root - INFO - ```sql
+SELECT DISTINCT c.case_barcode, g.file_gdc_url
+FROM `isb-cgc.TCGA_bioclin_v0.Clinical` c
+JOIN `isb-cgc.TCGA_bioclin_v0.Annotations` a ON c.case_barcode = a.case_barcode
+JOIN `isb-cgc.GDC_metadata.rel14_fileData_current` f ON c.case_gdc_id = f.case_gdc_id
+JOIN `isb-cgc.GDC_metadata.rel14_GDCfileID_to_GCSurl` g ON f.file_gdc_id = g.file_gdc_id
+WHERE c.gender = 'Female' 
+  AND c.age_at_diagnosis <= 30 
+  AND c.disease_code = 'BRCA'
+  AND (LOWER(a.classification) = 'redaction' 
+       OR LOWER(a.category) LIKE '%prior malignancy%')
+LIMIT 100
+```
