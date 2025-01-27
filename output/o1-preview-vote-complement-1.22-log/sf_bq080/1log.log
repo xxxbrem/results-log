@@ -1,3 +1,478 @@
-2025-01-23 20:17:09 - openai._base_client - INFO - Retrying request to /chat/completions in 0.440171 seconds
-2025-01-23 20:17:10 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 400 BadRequest"
-2025-01-23 20:17:10 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 400 BadRequest"
+2025-01-27 07:15:48 - openai._base_client - INFO - Retrying request to /chat/completions in 0.466016 seconds
+2025-01-27 07:16:45 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:16:45 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:16:45 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:16:45 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:16:47 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 07:16:47 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:16:47 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:17:12 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:17:12 - root - INFO - ```sql
+WITH user_contracts AS (
+    SELECT
+        DATE(DATE_FROM_UNIX_TIMESTAMP(t."block_timestamp")) AS "Date",
+        COUNT(*) AS "User_Created_Contracts"
+    FROM
+        CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS t
+    WHERE
+        t."receipt_contract_address" IS NOT NULL
+        AND t."block_timestamp" BETWEEN 1535587200 AND 1538265599
+    GROUP BY
+        "Date"
+),
+contract_contracts AS (
+    SELECT
+        DATE(DATE_FROM_UNIX_TIMESTAMP(tr."block_timestamp")) AS "Date",
+        COUNT(*) AS "Contract_Created_Contracts"
+    FROM
+        CRYPTO.CRYPTO_ETHEREUM.TRACES tr
+    WHERE
+        tr."trace_type" = 'create'
+        AND tr."block_timestamp" BETWEEN 1535587200 AND 1538265599
+    GROUP BY
+        "Date"
+),
+daily_totals AS (
+    SELECT
+        COALESCE(u."Date", c."Date") AS "Date",
+        COALESCE(u."User_Created_Contracts", 0) AS "User_Created_Contracts",
+        COALESCE(c."Contract_Created_Contracts", 0) AS "Contract_Created_Contracts"
+    FROM
+        user_contracts u
+    FULL OUTER JOIN
+        contract_contracts c ON u."Date" = c."Date"
+),
+cumulative_totals AS (
+    SELECT
+        "Date",
+        SUM("User_Created_Contracts") OVER (ORDER BY "Date") AS "Cumulative_User_Created_Contracts",
+        SUM("Contract_Created_Contracts") OVER (ORDER BY "Date") AS "Cumulative_Contract_Created_Contracts"
+    FROM
+        daily_totals
+)
+SELECT
+    "Date",
+    "Cumulative_User_Created_Contracts",
+    "Cumulative_Contract_Created_Contracts"
+FROM
+    cumulative_totals
+ORDER BY
+    "Date"
+LIMIT 100;
+```
+2025-01-27 07:17:12 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:17:12 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:17:12 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:17:13 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:17:13 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:18:00 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:18:00 - root - INFO - ```sql
+WITH user_contracts AS (
+    SELECT
+        CAST(TO_TIMESTAMP(t."block_timestamp" / 1000) AS DATE) AS "Date",
+        COUNT(*) AS "User_Created_Contracts"
+    FROM
+        CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS t
+    WHERE
+        t."receipt_contract_address" IS NOT NULL
+        AND t."block_timestamp" BETWEEN 1535587200000 AND 1538265600000
+    GROUP BY
+        "Date"
+),
+contract_contracts AS (
+    SELECT
+        CAST(TO_TIMESTAMP(tr."block_timestamp" / 1000) AS DATE) AS "Date",
+        COUNT(*) AS "Contract_Created_Contracts"
+    FROM
+        CRYPTO.CRYPTO_ETHEREUM.TRACES tr
+    WHERE
+        tr."trace_type" = 'create'
+        AND tr."block_timestamp" BETWEEN 1535587200000 AND 1538265600000
+    GROUP BY
+        "Date"
+),
+daily_totals AS (
+    SELECT
+        COALESCE(u."Date", c."Date") AS "Date",
+        COALESCE(u."User_Created_Contracts", 0) AS "User_Created_Contracts",
+        COALESCE(c."Contract_Created_Contracts", 0) AS "Contract_Created_Contracts"
+    FROM
+        user_contracts u
+    FULL OUTER JOIN
+        contract_contracts c ON u."Date" = c."Date"
+),
+cumulative_totals AS (
+    SELECT
+        "Date",
+        SUM("User_Created_Contracts") OVER (ORDER BY "Date") AS "Cumulative_User_Created_Contracts",
+        SUM("Contract_Created_Contracts") OVER (ORDER BY "Date") AS "Cumulative_Contract_Created_Contracts"
+    FROM
+        daily_totals
+)
+SELECT
+    "Date",
+    "Cumulative_User_Created_Contracts",
+    "Cumulative_Contract_Created_Contracts"
+FROM
+    cumulative_totals
+ORDER BY
+    "Date"
+LIMIT 100;
+```
+2025-01-27 07:18:00 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:18:00 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:18:00 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:18:01 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 07:18:01 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:18:01 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:18:29 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:18:29 - root - INFO - ```sql
+SELECT
+    CAST(TO_TIMESTAMP(t."block_timestamp") AS DATE) AS "Date",
+    SUM(COUNT(*)) OVER (ORDER BY CAST(TO_TIMESTAMP(t."block_timestamp") AS DATE)) AS "Cumulative_Contracts_Created"
+FROM
+    CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS t
+WHERE
+    t."receipt_contract_address" IS NOT NULL
+GROUP BY
+    "Date"
+ORDER BY
+    "Date"
+LIMIT 100;
+```
+2025-01-27 07:18:29 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:18:29 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:18:29 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:18:31 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 07:18:31 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:18:31 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:18:31 - root - INFO - SQL:
+SELECT
+    CAST(TO_TIMESTAMP(t."block_timestamp") AS DATE) AS "Date",
+    SUM(COUNT(*)) OVER (ORDER BY CAST(TO_TIMESTAMP(t."block_timestamp") AS DATE)) AS "Cumulative_Contracts_Created"
+FROM
+    CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS t
+WHERE
+    t."receipt_contract_address" IS NOT NULL
+GROUP BY
+    "Date"
+ORDER BY
+    "Date"
+LIMIT 100;
+Results:
+252005: 252005: Failed to convert current row, cause: <built-in method from_bytes of type object at 0xa81460> returned a result with an exception set
+2025-01-27 07:18:31 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:18:31 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:18:31 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:18:32 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 07:18:32 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:18:33 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:19:05 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:19:05 - root - INFO - ```sql
+SELECT
+    TO_DATE(TO_TIMESTAMP("block_timestamp" / 1000)) AS "Date",
+    COUNT(*) AS "Contracts_Created"
+FROM
+    CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS
+WHERE
+    "receipt_contract_address" IS NOT NULL
+GROUP BY
+    "Date"
+ORDER BY
+    "Date"
+LIMIT 100;
+```
+2025-01-27 07:19:05 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:19:05 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:19:05 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:19:06 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 07:19:06 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:19:07 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:20:23 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:20:23 - root - INFO - ```sql
+SELECT
+    "block_number",
+    SUM(COUNT(*)) OVER (ORDER BY "block_number") AS "Cumulative_Contracts_Created"
+FROM
+    CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS
+WHERE
+    "receipt_contract_address" IS NOT NULL
+GROUP BY
+    "block_number"
+ORDER BY
+    "block_number"
+LIMIT 100;
+```
+2025-01-27 07:20:23 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:20:23 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:20:23 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:20:25 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 07:20:25 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:20:25 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:21:29 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:21:29 - root - INFO - SQL:
+SELECT
+    "block_number",
+    SUM(COUNT(*)) OVER (ORDER BY "block_number") AS "Cumulative_Contracts_Created"
+FROM
+    CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS
+WHERE
+    "receipt_contract_address" IS NOT NULL
+GROUP BY
+    "block_number"
+ORDER BY
+    "block_number"
+LIMIT 100;
+Results:
+block_number,Cumulative_Contracts_Created
+148664,1
+150593,2
+150611,3
+150920,4
+150938,5
+151348,6
+151428,7
+151429,8
+151452,9
+151536,10
+151576,11
+151580,12
+151728,13
+151894,14
+151960,15
+152025,16
+152602,17
+152603,18
+152619,19
+152670,20
+152673,21
+152862,22
+485984,23
+486351,24
+486526,25
+486686,26
+487859,27
+487886,28
+487945,29
+487954,30
+488577,31
+488714,32
+488833,34
+488929,35
+489130,36
+489136,38
+489415,39
+489433,40
+489478,41
+489511,42
+489597,43
+489658,44
+489959,45
+489998,46
+490055,47
+490056,48
+490315,49
+490326,50
+490501,51
+490523,52
+490778,53
+490859,54
+490915,55
+799401,56
+799420,57
+799441,58
+799478,59
+799520,60
+799533,61
+799966,62
+800395,63
+800608,64
+800801,65
+800941,67
+801032,68
+801075,69
+801213,70
+801215,71
+801270,72
+801309,73
+801351,74
+801354,75
+801367,76
+801381,77
+801385,78
+801390,79
+801478,80
+801997,81
+802039,82
+802054,83
+802415,84
+802416,85
+802551,86
+802603,87
+802635,88
+802636,89
+802676,90
+802759,91
+802764,92
+802765,93
+802784,94
+802792,95
+802801,96
+802805,97
+802808,98
+802809,99
+802845,100
+802857,101
+802935,102
+803014,103
+
+2025-01-27 07:21:29 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:21:29 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:21:29 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:21:30 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 07:21:30 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:21:30 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:22:15 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:22:15 - root - INFO - ```sql
+SELECT
+    TO_CHAR(TO_TIMESTAMP("block_timestamp"), 'YYYY-MM-DD') AS "Date",
+    COUNT(*) AS "Contracts_Created"
+FROM
+    CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS
+WHERE
+    "receipt_contract_address" IS NOT NULL
+GROUP BY
+    "Date"
+ORDER BY
+    "Date"
+LIMIT 100;
+```
+2025-01-27 07:22:15 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:22:15 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:22:15 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:22:16 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 07:22:16 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:22:17 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 07:23:10 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:23:10 - root - INFO - SQL:
+SELECT
+    TO_CHAR(TO_TIMESTAMP("block_timestamp"), 'YYYY-MM-DD') AS "Date",
+    COUNT(*) AS "Contracts_Created"
+FROM
+    CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS
+WHERE
+    "receipt_contract_address" IS NOT NULL
+GROUP BY
+    "Date"
+ORDER BY
+    "Date"
+LIMIT 100;
+Results:
+Date,Contracts_Created
+45653966-11-04,1
+45655093-07-14,1
+45655103-02-20,1
+45655279-07-30,1
+45655288-07-06,1
+45655529-07-05,1
+45655574-02-27,1
+45655575-12-18,1
+45655590-10-17,1
+45655634-11-26,1
+45655656-11-11,1
+45655659-05-14,1
+45655746-02-17,1
+45655852-07-17,1
+45655891-01-16,1
+45655923-03-18,1
+45656263-12-28,1
+45656264-11-27,1
+45656270-11-24,1
+45656294-07-15,1
+45656298-08-16,1
+45656400-06-10,1
+45842775-12-02,1
+45842960-03-09,1
+45843059-10-26,1
+45843146-05-12,1
+45843763-07-13,1
+45843776-12-18,1
+45843813-11-30,1
+45843817-11-05,1
+45844146-07-09,1
+45844211-05-10,1
+45844274-08-21,2
+45844322-11-02,1
+45844427-10-15,1
+45844431-10-01,2
+45844578-02-13,1
+45844588-04-16,1
+45844612-04-24,1
+45844636-12-19,1
+45844690-08-01,1
+45844716-11-08,1
+45844883-04-02,1
+45844902-11-24,1
+45844934-12-19,1
+45844935-10-05,1
+45845079-07-13,1
+45845086-01-22,1
+45845180-02-10,1
+45845192-12-11,1
+45845324-01-28,1
+45845368-06-08,1
+45845405-10-07,1
+46012879-02-06,1
+46012888-03-23,1
+46012896-08-27,1
+46012913-08-11,1
+46012932-10-01,1
+46012941-09-19,1
+46013169-04-22,1
+46013418-11-21,1
+46013534-05-01,1
+46013637-11-09,1
+46013713-02-24,2
+46013752-05-07,1
+46013769-12-31,1
+46013838-09-25,1
+46013840-04-25,1
+46013865-05-20,1
+46013882-06-06,1
+46013911-12-31,1
+46013915-05-11,1
+46013922-02-08,1
+46013929-02-21,1
+46013932-07-01,1
+46013934-12-21,1
+46013980-10-28,1
+46014264-11-18,1
+46014289-10-27,1
+46014296-05-07,1
+46014474-05-06,1
+46014474-10-15,1
+46014562-04-24,1
+46014594-10-28,1
+46014616-04-23,1
+46014617-03-25,1
+46014636-05-26,1
+46014674-04-08,1
+46014675-10-04,1
+46014676-03-14,1
+46014687-06-26,1
+46014691-06-12,1
+46014693-05-29,1
+46014695-06-09,1
+46014697-06-30,1
+46014698-06-12,1
+46014719-04-20,1
+46014727-08-09,1
+46014761-07-05,1
+46014796-05-02,1
+
+2025-01-27 07:23:10 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 07:23:10 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 07:23:10 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 07:23:11 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 07:23:11 - snowflake.connector.connection - INFO - closed
+2025-01-27 07:23:12 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
