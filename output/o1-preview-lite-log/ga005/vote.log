@@ -1,0 +1,35 @@
+After reviewing the three SQL scripts and their results, the SQL script that correctly performs the requested weekly cohort analysis is **`1result.sql`**.
+
+**Reason:**
+
+- **Accurate Cohort Grouping:** `1result.sql` correctly groups users by their first week of app use starting from July 9, 2018. It uses the `user_first_touch_timestamp` to determine the cohort week, ensuring that each user is assigned to the correct cohort.
+
+  ```sql
+  DATE_TRUNC(DATE(TIMESTAMP_MICROS(user_first_touch_timestamp)), WEEK(MONDAY)) AS cohort_week_start
+  ```
+
+- **Correct Retention Calculation:** The script calculates the retention for each cohort over the next two weeks by identifying users who returned in the first and second weeks after their cohort week. It does this by joining the cohorts with the events data and checking if the event week matches the cohort week plus one or two weeks.
+
+  ```sql
+  COUNT(DISTINCT CASE WHEN e.event_week_start = DATE_ADD(c.cohort_week_start, INTERVAL 1 WEEK) THEN c.user_pseudo_id END) AS users_retained_week1,
+  COUNT(DISTINCT CASE WHEN e.event_week_start = DATE_ADD(c.cohort_week_start, INTERVAL 2 WEEK) THEN c.user_pseudo_id END) AS users_retained_week2
+  ```
+
+- **Retention Rates Calculation:** The script calculates the retention rates by dividing the number of users who returned in each subsequent week by the total number of users in the cohort, then multiplying by 100 to get a percentage. It handles cases where there might be `NULL` values by using `IFNULL` to ensure accurate calculations.
+
+  ```sql
+  ROUND(IFNULL(users_retained_week1 / users_in_cohort * 100, 4), 4) AS Retention_Week1_Percentage,
+  ROUND(IFNULL(users_retained_week2 / users_in_cohort * 100, 4), 4) AS Retention_Week2_Percentage
+  ```
+
+- **Data Range Compliance:** The script uses data up to October 2, 2018, as specified, ensuring that all calculations are within the given timeframe.
+
+Therefore, the SQL script `1result.sql` effectively fulfills all the requirements of the task by providing an accurate weekly cohort analysis and correctly calculating the retention rates over the next two weeks.
+
+---
+
+**Answer:**
+
+```plaintext
+1result.sql
+```
