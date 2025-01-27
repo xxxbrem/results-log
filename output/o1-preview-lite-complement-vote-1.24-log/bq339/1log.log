@@ -1,0 +1,31 @@
+2025-01-27 10:08:55 - openai._base_client - INFO - Retrying request to /chat/completions in 0.391906 seconds
+2025-01-27 10:09:25 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 10:09:27 - root - INFO - SQL:
+SELECT DISTINCT `subscriber_type`
+   FROM `bigquery-public-data.san_francisco_bikeshare.bikeshare_trips`
+   LIMIT 100;
+Results:
+subscriber_type
+Customer
+Subscriber
+nan
+
+2025-01-27 10:09:47 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 10:09:47 - root - INFO - ```sql
+SELECT
+  EXTRACT(MONTH FROM start_date) AS month,
+  ABS(
+    SUM(CASE WHEN subscriber_type = 'Customer' THEN duration_sec ELSE 0 END)/60 -
+    SUM(CASE WHEN subscriber_type = 'Subscriber' THEN duration_sec ELSE 0 END)/60
+  ) AS absolute_difference_in_minutes
+FROM
+  `bigquery-public-data.san_francisco_bikeshare.bikeshare_trips`
+WHERE
+  EXTRACT(YEAR FROM start_date) = 2017
+  AND subscriber_type IN ('Customer', 'Subscriber')
+GROUP BY
+  month
+ORDER BY
+  absolute_difference_in_minutes DESC
+LIMIT 1;
+```

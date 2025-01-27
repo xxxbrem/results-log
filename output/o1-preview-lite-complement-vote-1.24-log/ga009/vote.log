@@ -1,0 +1,38 @@
+After comparing both SQL queries and their results, I have determined that **`2result.sql`** is the correct SQL query for calculating the average number of engaged sessions per user in December 2020.
+
+**Reasoning:**
+
+1. **Avoiding the Cartesian Product Issue in `1result.sql`:**
+   - In **`1result.sql`**, the query performs two `UNNEST` operations directly in the `FROM` clause:
+     ```sql
+     FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+       UNNEST(`event_params`) AS ep_session_id,
+       UNNEST(`event_params`) AS ep_session_engaged
+     ```
+   - This approach can create a **Cartesian product** between `ep_session_id` and `ep_session_engaged`. For each event, if `event_params` contains multiple keys, the combination of all possible pairs of parameters can lead to **overcounting** of sessions. This means the same session might be counted multiple times if the event has multiple parameters.
+
+2. **Use of Scalar Subqueries in `2result.sql`:**
+   - In **`2result.sql`**, the query extracts `ga_session_id` and `session_engaged` using **scalar subqueries**:
+     ```sql
+     SELECT
+       user_pseudo_id,
+       (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS ga_session_id,
+       (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'session_engaged') AS session_engaged
+     ```
+   - This method ensures that each parameter is extracted **independently** for each event without causing unintended duplication of rows. It retrieves the specific values needed without combining all possible pairs of event parameters.
+
+3. **Accurate Counting of Engaged Sessions:**
+   - By correctly associating each `session_engaged` flag with its corresponding `ga_session_id`, **`2result.sql`** accurately counts the number of unique engaged sessions per user.
+   - The condition `session_engaged = 1` ensures only engaged sessions are counted, and grouping by `user_pseudo_id` provides the total engaged sessions per user.
+
+4. **Reliable Aggregation:**
+   - The calculation of the average in **`2result.sql`** is based on reliable counts, leading to a more accurate average number of engaged sessions per user.
+
+5. **Consistent and Precise Results:**
+   - While both queries produce similar numerical results, the methodology in **`2result.sql`** is more robust and less prone to errors associated with data duplication.
+
+---
+
+```plaintext
+2result.sql
+```

@@ -2956,3 +2956,37 @@ HAVING COUNT(DISTINCT t."gender") = 2;
 The error information is:
  No data found for the specified query.
 
+2025-01-27 07:23:49 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 07:23:49 - root - INFO - ```sql
+SELECT t."state" AS "State_Abbreviation"
+FROM (
+    SELECT sub."state", sub."gender"
+    FROM (
+        SELECT
+            lt."id_bioguide",
+            lt."state",
+            l."gender",
+            CAST(((julianday(lt."term_start") - julianday(init."initial_term_start")) / 365.25 + 1e-6) / 2 AS INTEGER) * 2 AS "interval_num"
+        FROM "legislators_terms" lt
+        JOIN (
+            SELECT "id_bioguide", MIN("term_start") AS "initial_term_start"
+            FROM "legislators_terms"
+            WHERE "term_start" IS NOT NULL AND "term_start" != ''
+            GROUP BY "id_bioguide"
+        ) init ON lt."id_bioguide" = init."id_bioguide"
+        JOIN "legislators" l ON lt."id_bioguide" = l."id_bioguide"
+        WHERE lt."term_start" IS NOT NULL AND lt."term_start" != ''
+            AND ((julianday(lt."term_start") - julianday(init."initial_term_start")) / 365.25) <= 10
+            AND CAST(((julianday(lt."term_start") - julianday(init."initial_term_start")) / 365.25 + 1e-6) / 2 AS INTEGER) * 2 IN (0, 2, 4, 6, 8, 10)
+    ) sub
+    GROUP BY sub."state", sub."gender"
+    HAVING COUNT(DISTINCT sub."interval_num") = 6
+) t
+GROUP BY t."state"
+HAVING COUNT(DISTINCT t."gender") = 2;
+```
+
+```csv
+State_Abbreviation
+```
+2025-01-27 07:23:50 - root - INFO - Total iteration counts: 10
