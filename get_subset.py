@@ -44,7 +44,7 @@ lite_correct_list = [
     "bq001", "bq006", "bq010", "bq018", "bq021", "bq025", "bq032", "bq034", "bq035", "bq059", "bq060", "bq061", "bq066", "bq076", 
     "bq077", "bq081", "bq085", "bq090", "bq097", "bq103", "bq109", "bq115", "bq126", "bq130", "bq143", "bq151", 
     "bq161", "bq172", "bq227", "bq228", "bq268", "bq279",
-    "bq280", "bq281", "bq282", "bq284", "bq285", "bq286", "bq300", "bq302", "bq303", "bq308", "bq310", "bq327", "bq328", "bq352"
+    "bq280", "bq281", "bq282", "bq284", "bq285", "bq286", "bq300", "bq302", "bq303", "bq308", "bq310", "bq327", "bq328", "bq352",
     "bq355", "bq357", "bq362", "bq379", "bq389", "bq392", "bq394", "bq396", "bq398", "bq399", "bq406", "bq414", 
     "ga001", "ga002", "ga003", "ga004", "ga007", "ga010", "ga020", "local008", "local017", "local019", "local022", "local023", "local026", "local028", "local031", 
     "local038", "local039", "local041", "local054", "local056", "local058", "local065", "local067", "local071", "local072", "local074", "local075", "local078", "local099", 
