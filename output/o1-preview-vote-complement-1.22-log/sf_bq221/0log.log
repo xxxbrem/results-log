@@ -1,3 +1,761 @@
-2025-01-23 20:16:41 - openai._base_client - INFO - Retrying request to /chat/completions in 0.492559 seconds
-2025-01-23 20:16:42 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 400 BadRequest"
-2025-01-23 20:16:42 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-02-15-preview "HTTP/1.1 400 BadRequest"
+2025-01-27 01:37:21 - openai._base_client - INFO - Retrying request to /chat/completions in 0.388179 seconds
+2025-01-27 01:38:29 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:38:29 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:38:29 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:38:29 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:38:30 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:38:31 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:38:55 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:38:55 - root - INFO - **Error Explanation:**
+
+The error you're encountering:
+
+```
+100097 (22007): Can't parse '0' as date with format 'YYYYMMDD'
+```
+
+occurs because the `"publication_date"` column contains values that cannot be parsed into a date using the format `'YYYYMMDD'`. Specifically, there are entries where `"publication_date"` might be `'0'`, `NULL`, or contains invalid data that doesn't match the expected 8-digit date format.
+
+**Solution:**
+
+To resolve this issue, we need to handle these invalid date values. Here are two approaches:
+
+1. **Filter Out Invalid Dates:**
+
+   Modify your query to exclude rows where `"publication_date"` is invalid. You can add a `WHERE` clause to filter out entries that are `NULL`, equal to `'0'`, or don't match the expected date pattern.
+
+   ```sql
+   SELECT DISTINCT TO_VARCHAR(TO_DATE("publication_date"::VARCHAR, 'YYYYMMDD'), 'YYYY') AS "Year"
+   FROM PATENTS.PATENTS.PUBLICATIONS
+   WHERE "publication_date" IS NOT NULL
+     AND "publication_date" <> '0'
+     AND LENGTH("publication_date"::VARCHAR) = 8
+     AND REGEXP_LIKE("publication_date"::VARCHAR, '^\d{8}$')
+   LIMIT 100;
+   ```
+
+   **Explanation:**
+
+   - `IS NOT NULL`: Excludes `NULL` values.
+   - `<> '0'`: Excludes entries where the date is `'0'`.
+   - `LENGTH(...) = 8`: Ensures the date string is exactly 8 characters long.
+   - `REGEXP_LIKE(..., '^\d{8}$')`: Validates that the date string consists of exactly 8 digits (0-9).
+
+2. **Use `TRY_TO_DATE` Function:**
+
+   Alternatively, you can use the `TRY_TO_DATE` function, which attempts to convert a string to a date. If it fails, it returns `NULL` instead of raising an error.
+
+   ```sql
+   SELECT DISTINCT TO_VARCHAR(TRY_TO_DATE("publication_date"::VARCHAR, 'YYYYMMDD'), 'YYYY') AS "Year"
+   FROM PATENTS.PATENTS.PUBLICATIONS
+   WHERE TRY_TO_DATE("publication_date"::VARCHAR, 'YYYYMMDD') IS NOT NULL
+   LIMIT 100;
+   ```
+
+   **Explanation:**
+
+   - `TRY_TO_DATE(...)`: Attempts to parse the date; if unsuccessful, returns `NULL`.
+   - `WHERE TRY_TO_DATE(...) IS NOT NULL`: Filters out rows where the date parsing failed.
+
+**Recommendation:**
+
+I recommend using the second approach with `TRY_TO_DATE` because it's more concise and effectively handles any invalid date formats without needing multiple conditions.
+
+**Example Using `TRY_TO_DATE`:**
+
+```sql
+SELECT DISTINCT TO_VARCHAR(TRY_TO_DATE("publication_date"::VARCHAR, 'YYYYMMDD'), 'YYYY') AS "Year"
+FROM PATENTS.PATENTS.PUBLICATIONS
+WHERE TRY_TO_DATE("publication_date"::VARCHAR, 'YYYYMMDD') IS NOT NULL
+LIMIT 100;
+```
+
+**Next Steps:**
+
+Now that we've addressed the error, you can proceed to run the query to retrieve the distinct publication years. This will help you in further analysis, such as grouping patent filings by year.
+
+**Additional Considerations:**
+
+- When working with date fields, always ensure that the data conforms to the expected format.
+- It's good practice to handle exceptions and edge cases, such as invalid or missing data, to prevent errors during query execution.
+
+**Understanding the Data:**
+
+Given that `"publication_date"` may contain invalid values, it might be helpful to investigate these entries to understand why they're invalid. You can run a query to identify them:
+
+```sql
+SELECT "publication_number", "publication_date"
+FROM PATENTS.PATENTS.PUBLICATIONS
+WHERE TRY_TO_DATE("publication_date"::VARCHAR, 'YYYYMMDD') IS NULL
+LIMIT 100;
+```
+
+This will list publications with invalid dates, allowing you to assess data quality and consider data cleansing if necessary.
+2025-01-27 01:38:55 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:38:55 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:38:55 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:38:56 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 01:38:56 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:38:57 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:39:49 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:39:49 - root - INFO - ```sql
+SELECT "symbol" AS "CPC_Symbol", "titleFull" AS "Full_Title"
+FROM PATENTS.PATENTS.CPC_DEFINITION
+WHERE "level" = 5
+LIMIT 100;
+```
+2025-01-27 01:39:49 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:39:49 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:39:49 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:39:50 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 01:39:50 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:39:51 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:41:11 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:41:11 - root - INFO - SQL:
+SELECT "symbol" AS "CPC_Symbol", "titleFull" AS "Full_Title"
+FROM PATENTS.PATENTS.CPC_DEFINITION
+WHERE "level" = 5
+LIMIT 100;
+Results:
+Too long, hard cut:
+CPC_Symbol,Full_Title
+A01H,NEW PLANTS OR NON-TRANSGENIC PROCESSES FOR OBTAINING THEM; PLANT REPRODUCTION BY TISSUE CULTURE TECHNIQUES
+A01F,PROCESSING OF HARVESTED PRODUCE; HAY OR STRAW PRESSES; DEVICES FOR STORING AGRICULTURAL OR HORTICULTURAL PRODUCE
+A01C,PLANTING; SOWING; FERTILISING
+A01G,"HORTICULTURE; CULTIVATION OF VEGETABLES, FLOWERS, RICE, FRUIT, VINES, HOPS OR SEAWEED; FORESTRY; WATERING"
+A01N,"PRESERVATION OF BODIES OF HUMANS OR ANIMALS OR PLANTS OR PARTS THEREOF; BIOCIDES, e.g. AS DISINFECTANTS, AS PESTICIDES OR AS HERBICIDES; PEST REPELLANTS OR ATTRACTANTS; PLANT GROWTH REGULATORS"
+A01P,"BIOCIDAL, PEST REPELLANT, PEST ATTRACTANT OR PLANT GROWTH REGULATORY ACTIVITY OF CHEMICAL COMPOUNDS OR PREPARATIONS"
+A01D,HARVESTING; MOWING
+A01L,SHOEING OF ANIMALS
+A01K,"ANIMAL HUSBANDRY; AVICULTURE; APICULTURE; PISCICULTURE; FISHING; REARING OR BREEDING ANIMALS, NOT OTHERWISE PROVIDED FOR; NEW BREEDS OF ANIMALS"
+A01M,"CATCHING, TRAPPING OR SCARING OF ANIMALS; APPARATUS FOR THE DESTRUCTION OF NOXIOUS ANIMALS OR NOXIOUS PLANTS"
+A01J,MANUFACTURE OF DAIRY PRODUCTS
+A01B,"SOIL WORKING IN AGRICULTURE OR FORESTRY; PARTS, DETAILS, OR ACCESSORIES OF AGRICULTURAL MACHINES OR IMPLEMENTS, IN GENERAL"
+A21D,"TREATMENT, e.g. PRESERVATION, OF FLOUR OR DOUGH, e.g. BY ADDITION OF MATERIALS; BAKING; BAKERY PRODUCTS; PRESERVATION THEREOF"
+A21C,MACHINES OR EQUIPMENT FOR MAKING OR PROCESSING DOUGHS; HANDLING BAKED ARTICLES MADE FROM DOUGH
+A21B,BAKERS' OVENS; MACHINES OR EQUIPMENT FOR BAKING
+A22B,SLAUGHTERING
+A22C,"PROCESSING MEAT, POULTRY, OR FISH"
+A23P,"SHAPING OR WORKING OF FOODSTUFFS, NOT FULLY COVERED BY A SINGLE OTHER SUBCLASS"
+A23C,"DAIRY PRODUCTS, e.g. MILK, BUTTER OR CHEESE; MILK OR CHEESE SUBSTITUTES; MAKING THEREOF"
+A23J,PROTEIN COMPOSITIONS FOR FOODSTUFFS; WORKING-UP PROTEINS FOR FOODSTUFFS; PHOSPHATIDE COMPOSITIONS FOR FOODSTUFFS
+A23K,FODDER
+A23L,"FOODS, FOODSTUFFS, OR NON-ALCOHOLIC BEVERAGES, NOT COVERED BY SUBCLASSES A21D OR A23B-A23J; THEIR PREPARATION OR TREATMENT, e.g. COOKING, MODIFICATION OF NUTRITIVE QUALITIES, PHYSICAL TREATMENT; PRESERVATION OF FOODS OR FOODSTUFFS, IN GENERAL"
+A23N,"MACHINES OR APPARATUS FOR TREATING HARVESTED FRUIT, VEGETABLES OR FLOWER BULBS IN BULK, NOT OTHERWISE PROVIDED FOR; PEELING VEGETABLES OR FRUIT IN BULK; APPARATUS FOR PREPARING ANIMAL FEEDING- STUFFS"
+A23V,"INDEXING SCHEME RELATING TO FOODS, FOODSTUFFS OR NON-ALCOHOLIC BEVERAGES AND LACTIC OR PROPIONIC ACID BACTERIA USED IN FOODSTUFFS OR FOOD PREPARATION"
+A23F,"COFFEE; TEA; THEIR SUBSTITUTES; MANUFACTURE, PREPARATION, OR INFUSION THEREOF"
+A23G,"COCOA; COCOA PRODUCTS, e.g. CHOCOLATE; SUBSTITUTES FOR COCOA OR COCOA PRODUCTS; CONFECTIONERY; CHEWING GUM; ICE-CREAM; PREPARATION THEREOF"
+A23B,"PRESERVING, e.g. BY CANNING, MEAT, FISH, EGGS, FRUIT, VEGETABLES, EDIBLE SEEDS; CHEMICAL RIPENING OF FRUIT OR VEGETABLES; THE PRESERVED, RIPENED, OR CANNED PRODUCTS"
+A23D,"EDIBLE OILS OR FATS, e.g. MARGARINES, SHORTENINGS, COOKING OILS"
+A24C,MACHINES FOR MAKING CIGARS OR CIGARETTES
+A24D,CIGARS; CIGARETTES; TOBACCO SMOKE FILTERS; MOUTHPIECES FOR CIGARS OR CIGARETTES; MANUFACTURE OF TOBACCO SMOKE FILTERS OR MOUTHPIECES
+A24F,SMOKERS' REQUISITES; MATCH BOXES; SIMULATED SMOKING DEVICES
+A24B,MANUFACTURE OR PREPARATION OF TOBACCO FOR SMOKING OR CHEWING; TOBACCO; SNUFF
+A41F,GARMENT FASTENINGS; SUSPENDERS
+A41G,ARTIFICIAL FLOWERS; WIGS; MASKS; FEATHERS
+A41B,SHIRTS; UNDERWEAR; BABY LINEN; HANDKERCHIEFS
+A41D,OUTERWEAR; PROTECTIVE GARMENTS; ACCESSORIES
+A41C,CORSETS; BRASSIERES
+A41H,"APPLIANCES OR METHODS FOR MAKING CLOTHES, e.g. FOR DRESS-MAKING OR FOR TAILORING, NOT OTHERWISE PROVIDED FOR"
+A42B,HATS; HEAD COVERINGS
+A42C,"MANUFACTURING OR TRIMMING HEAD COVERINGS, e.g. HATS"
+A43B,CHARACTERISTIC FEATURES OF FOOTWEAR; PARTS OF FOOTWEAR
+A43C,FASTENINGS OR ATTACHMENTS OF FOOTWEAR; LACES IN GENERAL
+A43D,"MACHINES, TOOLS, EQUIPMENT OR METHODS FOR MANUFACTURING OR REPAIRING FOOTWEAR"
+A44D,"INDEXING SCHEME RELATING TO BUTTONS, PINS, BUCKLES OR SLIDE FASTENERS, AND TO JEWELLERY, BRACELETS OR OTHER PERSONAL ADORNMENTS"
+A44B,"BUTTONS, PINS, BUCKLES, SLIDE FASTENERS, OR THE LIKE"
+A44C,"PERSONAL ADORNMENTS, e.g. JEWELLERY; COINS"
+A45F,TRAVELLING OR CAMP EQUIPMENT: SACKS OR PACKS CARRIED ON THE BODY
+A45C,PURSES; LUGGAGE; HAND CARRIED BAGS
+A45D,"HAIRDRESSING OR SHAVING EQUIPMENT; EQUIPMENT FOR COSMETICS OR COSMETIC TREATMENTS, e.g. FOR MANICURING OR PEDICURING"
+A45B,WALKING STICKS; UMBRELLAS; LADIES' OR LIKE FANS
+A46D,MANUFACTURE OF BRUSHES
+A46B,BRUSHES
+A47L,DOMESTIC WASHING OR CLEANING; SUCTION CLEANERS IN GENERAL
+A47F,"SPECIAL FURNITURE, FITTINGS, OR ACCESSORIES FOR SHOPS, STOREHOUSES, BARS, RESTAURANTS OR THE LIKE; PAYING COUNTERS"
+A47D,FURNITURE SPECIALLY ADAPTED FOR CHILDREN
+A47G,HOUSEHOLD OR TABLE EQUIPMENT
+A47K,SANITARY EQUIPMENT NOT OTHERWISE PROVIDED FOR; TOILET ACCESSORIES
+A47H,FURNISHINGS FOR WINDOWS OR DOORS
+A47B,TABLES; DESKS; OFFICE FURNITURE; CABINETS; DRAWERS; GENERAL DETAILS OF FURNITURE
+A47C,CHAIRS; SOFAS; BEDS
+A47J,KITCHEN EQUIPMENT; COFFEE MILLS; SPICE MILLS;
+
+2025-01-27 01:41:11 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:41:11 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:41:11 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:41:13 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 01:41:13 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:41:13 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:41:39 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:41:39 - root - INFO - ```sql
+SELECT c.value:"symbol"::STRING AS "CPC_Symbol", d."titleFull" AS "Full_Title"
+FROM PATENTS.PATENTS.CPC_DEFINITION d
+JOIN (
+    SELECT DISTINCT c.value:"symbol"::STRING AS "CPC_Symbol"
+    FROM PATENTS.PATENTS.PUBLICATIONS p,
+    LATERAL FLATTEN(input => p."cpc") c
+    WHERE c.value:"symbol"::STRING IS NOT NULL
+) AS cpc_symbols ON d."symbol" = cpc_symbols."CPC_Symbol"
+LIMIT 100;
+```
+2025-01-27 01:41:39 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:41:39 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:41:39 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:41:40 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:41:41 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:41:56 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:41:56 - root - INFO - ```sql
+SELECT t."publication_number", c."VALUE":"symbol"::STRING AS "CPC_Symbol"
+FROM PATENTS.PATENTS.PUBLICATIONS t,
+LATERAL FLATTEN(input => t."cpc") c
+WHERE c."VALUE":"symbol"::STRING IS NOT NULL
+LIMIT 100;
+```
+2025-01-27 01:41:56 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:41:56 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:41:56 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:41:59 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 01:41:59 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:41:59 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:42:34 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:42:34 - root - INFO - ```sql
+SELECT "symbol" AS "CPC_Symbol", "titleFull" AS "Full_Title"
+FROM PATENTS.PATENTS.CPC_DEFINITION
+LIMIT 100;
+```
+2025-01-27 01:42:34 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:42:34 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:42:34 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:42:36 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 01:42:36 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:42:36 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:43:46 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:43:46 - root - INFO - SQL:
+SELECT "symbol" AS "CPC_Symbol", "titleFull" AS "Full_Title"
+FROM PATENTS.PATENTS.CPC_DEFINITION
+LIMIT 100;
+Results:
+Too long, hard cut:
+CPC_Symbol,Full_Title
+B,PERFORMING OPERATIONS; TRANSPORTING
+H,ELECTRICITY
+Y,GENERAL TAGGING OF NEW TECHNOLOGICAL DEVELOPMENTS; GENERAL TAGGING OF CROSS-SECTIONAL TECHNOLOGIES SPANNING OVER SEVERAL SECTIONS OF THE IPC; TECHNICAL SUBJECTS COVERED BY FORMER USPC CROSS-REFERENCE ART COLLECTIONS [XRACs] AND DIGESTS
+D,TEXTILES; PAPER
+F,MECHANICAL ENGINEERING; LIGHTING; HEATING; WEAPONS; BLASTING
+E,FIXED CONSTRUCTIONS
+C,CHEMISTRY; METALLURGY
+G,PHYSICS
+A,HUMAN NECESSITIES
+A45,HAND OR TRAVELLING ARTICLES
+A24,TOBACCO; CIGARS; CIGARETTES; SIMULATED SMOKING DEVICES; SMOKERS' REQUISITES
+A61,MEDICAL OR VETERINARY SCIENCE; HYGIENE
+A63,SPORTS; GAMES; AMUSEMENTS
+A22,BUTCHERING; MEAT TREATMENT; PROCESSING POULTRY OR FISH
+A42,HEADWEAR
+A99,SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+A43,FOOTWEAR
+A01,AGRICULTURE; FORESTRY; ANIMAL HUSBANDRY; HUNTING; TRAPPING; FISHING
+A62,LIFE-SAVING; FIRE-FIGHTING
+A23,"FOODS OR FOODSTUFFS; TREATMENT THEREOF, NOT COVERED BY OTHER CLASSES"
+A47,FURNITURE; DOMESTIC ARTICLES OR APPLIANCES; COFFEE MILLS; SPICE MILLS; SUCTION CLEANERS IN GENERAL
+A46,BRUSHWARE
+A44,HABERDASHERY; JEWELLERY
+A21,BAKING; EDIBLE DOUGHS
+A41,WEARING APPAREL
+B27,WORKING OR PRESERVING WOOD OR SIMILAR MATERIAL; NAILING OR STAPLING MACHINES IN GENERAL
+B68,SADDLERY; UPHOLSTERY
+B04,CENTRIFUGAL APPARATUS OR MACHINES FOR CARRYING-OUT PHYSICAL OR CHEMICAL PROCESSES
+B23,MACHINE TOOLS; METAL-WORKING NOT OTHERWISE PROVIDED FOR
+B30,PRESSES
+B21,MECHANICAL METAL-WORKING WITHOUT ESSENTIALLY REMOVING MATERIAL; PUNCHING METAL
+B25,HAND TOOLS; PORTABLE POWER-DRIVEN TOOLS; MANIPULATORS
+B99,SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+B29,WORKING OF PLASTICS; WORKING OF SUBSTANCES IN A PLASTIC STATE IN GENERAL
+B31,"MAKING ARTICLES OF PAPER, CARDBOARD OR MATERIAL WORKED IN A MANNER ANALOGOUS TO PAPER; WORKING PAPER, CARDBOARD OR MATERIAL WORKED IN A MANNER ANALOGOUS TO PAPER"
+B26,HAND CUTTING TOOLS; CUTTING; SEVERING
+B66,HOISTING; LIFTING; HAULING
+B02,"CRUSHING, PULVERISING, OR DISINTEGRATING; PREPARATORY TREATMENT OF GRAIN FOR MILLING"
+B65,CONVEYING; PACKING; STORING; HANDLING THIN OR FILAMENTARY MATERIAL
+B61,RAILWAYS
+B24,GRINDING; POLISHING
+B06,GENERATING OR TRANSMITTING MECHANICAL VIBRATIONS IN GENERAL
+B43,WRITING OR DRAWING IMPLEMENTS; BUREAU ACCESSORIES
+B62,LAND VEHICLES FOR TRAVELLING OTHERWISE THAN ON RAILS
+B64,AIRCRAFT; AVIATION; COSMONAUTICS
+B22,CASTING; POWDER METALLURGY
+B28,"WORKING CEMENT, CLAY, OR STONE"
+B09,DISPOSAL OF SOLID WASTE; RECLAMATION OF CONTAMINATED SOIL
+B01,PHYSICAL OR CHEMICAL PROCESSES OR APPARATUS IN GENERAL
+B63,SHIPS OR OTHER WATERBORNE VESSELS; RELATED EQUIPMENT
+B60,VEHICLES IN GENERAL
+B44,DECORATIVE ARTS
+B07,SEPARATING SOLIDS FROM SOLIDS; SORTING
+B08,CLEANING
+B82,NANOTECHNOLOGY
+B42,BOOKBINDING; ALBUMS; FILES; SPECIAL PRINTED MATTER
+B32,LAYERED PRODUCTS
+B81,MICROSTRUCTURAL TECHNOLOGY
+B05,"SPRAYING OR ATOMISING IN GENERAL; APPLYING FLUENT MATERIALS TO SURFACES, IN GENERAL"
+B41,PRINTING; LINING MACHINES; TYPEWRITERS; STAMPS
+B03,SEPARATION OF SOLID MATERIALS USING LIQUIDS OR USING PNEUMATIC TABLES OR JIGS; MAGNETIC OR ELECTROSTATIC SEPARATION OF SOLID MATERIALS FROM SOLID MATERIALS OR FLUIDS; SEPARATION BY HIGH-VOLTAGE ELECTRIC FIELDS
+B67,"OPENING, CLOSING OR CLEANING BOTTLES, JARS OR SIMILAR CONTAINERS; LIQUID HANDLING"
+B33,ADDITIVE MANUFACTURING TECHNOLOGY
+C22,METALLURGY; FERROUS OR NON-FERROUS ALLOYS; TREATMENT OF ALLOYS OR NON-FERROUS METALS
+C23,"COATING METALLIC MATERIAL; COATING MATERIAL WITH METALLIC MATERIAL; CHEMICAL SURFACE TREATMENT; DIFFUSION TREATMENT OF METALLIC MATERIAL; COATING BY VACUUM EVAPORATION, BY SPUTTERING, BY ION IMPLANTATION OR BY CHEMICAL VAPOUR DEPOSITION, IN GENERAL; INHIBITING CORROSION OF METALLIC MATERIAL OR INCRUSTATION IN GENERAL"
+C06,EXPLOSIVES; MATCHES
+C02,"TREATMENT OF WATER, WASTE WATER, SEWAGE, OR SLUDGE"
+C07,ORGANIC CHEMISTRY
+C25,ELECTROLYTIC OR ELECTROPHORETIC PROCESSES; APPARATUS THEREFOR
+C30,CRYSTAL GROWTH
+C12,BIOCHEMISTRY; BEER; SPIRITS; WINE; VINEGAR; MICROBIOLOGY; ENZYMOLOGY; MUTATION OR GENETIC ENGINEERING
+C99,SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+C05,FERTILISERS; MANUFACTURE THEREOF
+C40,COMBINATORIAL TECHNOLOGY
+C11,"ANIMAL OR VEGETABLE OILS, FATS, FATTY SUBSTANCES OR WAXES; FATTY ACIDS THEREFROM; DETERGENTS; CANDLES"
+C08,ORGANIC MACROMOLECULAR COMPOUNDS; THEIR PREPARATION OR CHEMICAL WORKING-UP; COMPOSITIONS BASED THEREON
+C10,"PETROLEUM, GAS OR COKE INDUSTRIES; TECHNICAL GASES CONTAINING CARBON MONOXIDE; FUELS; LUBRICANTS; PEAT"
+C21,METALLURGY OF IRON
+C04,CEMENTS; CONCRETE; ARTIFICIAL STONE; CERAMICS; REFRACTORIES
+C09,DYES; PAINTS; POLISHES; NATURAL RESINS; ADHESIVES; COMPOSITIONS NOT OTHERWISE PROVIDED FOR; APPLICATIONS OF MATERIALS NOT OTHERWISE PROVIDED FOR
+C03,GLASS; MINERAL OR SLAG WOOL
+C13,SUGAR INDUSTRY
+C14,SKINS; HIDES; PELTS; LEATHER
+C01,INORGANIC CHEMISTRY
+D02,YARNS; MECHANICAL FINISHING OF YARNS OR ROPES; WARPING OR BEAMING
+D21,PAPER-MAKING; PRODUCTION OF CELLULOSE
+D04,BRAIDING; LACE-MAKING; KNITTING; TRIMMINGS; NON-WO
+
+2025-01-27 01:43:46 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:43:46 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:43:46 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:43:47 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 01:43:47 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:43:47 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:44:32 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:44:32 - root - INFO - ```sql
+SELECT *
+FROM PATENTS.PATENTS.CPC_DEFINITION
+LIMIT 100;
+```
+2025-01-27 01:44:32 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:44:32 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:44:32 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:44:34 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 01:44:34 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:44:35 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:46:13 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:46:13 - root - INFO - SQL:
+SELECT *
+FROM PATENTS.PATENTS.CPC_DEFINITION
+LIMIT 100;
+Results:
+Too long, hard cut:
+applicationReferences,breakdownCode,childGroups,children,dateRevised,definition,glossary,informativeReferences,ipcConcordant,level,limitingReferences,notAllocatable,parents,precedenceLimitingReferences,residualReferences,rules,scopeLimitingReferences,status,symbol,synonyms,titleFull,titlePart
+[],False,"[
+  {
+    ""description"": ""SEPARATING; MIXING"",
+    ""symbols"": [
+      ""B01"",
+      ""B02"",
+      ""B03"",
+      ""B04"",
+      ""B05"",
+      ""B06"",
+      ""B07"",
+      ""B08"",
+      ""B09""
+    ]
+  },
+  {
+    ""description"": ""SHAPING"",
+    ""symbols"": [
+      ""B21"",
+      ""B22"",
+      ""B23"",
+      ""B24"",
+      ""B25"",
+      ""B26"",
+      ""B27"",
+      ""B28"",
+      ""B29"",
+      ""B30"",
+      ""B31"",
+      ""B32"",
+      ""B33""
+    ]
+  },
+  {
+    ""description"": ""PRINTING"",
+    ""symbols"": [
+      ""B41"",
+      ""B42"",
+      ""B43"",
+      ""B44""
+    ]
+  },
+  {
+    ""description"": ""TRANSPORTING"",
+    ""symbols"": [
+      ""B60"",
+      ""B61"",
+      ""B62"",
+      ""B63"",
+      ""B64"",
+      ""B65"",
+      ""B66"",
+      ""B67"",
+      ""B68""
+    ]
+  },
+  {
+    ""description"": ""MICROSTRUCTURAL TECHNOLOGY; NANOTECHNOLOGY"",
+    ""symbols"": [
+      ""B81"",
+      ""B82""
+    ]
+  },
+  {
+    ""description"": """",
+    ""symbols"": [
+      ""B99""
+    ]
+  }
+]","[
+  ""B01"",
+  ""B02"",
+  ""B03"",
+  ""B04"",
+  ""B05"",
+  ""B06"",
+  ""B07"",
+  ""B08"",
+  ""B09"",
+  ""B21"",
+  ""B22"",
+  ""B23"",
+  ""B24"",
+  ""B25"",
+  ""B26"",
+  ""B27"",
+  ""B28"",
+  ""B29"",
+  ""B30"",
+  ""B31"",
+  ""B32"",
+  ""B33"",
+  ""B41"",
+  ""B42"",
+  ""B43"",
+  ""B44"",
+  ""B60"",
+  ""B61"",
+  ""B62"",
+  ""B63"",
+  ""B64"",
+  ""B65"",
+  ""B66"",
+  ""B67"",
+  ""B68"",
+  ""B81"",
+  ""B82"",
+  ""B99""
+]",20160501.0,[],[],[],,2.0,[],True,[],[],[],[],[],published,B,[],PERFORMING OPERATIONS; TRANSPORTING,"[
+  ""PERFORMING OPERATIONS"",
+  ""TRANSPORTING""
+]"
+[],False,"[
+  {
+    ""description"": """",
+    ""symbols"": [
+      ""H01"",
+      ""H02"",
+      ""H03"",
+      ""H04"",
+      ""H05"",
+      ""H10"",
+      ""H99""
+    ]
+  }
+]","[
+  ""H01"",
+  ""H02"",
+  ""H03"",
+  ""H04"",
+  ""H05"",
+  ""H10"",
+  ""H99""
+]",20200101.0,[],[],[],,2.0,[],True,[],[],[],[],[],published,H,[],ELECTRICITY,"[
+  ""ELECTRICITY""
+]"
+[],False,"[
+  {
+    ""description"": """",
+    ""symbols"": [
+      ""Y02"",
+      ""Y04"",
+      ""Y10""
+    ]
+  }
+]","[
+  ""Y02"",
+  ""Y04"",
+  ""Y10""
+]",20130101.0,[],[],[],,2.0,[],True,[],[],[],[],[],published,Y,[],GENERAL TAGGING OF NEW TECHNOLOGICAL DEVELOPMENTS; GENERAL TAGGING OF CROSS-SECTIONAL TECHNOLOGIES SPANNING OVER SEVERAL SECTIONS OF THE IPC; TECHNICAL SUBJECTS COVERED BY FORMER USPC CROSS-REFERENCE ART COLLECTIONS [XRACs] AND DIGESTS,"[
+  ""GENERAL TAGGING OF NEW TECHNOLOGICAL DEVELOPMENTS"",
+  ""GENERAL TAGGING OF CROSS-SECTIONAL TECHNOLOGIES SPANNING OVER SEVERAL SECTIONS OF THE IPC"",
+  ""TECHNICAL SUBJECTS COVERED BY FORMER USPC CROSS-REFERENCE ART COLLECTIONS [XRACs] AND DIGESTS""
+]"
+[],False,"[
+  {
+    ""description"": ""TEXTILES OR FLEXIBLE MATERIALS NOT OTHERWISE PROVIDED FOR"",
+    ""symbols"": [
+      ""D01"",
+      ""D02"",
+      ""D03"",
+      ""D04"",
+      ""D05"",
+      ""D06"",
+      ""D07"",
+      ""D10""
+    ]
+  },
+  {
+    ""description"": ""PAPER"",
+    ""symbols"": [
+      ""D21""
+    ]
+  },
+  {
+    ""description"": """",
+    ""symbols"": [
+      ""D99""
+    ]
+  }
+]","[
+  ""D01"",
+  ""D02"",
+  ""D03"",
+  ""D04"",
+  ""D05"",
+  ""D06"",
+  ""D07"",
+  ""D10"",
+  ""D21"",
+  ""D99""
+]",20130101.0,[],[],[],,2.0,[],True,[],[],[],[],[],published,D,[],TEXTILES; PAPER,"[
+  ""TEXTILES"",
+  ""PAPER""
+]"
+[],False,"[
+  {
+    ""description"": ""ENGINES OR PUMPS"",
+    ""symbols"": [
+      ""F01"",
+      ""F02"",
+      ""F03"",
+      ""F04"",
+      ""F05""
+    ]
+  },
+  {
+    ""description"": ""ENGINEERING IN GENERAL"",
+    ""symbols"": [
+      ""F15"",
+      ""F16"",
+      ""F17""
+    ]
+  },
+  {
+    ""description"": ""LIGHTING; HEATING"",
+    ""symbols"": [
+      ""F21"",
+      ""F22"",
+      ""F23"",
+      ""F24"",
+      ""F25"",
+      ""F26"",
+      ""F27"",
+      ""F28""
+    ]
+  },
+  {
+    ""description"": ""WEAPONS; BLASTING"",
+    ""symbols"": [
+      ""F41"",
+      ""F42""
+    ]
+  },
+  {
+    ""description"": """",
+    ""symbols"": [
+      ""F99""
+    ]
+  }
+]","[
+  ""F01"",
+  ""F02"",
+  ""F03"",
+  ""F04"",
+  ""F05"",
+  ""F15"",
+  ""F16"",
+  ""F17"",
+  ""F21"",
+  ""F22"",
+  ""F23"",
+  ""F24"",
+  ""F25"",
+  ""F26"",
+  ""F27"",
+  ""F28"",
+  ""F41"",
+  ""F42"",
+  ""F99""
+]",20190201.0,[],[],[],,2.0,[],True,[],[],[],[],[],published,F,[],MECHANICAL ENGINEERING; LIGHTING; HEATING; WEAPONS; BLASTING,"[
+  ""MECHANICAL ENGINEERING"",
+  ""LIGHTING"",
+  ""HEATING"",
+  ""WEAPONS"",
+  ""BLASTING""
+]"
+[],False,"[
+  {
+    ""description"": ""BUILDING"",
+    ""symbols"": [
+      ""E01"",
+      ""E02"",
+      ""E03"",
+      ""E04"",
+      ""E05"",
+      ""E06""
+    ]
+  },
+  {
+    ""description"": ""EARTH DRILLING; MINING"",
+    ""symbols"": [
+      ""E21""
+    ]
+  },
+  {
+    ""descri
+
+2025-01-27 01:46:13 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:46:13 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:46:13 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:46:14 - snowflake.connector.cursor - INFO - Number of results in first chunk: 100
+2025-01-27 01:46:14 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:46:14 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:46:15 - root - INFO - SQL:
+SELECT TO_VARCHAR(TRY_TO_DATE("publication_date"::VARCHAR, 'YYYYMMDD'), 'YYYY') AS "Year",
+       COUNT(DISTINCT "publication_number") AS "Publication_Count"
+FROM PATENTS.PATENTS.PUBLICATIONS
+GROUP BY "Year"
+ORDER BY "Year"
+LIMIT 100
+Results:
+Year,Publication_Count
+1837,2
+1839,2
+1841,4
+1842,5
+1843,2
+1844,3
+1845,1
+1846,2
+1847,3
+1848,2
+1849,1
+1850,2
+1851,1
+1852,1
+1853,4
+1854,3
+1855,4
+1856,6
+1857,3
+1858,16
+1859,15
+1860,13
+1861,12
+1862,7
+1863,12
+1864,11
+1865,12
+1866,26
+1867,18
+1868,17
+1869,25
+1870,35
+1871,34
+1872,28
+1873,27
+1874,30
+1875,26
+1876,33
+1877,33
+1878,54
+1879,72
+1880,57
+1881,76
+1882,112
+1883,101
+1884,99
+1885,103
+1886,100
+1887,96
+1888,102
+1889,112
+1890,111
+1891,100
+1892,125
+1893,93
+1894,100
+1895,97
+1896,84
+1897,102
+1898,81
+1899,84
+1900,162
+1901,86
+1902,94
+1903,133
+1904,135
+1905,112
+1906,149
+1907,203
+1908,192
+1909,169
+1910,133
+1911,137
+1912,189
+1913,279
+1914,351
+1915,220
+1916,163
+1917,147
+1918,142
+1919,160
+1920,183
+1921,189
+1922,235
+1923,231
+1924,216
+1925,252
+1926,235
+1927,244
+1928,243
+1929,259
+1930,335
+1931,319
+1932,335
+1933,259
+1934,265
+1935,296
+1936,351
+1937,322
+1938,334
+
+2025-01-27 01:46:15 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:46:15 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:46:15 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
