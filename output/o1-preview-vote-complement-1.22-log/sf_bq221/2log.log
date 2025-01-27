@@ -5079,3 +5079,629 @@ The error information is:
 syntax error line 66 at position 2 unexpected 'by'.
 syntax error line 68 at position 16 unexpected 'by'.
 Please correct it and output only 1 complete SQL query.
+2025-01-27 01:49:37 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:49:37 - root - INFO - ```sql
+WITH cpc_counts AS (
+  SELECT
+    UPPER(REPLACE(TRIM(f.value:"code"::STRING), ' ', '')) AS cpc_symbol,
+    TO_NUMBER(LEFT(TO_VARCHAR(t."filing_date"), 4)) AS filing_year,
+    COUNT(*) AS patent_count
+  FROM PATENTS.PATENTS.PUBLICATIONS t
+  CROSS JOIN LATERAL FLATTEN(input => t."cpc") f
+  WHERE f.value:"code" IS NOT NULL
+    AND t."filing_date" IS NOT NULL
+    AND t."filing_date" > 0
+  GROUP BY cpc_symbol, filing_year
+),
+cpc_level5 AS (
+  SELECT
+    UPPER(REPLACE(TRIM(cd."symbol"), ' ', '')) AS cpc_symbol,
+    cd."titleFull" AS Full_Title
+  FROM PATENTS.PATENTS.CPC_DEFINITION cd
+  WHERE cd."level" = 5.0
+),
+cpc_counts_level5 AS (
+  SELECT
+    c.cpc_symbol,
+    c.filing_year,
+    c.patent_count,
+    l.Full_Title
+  FROM cpc_counts c
+  INNER JOIN cpc_level5 l ON c.cpc_symbol = l.cpc_symbol
+),
+ordered_counts AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    Full_Title,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year ASC) AS row_num
+  FROM cpc_counts_level5
+),
+ema_calc AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    POWER(0.8, row_num - 1) AS weight,
+    patent_count * POWER(0.8, row_num - 1) AS weighted_value,
+    Full_Title
+  FROM ordered_counts
+),
+ema_final AS (
+  SELECT
+    cpc_symbol,
+    Full_Title,
+    SUM(weighted_value) OVER (
+      PARTITION BY cpc_symbol 
+      ORDER BY filing_year 
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS ema_value,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year DESC) AS rn
+  FROM ema_calc
+),
+best_years AS (
+  SELECT
+    cpc_symbol,
+    MAX_BY(filing_year, patent_count) AS Best_Year
+  FROM cpc_counts_level5
+  GROUP BY cpc_symbol
+)
+SELECT
+  ef.cpc_symbol AS "CPC_Symbol",
+  ef.Full_Title,
+  ROUND(ef.ema_value, 4) AS "EMA_Value",
+  bys.Best_Year
+FROM ema_final ef
+JOIN best_years bys ON ef.cpc_symbol = bys.cpc_symbol
+WHERE ef.rn = 1
+ORDER BY ef.ema_value DESC NULLS LAST
+LIMIT 100;
+```
+2025-01-27 01:49:37 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:49:37 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:49:37 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:49:40 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 01:49:40 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:49:40 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:49:41 - root - INFO - itercount: 7
+2025-01-27 01:49:41 - root - INFO - No data found for the specified query.
+
+2025-01-27 01:49:41 - root - INFO - Input sql:
+WITH cpc_counts AS (
+  SELECT
+    UPPER(REPLACE(TRIM(f.value:"code"::STRING), ' ', '')) AS cpc_symbol,
+    TO_NUMBER(LEFT(TO_VARCHAR(t."filing_date"), 4)) AS filing_year,
+    COUNT(*) AS patent_count
+  FROM PATENTS.PATENTS.PUBLICATIONS t
+  CROSS JOIN LATERAL FLATTEN(input => t."cpc") f
+  WHERE f.value:"code" IS NOT NULL
+    AND t."filing_date" IS NOT NULL
+    AND t."filing_date" > 0
+  GROUP BY cpc_symbol, filing_year
+),
+cpc_level5 AS (
+  SELECT
+    UPPER(REPLACE(TRIM(cd."symbol"), ' ', '')) AS cpc_symbol,
+    cd."titleFull" AS Full_Title
+  FROM PATENTS.PATENTS.CPC_DEFINITION cd
+  WHERE cd."level" = 5.0
+),
+cpc_counts_level5 AS (
+  SELECT
+    c.cpc_symbol,
+    c.filing_year,
+    c.patent_count,
+    l.Full_Title
+  FROM cpc_counts c
+  INNER JOIN cpc_level5 l ON c.cpc_symbol = l.cpc_symbol
+),
+ordered_counts AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    Full_Title,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year ASC) AS row_num
+  FROM cpc_counts_level5
+),
+ema_calc AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    POWER(0.8, row_num - 1) AS weight,
+    patent_count * POWER(0.8, row_num - 1) AS weighted_value,
+    Full_Title
+  FROM ordered_counts
+),
+ema_final AS (
+  SELECT
+    cpc_symbol,
+    Full_Title,
+    SUM(weighted_value) OVER (
+      PARTITION BY cpc_symbol 
+      ORDER BY filing_year 
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS ema_value,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year DESC) AS rn
+  FROM ema_calc
+),
+best_years AS (
+  SELECT
+    cpc_symbol,
+    MAX_BY(filing_year, patent_count) AS Best_Year
+  FROM cpc_counts_level5
+  GROUP BY cpc_symbol
+)
+SELECT
+  ef.cpc_symbol AS "CPC_Symbol",
+  ef.Full_Title,
+  ROUND(ef.ema_value, 4) AS "EMA_Value",
+  bys.Best_Year
+FROM ema_final ef
+JOIN best_years bys ON ef.cpc_symbol = bys.cpc_symbol
+WHERE ef.rn = 1
+ORDER BY ef.ema_value DESC NULLS LAST
+LIMIT 100;
+The error information is:
+ No data found for the specified query.
+
+2025-01-27 01:50:27 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:50:27 - root - INFO - ```sql
+WITH cpc_counts AS (
+  SELECT
+    f.value:"code"::STRING AS cpc_symbol,
+    TO_NUMBER(LEFT(TO_VARCHAR(t."filing_date"), 4)) AS filing_year,
+    COUNT(*) AS patent_count
+  FROM PATENTS.PATENTS.PUBLICATIONS t
+  CROSS JOIN LATERAL FLATTEN(input => t."cpc") f
+  WHERE f.value:"code"::STRING IS NOT NULL
+    AND t."filing_date" IS NOT NULL
+    AND t."filing_date" > 0
+  GROUP BY cpc_symbol, filing_year
+),
+cpc_level5 AS (
+  SELECT
+    cd."symbol" AS cpc_symbol,
+    cd."titleFull" AS Full_Title
+  FROM PATENTS.PATENTS.CPC_DEFINITION cd
+  WHERE cd."level" = 5.0
+),
+cpc_counts_level5 AS (
+  SELECT
+    c.cpc_symbol,
+    c.filing_year,
+    c.patent_count,
+    l.Full_Title
+  FROM cpc_counts c
+  INNER JOIN cpc_level5 l ON c.cpc_symbol = l.cpc_symbol
+),
+ordered_counts AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    Full_Title,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year ASC) AS row_num
+  FROM cpc_counts_level5
+),
+ema_calc AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    CAST(patent_count AS FLOAT) AS ema_value,
+    Full_Title,
+    row_num
+  FROM ordered_counts
+  WHERE row_num = 1
+
+  UNION ALL
+
+  SELECT
+    curr.cpc_symbol,
+    curr.filing_year,
+    curr.patent_count,
+    0.2 * curr.patent_count + 0.8 * prev.ema_value AS ema_value,
+    curr.Full_Title,
+    curr.row_num
+  FROM ema_calc prev
+  JOIN ordered_counts curr
+    ON prev.cpc_symbol = curr.cpc_symbol AND curr.row_num = prev.row_num + 1
+)
+SELECT
+  ef.cpc_symbol AS "CPC_Symbol",
+  ef.Full_Title,
+  ROUND(ef.ema_value, 4) AS "EMA_Value",
+  (SELECT c.filing_year FROM cpc_counts_level5 c WHERE c.cpc_symbol = ef.cpc_symbol ORDER BY c.patent_count DESC NULLS LAST, c.filing_year ASC LIMIT 1) AS "Best_Year"
+FROM (
+  SELECT
+    cpc_symbol,
+    Full_Title,
+    ema_value,
+    filing_year,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year DESC) AS rn
+  FROM ema_calc
+) ef
+WHERE ef.rn = 1
+ORDER BY ef.ema_value DESC NULLS LAST
+LIMIT 100;
+```
+2025-01-27 01:50:27 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:50:27 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:50:27 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:50:29 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:50:29 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:50:30 - root - INFO - itercount: 8
+2025-01-27 01:50:30 - root - INFO - 002031 (42601): None: SQL compilation error:
+Unsupported subquery type cannot be evaluated
+2025-01-27 01:50:30 - root - INFO - Input sql:
+WITH cpc_counts AS (
+  SELECT
+    f.value:"code"::STRING AS cpc_symbol,
+    TO_NUMBER(LEFT(TO_VARCHAR(t."filing_date"), 4)) AS filing_year,
+    COUNT(*) AS patent_count
+  FROM PATENTS.PATENTS.PUBLICATIONS t
+  CROSS JOIN LATERAL FLATTEN(input => t."cpc") f
+  WHERE f.value:"code"::STRING IS NOT NULL
+    AND t."filing_date" IS NOT NULL
+    AND t."filing_date" > 0
+  GROUP BY cpc_symbol, filing_year
+),
+cpc_level5 AS (
+  SELECT
+    cd."symbol" AS cpc_symbol,
+    cd."titleFull" AS Full_Title
+  FROM PATENTS.PATENTS.CPC_DEFINITION cd
+  WHERE cd."level" = 5.0
+),
+cpc_counts_level5 AS (
+  SELECT
+    c.cpc_symbol,
+    c.filing_year,
+    c.patent_count,
+    l.Full_Title
+  FROM cpc_counts c
+  INNER JOIN cpc_level5 l ON c.cpc_symbol = l.cpc_symbol
+),
+ordered_counts AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    Full_Title,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year ASC) AS row_num
+  FROM cpc_counts_level5
+),
+ema_calc AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    CAST(patent_count AS FLOAT) AS ema_value,
+    Full_Title,
+    row_num
+  FROM ordered_counts
+  WHERE row_num = 1
+
+  UNION ALL
+
+  SELECT
+    curr.cpc_symbol,
+    curr.filing_year,
+    curr.patent_count,
+    0.2 * curr.patent_count + 0.8 * prev.ema_value AS ema_value,
+    curr.Full_Title,
+    curr.row_num
+  FROM ema_calc prev
+  JOIN ordered_counts curr
+    ON prev.cpc_symbol = curr.cpc_symbol AND curr.row_num = prev.row_num + 1
+)
+SELECT
+  ef.cpc_symbol AS "CPC_Symbol",
+  ef.Full_Title,
+  ROUND(ef.ema_value, 4) AS "EMA_Value",
+  (SELECT c.filing_year FROM cpc_counts_level5 c WHERE c.cpc_symbol = ef.cpc_symbol ORDER BY c.patent_count DESC NULLS LAST, c.filing_year ASC LIMIT 1) AS "Best_Year"
+FROM (
+  SELECT
+    cpc_symbol,
+    Full_Title,
+    ema_value,
+    filing_year,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year DESC) AS rn
+  FROM ema_calc
+) ef
+WHERE ef.rn = 1
+ORDER BY ef.ema_value DESC NULLS LAST
+LIMIT 100;
+The error information is:
+002031 (42601): None: SQL compilation error:
+Unsupported subquery type cannot be evaluated
+Please correct it and output only 1 complete SQL query.
+2025-01-27 01:51:19 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:51:19 - root - INFO - ```sql
+WITH cpc_counts AS (
+  SELECT
+    UPPER(TRIM(REPLACE(f.value:"code"::STRING, ' ', ''))) AS cpc_symbol,
+    TO_NUMBER(LEFT(TO_VARCHAR(t."filing_date"), 4)) AS filing_year,
+    COUNT(*) AS patent_count
+  FROM PATENTS.PATENTS.PUBLICATIONS t
+  CROSS JOIN LATERAL FLATTEN(input => t."cpc") f
+  WHERE f.value:"code"::STRING IS NOT NULL
+    AND t."filing_date" IS NOT NULL
+    AND t."filing_date" > 0
+  GROUP BY cpc_symbol, filing_year
+),
+cpc_level5 AS (
+  SELECT
+    UPPER(TRIM(REPLACE(cd."symbol", ' ', ''))) AS cpc_symbol,
+    cd."titleFull" AS Full_Title
+  FROM PATENTS.PATENTS.CPC_DEFINITION cd
+  WHERE cd."level" = 5.0
+),
+cpc_counts_level5 AS (
+  SELECT
+    c.cpc_symbol,
+    c.filing_year,
+    c.patent_count,
+    l.Full_Title
+  FROM cpc_counts c
+  INNER JOIN cpc_level5 l ON c.cpc_symbol = l.cpc_symbol
+),
+ordered_counts AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    Full_Title,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year ASC) AS row_num
+  FROM cpc_counts_level5
+),
+ema_calc AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    CAST(patent_count AS FLOAT) AS ema_value,
+    Full_Title,
+    row_num
+  FROM ordered_counts
+  WHERE row_num = 1
+
+  UNION ALL
+
+  SELECT
+    curr.cpc_symbol,
+    curr.filing_year,
+    curr.patent_count,
+    0.2 * curr.patent_count + 0.8 * prev.ema_value AS ema_value,
+    curr.Full_Title,
+    curr.row_num
+  FROM ema_calc prev
+  JOIN ordered_counts curr
+    ON prev.cpc_symbol = curr.cpc_symbol AND curr.row_num = prev.row_num + 1
+),
+best_years AS (
+  SELECT
+    cpc_symbol,
+    MAX_BY(filing_year, patent_count) AS Best_Year
+  FROM cpc_counts_level5
+  GROUP BY cpc_symbol
+)
+SELECT
+  ef.cpc_symbol AS "CPC_Symbol",
+  ef.Full_Title,
+  ROUND(ef.ema_value, 4) AS "EMA_Value",
+  best.Best_Year
+FROM (
+  SELECT
+    cpc_symbol,
+    Full_Title,
+    ema_value,
+    filing_year,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year DESC) AS rn
+  FROM ema_calc
+) ef
+JOIN best_years best ON ef.cpc_symbol = best.cpc_symbol
+WHERE ef.rn = 1
+ORDER BY ef.ema_value DESC NULLS LAST
+LIMIT 100;
+```
+2025-01-27 01:51:19 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:51:19 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:51:19 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:51:21 - snowflake.connector.cursor - INFO - Number of results in first chunk: 0
+2025-01-27 01:51:21 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:51:21 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:51:22 - root - INFO - itercount: 9
+2025-01-27 01:51:22 - root - INFO - No data found for the specified query.
+
+2025-01-27 01:51:22 - root - INFO - Input sql:
+WITH cpc_counts AS (
+  SELECT
+    UPPER(TRIM(REPLACE(f.value:"code"::STRING, ' ', ''))) AS cpc_symbol,
+    TO_NUMBER(LEFT(TO_VARCHAR(t."filing_date"), 4)) AS filing_year,
+    COUNT(*) AS patent_count
+  FROM PATENTS.PATENTS.PUBLICATIONS t
+  CROSS JOIN LATERAL FLATTEN(input => t."cpc") f
+  WHERE f.value:"code"::STRING IS NOT NULL
+    AND t."filing_date" IS NOT NULL
+    AND t."filing_date" > 0
+  GROUP BY cpc_symbol, filing_year
+),
+cpc_level5 AS (
+  SELECT
+    UPPER(TRIM(REPLACE(cd."symbol", ' ', ''))) AS cpc_symbol,
+    cd."titleFull" AS Full_Title
+  FROM PATENTS.PATENTS.CPC_DEFINITION cd
+  WHERE cd."level" = 5.0
+),
+cpc_counts_level5 AS (
+  SELECT
+    c.cpc_symbol,
+    c.filing_year,
+    c.patent_count,
+    l.Full_Title
+  FROM cpc_counts c
+  INNER JOIN cpc_level5 l ON c.cpc_symbol = l.cpc_symbol
+),
+ordered_counts AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    Full_Title,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year ASC) AS row_num
+  FROM cpc_counts_level5
+),
+ema_calc AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    CAST(patent_count AS FLOAT) AS ema_value,
+    Full_Title,
+    row_num
+  FROM ordered_counts
+  WHERE row_num = 1
+
+  UNION ALL
+
+  SELECT
+    curr.cpc_symbol,
+    curr.filing_year,
+    curr.patent_count,
+    0.2 * curr.patent_count + 0.8 * prev.ema_value AS ema_value,
+    curr.Full_Title,
+    curr.row_num
+  FROM ema_calc prev
+  JOIN ordered_counts curr
+    ON prev.cpc_symbol = curr.cpc_symbol AND curr.row_num = prev.row_num + 1
+),
+best_years AS (
+  SELECT
+    cpc_symbol,
+    MAX_BY(filing_year, patent_count) AS Best_Year
+  FROM cpc_counts_level5
+  GROUP BY cpc_symbol
+)
+SELECT
+  ef.cpc_symbol AS "CPC_Symbol",
+  ef.Full_Title,
+  ROUND(ef.ema_value, 4) AS "EMA_Value",
+  best.Best_Year
+FROM (
+  SELECT
+    cpc_symbol,
+    Full_Title,
+    ema_value,
+    filing_year,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year DESC) AS rn
+  FROM ema_calc
+) ef
+JOIN best_years best ON ef.cpc_symbol = best.cpc_symbol
+WHERE ef.rn = 1
+ORDER BY ef.ema_value DESC NULLS LAST
+LIMIT 100;
+The error information is:
+ No data found for the specified query.
+
+2025-01-27 01:52:39 - httpx - INFO - HTTP Request: POST https://sfc-ml-sweden.openai.azure.com/openai/deployments/o1-preview/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-01-27 01:52:39 - root - INFO - ```sql
+WITH cpc_counts AS (
+  SELECT
+    TRIM(f.value:"code"::STRING) AS cpc_symbol,
+    CAST(LEFT(TO_VARCHAR(t."filing_date"), 4) AS INTEGER) AS filing_year,
+    COUNT(*) AS patent_count
+  FROM PATENTS.PATENTS.PUBLICATIONS t
+  CROSS JOIN LATERAL FLATTEN(input => t."cpc") f
+  WHERE f.value:"code"::STRING IS NOT NULL
+    AND t."filing_date" IS NOT NULL
+    AND t."filing_date" > 0
+  GROUP BY cpc_symbol, filing_year
+),
+cpc_level5 AS (
+  SELECT
+    TRIM(cd."symbol") AS cpc_symbol,
+    cd."titleFull" AS Full_Title
+  FROM PATENTS.PATENTS.CPC_DEFINITION cd
+  WHERE cd."level" = 5
+),
+cpc_counts_level5 AS (
+  SELECT
+    c.cpc_symbol,
+    c.filing_year,
+    c.patent_count,
+    l.Full_Title
+  FROM cpc_counts c
+  INNER JOIN cpc_level5 l ON c.cpc_symbol = l.cpc_symbol
+),
+ordered_counts AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    Full_Title,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year ASC) AS row_num
+  FROM cpc_counts_level5
+),
+ema_calc AS (
+  SELECT
+    cpc_symbol,
+    filing_year,
+    patent_count,
+    CAST(patent_count AS FLOAT) AS ema_value,
+    Full_Title,
+    row_num
+  FROM ordered_counts
+  WHERE row_num = 1
+
+  UNION ALL
+
+  SELECT
+    curr.cpc_symbol,
+    curr.filing_year,
+    curr.patent_count,
+    0.2 * curr.patent_count + 0.8 * prev.ema_value AS ema_value,
+    curr.Full_Title,
+    curr.row_num
+  FROM ema_calc prev
+  INNER JOIN ordered_counts curr
+    ON prev.cpc_symbol = curr.cpc_symbol AND curr.row_num = prev.row_num + 1
+),
+best_years AS (
+  SELECT
+    cpc_symbol,
+    FIRST_VALUE(filing_year) OVER (PARTITION BY cpc_symbol ORDER BY patent_count DESC NULLS LAST, filing_year ASC) AS Best_Year
+  FROM cpc_counts_level5
+)
+SELECT
+  ef.cpc_symbol AS "CPC_Symbol",
+  ef.Full_Title,
+  ROUND(ef.ema_value, 4) AS "EMA_Value",
+  by.Best_Year
+FROM (
+  SELECT
+    cpc_symbol,
+    Full_Title,
+    ema_value,
+    filing_year,
+    ROW_NUMBER() OVER (PARTITION BY cpc_symbol ORDER BY filing_year DESC) AS rn
+  FROM ema_calc
+) ef
+INNER JOIN (
+  SELECT DISTINCT cpc_symbol, MAX(Best_Year) AS Best_Year
+  FROM best_years
+  GROUP BY cpc_symbol
+) by ON ef.cpc_symbol = by.cpc_symbol
+WHERE ef.rn = 1
+ORDER BY ef.ema_value DESC NULLS LAST
+LIMIT 100;
+```
+2025-01-27 01:52:39 - snowflake.connector.connection - INFO - Snowflake Connector for Python Version: 3.12.4, Python Version: 3.11.11, Platform: Linux-6.1.62-x86_64-with-glibc2.31
+2025-01-27 01:52:39 - snowflake.connector.connection - INFO - Connecting to GLOBAL Snowflake domain
+2025-01-27 01:52:39 - snowflake.connector.connection - INFO - This connection is in OCSP Fail Open Mode. TLS Certificates would be checked for validity and revocation status. Any other Certificate Revocation related exceptions or OCSP Responder failures would be disregarded in favor of connectivity.
+2025-01-27 01:52:40 - snowflake.connector.connection - INFO - closed
+2025-01-27 01:52:40 - snowflake.connector.connection - INFO - No async queries seem to be running, deleting session
+2025-01-27 01:52:40 - root - INFO - Total iteration counts: 10
