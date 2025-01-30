@@ -1,45 +1,13 @@
-After comparing the SQL queries, I have determined that **`0result.sql`** is the correct SQL for calculating the average page views per buyer and total page views among those buyers for each day in November 2020.
+After comparing both SQL scripts, I recommend using **1result.sql**. Here's why:
 
-**Reasoning:**
+- **Efficiency**: `1result.sql` selects only the necessary columns (`event_date`, `event_name`, `user_pseudo_id`) from the tables. This reduces data processing and can lead to better query performance.
+  
+- **Clarity**: By selecting only the relevant columns, the query is more focused and easier to understand. It avoids unnecessary data that isn't used in the calculations.
 
-- **Inclusion of All Buyers:** The goal is to compute the average page views per buyer, including buyers who may not have any page views recorded. It's important to include all buyers to get an accurate average.
+- **Functionality**: Both scripts produce the same results, but `1result.sql` does so with a more streamlined approach.
 
-- **Use of LEFT JOIN in `0result.sql`:** This query uses a `LEFT JOIN` between the `purchases` and `page_views` CTEs in the `buyer_page_views` CTE:
-
-  ```sql
-  buyer_page_views AS (
-    SELECT
-      p.event_date,
-      p.user_pseudo_id,
-      IFNULL(pv.page_view_count, 0) AS page_views
-    FROM purchases p
-    LEFT JOIN page_views pv
-      ON p.event_date = pv.event_date AND p.user_pseudo_id = pv.user_pseudo_id
-  )
-  ```
-
-  This ensures that all buyers from the `purchases` table are included in the result, even if they have zero page views. The `IFNULL` function assigns a value of zero to `page_views` for buyers with no page views.
-
-- **Excluding Buyers with Zero Page Views in `1result.sql`:** In contrast, `1result.sql` uses an `INNER JOIN`:
-
-  ```sql
-  JOIN buyers b ON e.user_pseudo_id = b.user_pseudo_id AND e.event_date = b.event_date
-  ```
-
-  An `INNER JOIN` excludes buyers who have no page views because there is no matching record in the `events` table with `event_name = 'page_view'`. This results in an incorrect average since not all buyers are considered.
-
-- **Methodology in `2result.sql`:** While `2result.sql` attempts to include all buyers using a `LEFT JOIN` and `COUNTIF`, it introduces complexity and potential inefficiency:
-
-  ```sql
-  COUNTIF(e.event_name = 'page_view') AS page_view_count
-  ```
-
-  This counts the number of events per buyer where `event_name` is `'page_view'`. However, it's more straightforward and efficient to filter for `'page_view'` events beforehand, as done in `0result.sql`.
-
-**Conclusion:**
-
-`0result.sql` correctly calculates the average page views per buyer and total page views among buyers for each day, including all buyers regardless of whether they had page views. It uses appropriate SQL constructs to ensure the accuracy and completeness of the results.
+Therefore, the preferred SQL script is:
 
 ```plaintext
-0result.sql
+1result.sql
 ```

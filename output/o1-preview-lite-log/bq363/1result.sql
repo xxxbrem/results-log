@@ -1,23 +1,23 @@
-SELECT
-  CONCAT(
-    MIN(duration_minutes), ' - ', MAX(duration_minutes)
-  ) AS Duration_Range_Minutes,
-  COUNT(*) AS Total_Trips,
-  ROUND(AVG(fare), 4) AS Average_Fare
-FROM (
+WITH trips AS (
   SELECT
-    ROUND(trip_seconds / 60) AS duration_minutes,
-    fare,
-    NTILE(10) OVER (ORDER BY ROUND(trip_seconds / 60)) AS duration_quantile
-  FROM
-    `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-  WHERE
-    trip_seconds > 0
-    AND fare IS NOT NULL
+    ROUND(trip_seconds / 60.0) AS trip_minutes,
+    fare
+  FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+  WHERE trip_seconds > 0
     AND fare > 0
-    AND ROUND(trip_seconds / 60) BETWEEN 1 AND 50
+    AND ROUND(trip_seconds / 60.0) BETWEEN 1 AND 50
+),
+trip_groups AS (
+  SELECT
+    trip_minutes,
+    fare,
+    NTILE(10) OVER (ORDER BY trip_minutes) AS quantile_group
+  FROM trips
 )
-GROUP BY
-  duration_quantile
-ORDER BY
-  duration_quantile;
+SELECT
+  CONCAT(CAST(MIN(trip_minutes) AS STRING), 'm to ', CAST(MAX(trip_minutes) AS STRING), 'm') AS Time_range,
+  COUNT(*) AS Total_trips,
+  ROUND(AVG(fare), 2) AS Average_fare
+FROM trip_groups
+GROUP BY quantile_group
+ORDER BY MIN(trip_minutes);

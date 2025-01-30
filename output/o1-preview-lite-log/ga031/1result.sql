@@ -1,35 +1,53 @@
-WITH first_page_views AS (
-  SELECT
-    t.user_pseudo_id,
-    t.event_timestamp,
-    ep.value.string_value AS page_title,
-    ROW_NUMBER() OVER (PARTITION BY t.user_pseudo_id ORDER BY t.event_timestamp ASC) AS rn
-  FROM
-    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102` AS t,
-    UNNEST(t.event_params) AS ep
-  WHERE
-    t.event_name = 'page_view' AND ep.key = 'page_title'
+WITH event_pages AS (
+    SELECT
+        (SELECT ep.value.int_value FROM UNNEST(events.event_params) ep WHERE ep.key = 'ga_session_id') AS session_id,
+        LOWER((SELECT ep.value.string_value FROM UNNEST(events.event_params) ep WHERE ep.key = 'page_title')) AS page_title,
+        events.event_timestamp
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102` AS events
 ),
-home_landing_sessions AS (
-  SELECT user_pseudo_id
-  FROM first_page_views
-  WHERE rn = 1 AND page_title = 'Home'
+sessions_first_page AS (
+    SELECT
+        session_id,
+        page_title
+    FROM (
+        SELECT
+            session_id,
+            page_title,
+            ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY event_timestamp ASC) AS rn
+        FROM
+            event_pages
+        WHERE
+            session_id IS NOT NULL
+    )
+    WHERE rn = 1
 ),
-checkout_sessions AS (
-  SELECT DISTINCT t.user_pseudo_id
-  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102` AS t,
-  UNNEST(t.event_params) AS ep
-  WHERE
-    t.event_name = 'page_view' AND ep.key = 'page_title' AND ep.value.string_value = 'Checkout Confirmation'
+sessions_started_with_home AS (
+    SELECT
+        session_id
+    FROM
+        sessions_first_page
+    WHERE
+        page_title = 'home'
 ),
-converted_sessions AS (
-  SELECT user_pseudo_id
-  FROM home_landing_sessions
-  WHERE user_pseudo_id IN (SELECT user_pseudo_id FROM checkout_sessions)
+sessions_with_checkout AS (
+    SELECT DISTINCT
+        session_id
+    FROM
+        event_pages
+    WHERE
+        page_title = 'checkout confirmation'
+        AND session_id IS NOT NULL
 )
+
 SELECT
-  ROUND(100.0 * COUNT(converted_sessions.user_pseudo_id) / COUNT(home_landing_sessions.user_pseudo_id), 4) AS conversion_rate
-FROM
-  home_landing_sessions
-LEFT JOIN
-  converted_sessions USING (user_pseudo_id);
+    ROUND(
+        SAFE_MULTIPLY(
+            SAFE_DIVIDE(
+                (SELECT COUNT(DISTINCT session_id) FROM sessions_started_with_home WHERE session_id IN (SELECT session_id FROM sessions_with_checkout)),
+                (SELECT COUNT(DISTINCT session_id) FROM sessions_started_with_home)
+            ),
+            100
+        ),
+        4
+    ) AS conversion_rate;

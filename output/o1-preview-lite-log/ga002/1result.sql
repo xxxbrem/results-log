@@ -1,59 +1,37 @@
-WITH red_tee_purchasers AS (
-  SELECT
+WITH customers_per_month AS (
+  SELECT 
     DISTINCT user_pseudo_id,
-    SUBSTR(event_date, 1, 6) AS month
-  FROM
-    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
-    UNNEST(items) AS item
-  WHERE
-    event_name = 'purchase'
-    AND item.item_name = 'Google Red Speckled Tee'
+    FORMAT_DATE('%b-%Y', PARSE_DATE('%Y%m%d', event_date)) AS Month
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+  UNNEST(items) AS item
+  WHERE item.item_name = 'Google Red Speckled Tee'
     AND event_date BETWEEN '20201101' AND '20210131'
 ),
-other_purchases AS (
-  SELECT
-    SUBSTR(events.event_date, 1, 6) AS month,
-    item.item_name AS product_name,
-    SUM(item.quantity) AS total_quantity
-  FROM
-    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` AS events
-  INNER JOIN
-    red_tee_purchasers rp
-  ON
-    events.user_pseudo_id = rp.user_pseudo_id
-    AND SUBSTR(events.event_date, 1, 6) = rp.month
-  CROSS JOIN
-    UNNEST(events.items) AS item
-  WHERE
-    events.event_name = 'purchase'
-    AND events.event_date BETWEEN '20201101' AND '20210131'
-    AND item.item_name != 'Google Red Speckled Tee'
-  GROUP BY
-    month,
-    product_name
+purchases_per_month AS (
+  SELECT 
+    FORMAT_DATE('%b-%Y', PARSE_DATE('%Y%m%d', t1.event_date)) AS Month,
+    item.item_name AS Product_Name,
+    SUM(item.quantity) AS Quantity
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` AS t1,
+  UNNEST(t1.items) AS item
+  JOIN customers_per_month AS c
+    ON t1.user_pseudo_id = c.user_pseudo_id
+    AND FORMAT_DATE('%b-%Y', PARSE_DATE('%Y%m%d', t1.event_date)) = c.Month
+  WHERE item.item_name != 'Google Red Speckled Tee'
+    AND item.item_name IS NOT NULL
+    AND item.item_name != '(not set)'
+    AND t1.event_date BETWEEN '20201101' AND '20210131'
+  GROUP BY Month, Product_Name
+),
+ranked_products AS (
+  SELECT 
+    Month,
+    Product_Name,
+    Quantity,
+    ROW_NUMBER() OVER (PARTITION BY Month ORDER BY Quantity DESC) AS rn
+  FROM purchases_per_month
 )
-SELECT
-  CASE month
-    WHEN '202011' THEN 'Nov-2020'
-    WHEN '202012' THEN 'Dec-2020'
-    WHEN '202101' THEN 'Jan-2021'
-  END AS Month,
-  product_name AS Product_Name,
-  total_quantity AS Quantity
-FROM (
-  SELECT
-    month,
-    product_name,
-    total_quantity,
-    ROW_NUMBER() OVER (PARTITION BY month ORDER BY total_quantity DESC) AS rn
-  FROM
-    other_purchases
-)
-WHERE
-  rn = 1
-ORDER BY
-  (CASE Month
-    WHEN 'Nov-2020' THEN 1
-    WHEN 'Dec-2020' THEN 2
-    WHEN 'Jan-2021' THEN 3
-  END)
+SELECT Month, Product_Name, Quantity
+FROM ranked_products
+WHERE rn = 1
+ORDER BY Month;

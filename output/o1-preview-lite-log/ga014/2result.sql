@@ -1,77 +1,76 @@
-WITH session_data AS (
-  SELECT
-    CAST(ep.value.int_value AS INT64) AS ga_session_id,
-    COALESCE(LOWER(t.traffic_source.medium), '(none)') AS medium,
-    COALESCE(LOWER(t.traffic_source.source), '(direct)') AS source,
-    COALESCE(LOWER(t.traffic_source.name), '(not set)') AS campaign_name
-  FROM (
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201201` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201202` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201203` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201204` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201205` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201206` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201207` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201208` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201209` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201210` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201211` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201212` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201213` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201214` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201215` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201216` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201217` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201218` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201219` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201220` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201221` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201222` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201223` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201224` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201225` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201226` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201227` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201228` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201229` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201230` UNION ALL
-    SELECT * FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201231`
-  ) AS t
-  LEFT JOIN UNNEST(t.event_params) AS ep
-    ON ep.key = 'ga_session_id'
-  WHERE t.event_name = 'session_start' AND ep.value.int_value IS NOT NULL
-)
-
-SELECT 
-  Channel, 
-  COUNT(DISTINCT ga_session_id) AS Number_of_Sessions
+SELECT
+  traffic_channel,
+  COUNT(*) AS Sessions
 FROM (
   SELECT
-    ga_session_id,
-    medium,
-    source,
-    campaign_name,
     CASE
-      WHEN source = '(direct)' AND medium IN ('(not set)', '(none)') THEN 'Direct'
-      WHEN campaign_name LIKE '%cross-network%' THEN 'Cross-network'
-      WHEN medium IN ('cpc', 'ppc', 'retargeting', 'paidsearch') AND source IN ('google', 'bing', 'baidu', 'yahoo', 'yandex', 'duckduckgo', 'ecosia') THEN 'Paid Search'
-      WHEN medium IN ('cpc', 'ppc', 'retargeting', 'paidshopping') AND source IN ('alibaba', 'amazon', 'ebay', 'etsy', 'shopify', 'stripe', 'walmart') THEN 'Paid Shopping'
-      WHEN medium IN ('cpc', 'ppc', 'retargeting', 'paidsocial') AND source IN ('badoo', 'facebook', 'fb', 'instagram', 'linkedin', 'pinterest', 'tiktok', 'twitter', 'whatsapp') THEN 'Paid Social'
-      WHEN medium IN ('cpc', 'ppc', 'retargeting', 'paidvideo') AND source IN ('dailymotion', 'disneyplus', 'netflix', 'twitch', 'vimeo', 'youtube') THEN 'Paid Video'
-      WHEN medium IN ('display', 'banner', 'expandable', 'interstitial', 'cpm') THEN 'Display'
-      WHEN source IN ('alibaba', 'amazon', 'ebay', 'etsy', 'shopify', 'stripe', 'walmart') OR campaign_name LIKE '%shop%' OR campaign_name LIKE '%shopping%' THEN 'Organic Shopping'
-      WHEN medium IN ('social', 'social-network', 'social-media', 'sm', 'social network', 'social media') OR source IN ('badoo', 'facebook', 'fb', 'instagram', 'linkedin', 'pinterest', 'tiktok', 'twitter', 'whatsapp') THEN 'Organic Social'
-      WHEN source IN ('dailymotion', 'disneyplus', 'netflix', 'twitch', 'vimeo', 'youtube') OR medium LIKE '%video%' THEN 'Organic Video'
-      WHEN source IN ('baidu', 'bing', 'duckduckgo', 'ecosia', 'google', 'yahoo', 'yandex') OR medium = 'organic' THEN 'Organic Search'
-      WHEN medium = 'referral' THEN 'Referral'
-      WHEN medium IN ('email', 'e-mail', 'e_mail', 'e mail') OR source IN ('email', 'e-mail', 'e_mail', 'e mail') THEN 'Email'
-      WHEN medium = 'affiliate' THEN 'Affiliates'
-      WHEN medium = 'audio' OR source = 'audio' THEN 'Audio'
-      WHEN medium = 'sms' OR source = 'sms' THEN 'SMS'
-      WHEN medium LIKE '%push' OR medium LIKE '%mobile%' OR medium LIKE '%notification%' THEN 'Mobile Push Notifications'
+      WHEN COALESCE(source, '') = '(direct)' AND COALESCE(medium, '') IN ('(not set)', '(none)', '')
+        THEN 'Direct'
+      WHEN LOWER(COALESCE(medium, '')) = 'referral'
+        THEN 'Referral'
+      WHEN LOWER(COALESCE(medium, '')) IN ('email', 'e-mail', 'e_mail', 'e mail') OR LOWER(COALESCE(source, '')) IN ('email', 'e-mail', 'e_mail', 'e mail')
+        THEN 'Email'
+      WHEN LOWER(COALESCE(medium, '')) = 'affiliate'
+        THEN 'Affiliates'
+      WHEN LOWER(COALESCE(medium, '')) = 'audio'
+        THEN 'Audio'
+      WHEN LOWER(COALESCE(source, '')) = 'sms' OR LOWER(COALESCE(medium, '')) = 'sms'
+        THEN 'SMS'
+      WHEN LOWER(COALESCE(medium, '')) LIKE '%push%' OR LOWER(COALESCE(medium, '')) LIKE '%mobile%' OR LOWER(COALESCE(medium, '')) LIKE '%notification%'
+        THEN 'Mobile Push Notifications'
+      WHEN 
+        LOWER(COALESCE(source, '')) IN ('baidu', 'bing', 'duckduckgo', 'ecosia', 'google', 'yahoo', 'yandex') AND
+        REGEXP_CONTAINS(LOWER(COALESCE(medium, '')), r'(.*cp.*|ppc|paid.*)')
+        THEN 'Paid Search'
+      WHEN 
+        REGEXP_CONTAINS(LOWER(COALESCE(source, '')), r'(badoo|facebook|fb|instagram|linkedin|pinterest|tiktok|twitter|whatsapp)') AND
+        REGEXP_CONTAINS(LOWER(COALESCE(medium, '')), r'(.*cp.*|ppc|retargeting|paid.*)')
+        THEN 'Paid Social'
+      WHEN 
+        LOWER(COALESCE(source, '')) IN ('dailymotion', 'disneyplus', 'netflix', 'youtube', 'vimeo', 'twitch') AND
+        REGEXP_CONTAINS(LOWER(COALESCE(medium, '')), r'(.*cp.*|ppc|retargeting|paid.*)')
+        THEN 'Paid Video'
+      WHEN LOWER(COALESCE(medium, '')) IN ('display', 'banner', 'expandable', 'interstitial', 'cpm')
+        THEN 'Display'
+      WHEN 
+        (REGEXP_CONTAINS(LOWER(COALESCE(source, '')), r'(alibaba|amazon|google shopping|shopify|etsy|ebay|stripe|walmart)') OR
+         REGEXP_CONTAINS(LOWER(COALESCE(campaign, '')), r'(shop|shopping)')) AND
+        REGEXP_CONTAINS(LOWER(COALESCE(medium, '')), r'(.*cp.*|ppc|retargeting|paid.*)')
+        THEN 'Paid Shopping'
+      WHEN 
+        REGEXP_CONTAINS(LOWER(COALESCE(source, '')), r'(alibaba|amazon|google shopping|shopify|etsy|ebay|stripe|walmart)') OR
+        REGEXP_CONTAINS(LOWER(COALESCE(campaign, '')), r'(shop|shopping)')
+        THEN 'Organic Shopping'
+      WHEN 
+        LOWER(COALESCE(medium, '')) = 'organic' OR
+        LOWER(COALESCE(source, '')) IN ('baidu', 'bing', 'duckduckgo', 'ecosia', 'google', 'yahoo', 'yandex')
+        THEN 'Organic Search'
+      WHEN 
+        REGEXP_CONTAINS(LOWER(COALESCE(source, '')), r'(badoo|facebook|fb|instagram|linkedin|pinterest|tiktok|twitter|whatsapp)') OR
+        LOWER(COALESCE(medium, '')) IN ('social', 'social-network', 'social-media', 'sm', 'social network', 'social media')
+        THEN 'Organic Social'
+      WHEN 
+        LOWER(COALESCE(source, '')) IN ('dailymotion', 'disneyplus', 'netflix', 'youtube', 'vimeo', 'twitch') OR
+        LOWER(COALESCE(medium, '')) LIKE '%video%'
+        THEN 'Organic Video'
       ELSE 'Unassigned'
-    END AS Channel
-  FROM session_data
+    END AS traffic_channel
+  FROM (
+    SELECT
+      e.event_name,
+      e.event_timestamp,
+      COALESCE(e.traffic_source.source,
+               MAX(IF(ep.key = 'source', ep.value.string_value, NULL))) AS source,
+      COALESCE(e.traffic_source.medium,
+               MAX(IF(ep.key = 'medium', ep.value.string_value, NULL))) AS medium,
+      COALESCE(e.traffic_source.name,
+               MAX(IF(ep.key = 'campaign', ep.value.string_value, NULL))) AS campaign
+    FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_202012*` AS e
+    LEFT JOIN UNNEST(e.event_params) AS ep
+    ON TRUE
+    WHERE e.event_name = 'session_start'
+    GROUP BY e.event_name, e.event_timestamp, e.traffic_source
+  )
 )
-GROUP BY Channel
-ORDER BY Number_of_Sessions DESC;
+GROUP BY traffic_channel
+ORDER BY Sessions DESC;

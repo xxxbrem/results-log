@@ -1,27 +1,25 @@
-WITH users_installed AS (
-  SELECT DISTINCT user_pseudo_id
-  FROM `firebase-public-project.analytics_153293282.events_*`
-  WHERE _TABLE_SUFFIX BETWEEN '20180801' AND '20180930'
-    AND event_name = 'first_open'
-),
-user_active_days AS (
-  SELECT
-    user_pseudo_id,
-    DATE_DIFF(
-      TIMESTAMP_MICROS(MAX(event_timestamp)),
-      TIMESTAMP_MICROS(MIN(event_timestamp)),
-      DAY
-    ) AS days_active
-  FROM `firebase-public-project.analytics_153293282.events_*`
-  WHERE user_pseudo_id IN (SELECT user_pseudo_id FROM users_installed)
-  GROUP BY user_pseudo_id
-),
-users_did_not_uninstall_within_7_days AS (
-  SELECT
-    user_pseudo_id
-  FROM user_active_days
-  WHERE days_active > 7
-)
 SELECT
-  ROUND((COUNT(*) / (SELECT COUNT(*) FROM users_installed)) * 100, 4) AS percentage_of_users_did_not_uninstall_within_7_days
-FROM users_did_not_uninstall_within_7_days;
+  ((COUNT(DISTINCT installs.`user_pseudo_id`) - COUNT(DISTINCT uninstalls.`user_pseudo_id`)) * 100.0 / COUNT(DISTINCT installs.`user_pseudo_id`)) AS Percentage_of_users
+FROM (
+  SELECT DISTINCT `user_pseudo_id`, TIMESTAMP_MICROS(`user_first_touch_timestamp`) AS install_time
+  FROM `firebase-public-project.analytics_153293282.events_*`
+  WHERE
+    DATE(TIMESTAMP_MICROS(`user_first_touch_timestamp`)) BETWEEN '2018-08-01' AND '2018-09-30'
+    AND `_TABLE_SUFFIX` BETWEEN '20180801' AND '20180930'
+) AS installs
+LEFT JOIN (
+  SELECT DISTINCT e.`user_pseudo_id`
+  FROM (
+    SELECT DISTINCT `user_pseudo_id`, TIMESTAMP_MICROS(`user_first_touch_timestamp`) AS install_time
+    FROM `firebase-public-project.analytics_153293282.events_*`
+    WHERE
+      DATE(TIMESTAMP_MICROS(`user_first_touch_timestamp`)) BETWEEN '2018-08-01' AND '2018-09-30'
+      AND `_TABLE_SUFFIX` BETWEEN '20180801' AND '20180930'
+  ) AS i
+  JOIN `firebase-public-project.analytics_153293282.events_*` AS e
+    ON i.`user_pseudo_id` = e.`user_pseudo_id`
+    AND e.`event_name` = 'app_remove'
+    AND `_TABLE_SUFFIX` BETWEEN '20180801' AND '20181007'
+    AND TIMESTAMP_MICROS(e.`event_timestamp`) <= i.install_time + INTERVAL 7 DAY
+) AS uninstalls
+  ON installs.`user_pseudo_id` = uninstalls.`user_pseudo_id`;

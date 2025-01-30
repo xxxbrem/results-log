@@ -1,44 +1,41 @@
-WITH
-  page_view_events AS (
+SELECT
+  ROUND(SAFE_DIVIDE(pdp.pdp_page_views, total.total_page_views) * 100, 4) AS Percentage_of_PDP_Page_Views
+FROM
+  (
     SELECT
-      (SELECT ep.value.string_value
-       FROM UNNEST(event_params) AS ep
-       WHERE ep.key = 'page_location') AS page_location
+      COUNT(*) AS total_page_views
     FROM
       `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102`
     WHERE
       event_name = 'page_view'
-  ),
-  classified_pages AS (
+  ) AS total,
+  (
     SELECT
-      page_location,
-      REGEXP_EXTRACT(page_location, r'https?://[^/]+(/.*)') AS url_path,
-      SPLIT(TRIM(REGEXP_EXTRACT(page_location, r'https?://[^/]+(/.*)'), '/'), '/') AS segments
+      COUNT(*) AS pdp_page_views
     FROM
-      page_view_events
+      `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102` AS t
+      INNER JOIN UNNEST(t.event_params) AS ep
+        ON ep.key = 'page_location'
     WHERE
-      page_location IS NOT NULL
-  ),
-  pdp_classified AS (
-    SELECT
-      COUNT(*) AS total_page_views,
-      COUNTIF(
-        ARRAY_LENGTH(segments) >= 3
-        AND REGEXP_CONTAINS(segments[SAFE_OFFSET(ARRAY_LENGTH(segments) - 1)], r'\+')
-        AND (
-          LOWER(REPLACE(segments[SAFE_OFFSET(1)], '+', ' ')) IN ('accessories', 'apparel', 'brands', 'campus collection',
-          'drinkware', 'electronics', 'google redesign', 'lifestyle', 'nest', 'new 2015 logo',
-          'notebooks journals', 'office', 'shop by brand', 'small goods', 'stationery', 'wearables')
-          OR
-          LOWER(REPLACE(segments[SAFE_OFFSET(2)], '+', ' ')) IN ('accessories', 'apparel', 'brands', 'campus collection',
-          'drinkware', 'electronics', 'google redesign', 'lifestyle', 'nest', 'new 2015 logo',
-          'notebooks journals', 'office', 'shop by brand', 'small goods', 'stationery', 'wearables')
+      t.event_name = 'page_view'
+      AND ARRAY_LENGTH(SPLIT(ep.value.string_value, '/')) >= 5
+      AND REGEXP_CONTAINS(
+        SPLIT(ep.value.string_value, '/')[OFFSET(ARRAY_LENGTH(SPLIT(ep.value.string_value, '/')) - 1)],
+        r'\+'
+      )
+      AND (
+        LOWER(SPLIT(ep.value.string_value, '/')[SAFE_OFFSET(3)]) IN (
+          'accessories', 'apparel', 'brands', 'campus+collection', 'drinkware',
+          'electronics', 'google+redesign', 'lifestyle', 'nest', 'new+2015+logo',
+          'notebooks+journals', 'office', 'shop+by+brand', 'small+goods',
+          'stationery', 'wearables'
         )
-      ) AS pdp_page_views
-    FROM
-      classified_pages
-  )
-SELECT
-  ROUND((pdp_page_views / total_page_views) * 100, 4) AS Percentage_of_PDP_page_views
-FROM
-  pdp_classified;
+        OR
+        LOWER(SPLIT(ep.value.string_value, '/')[SAFE_OFFSET(4)]) IN (
+          'accessories', 'apparel', 'brands', 'campus+collection', 'drinkware',
+          'electronics', 'google+redesign', 'lifestyle', 'nest', 'new+2015+logo',
+          'notebooks+journals', 'office', 'shop+by+brand', 'small+goods',
+          'stationery', 'wearables'
+        )
+      )
+  ) AS pdp;

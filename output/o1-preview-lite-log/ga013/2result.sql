@@ -1,62 +1,43 @@
 SELECT
-  page_title AS Page_Name,
+  Page_Name,
   CASE
-    WHEN ARRAY_LENGTH(url_segments) >= 5
-      AND NOT (
-        CONTAINS_SUBSTR(url_segments[SAFE_OFFSET(3)], '+') OR
-        CONTAINS_SUBSTR(url_segments[SAFE_OFFSET(4)], '+')
-      )
+    WHEN
+      num_segments >= 5
       AND (
-        LOWER(url_segments[SAFE_OFFSET(3)]) IN UNNEST([
-          'accessories', 'apparel', 'brands', 'campus+collection',
-          'drinkware', 'electronics', 'google+redesign', 'lifestyle',
-          'nest', 'new+2015+logo', 'notebooks+journals', 'office',
-          'shop+by+brand', 'small+goods', 'stationery', 'wearables'
-        ]) OR
-        LOWER(url_segments[SAFE_OFFSET(4)]) IN UNNEST([
-          'accessories', 'apparel', 'brands', 'campus+collection',
-          'drinkware', 'electronics', 'google+redesign', 'lifestyle',
-          'nest', 'new+2015+logo', 'notebooks+journals', 'office',
-          'shop+by+brand', 'small+goods', 'stationery', 'wearables'
-        ])
+        REGEXP_CONTAINS(segment4, r'(?i)(Accessories|Apparel|Brands|Campus\+Collection|Drinkware|Electronics|Google\+Redesign|Lifestyle|Nest|New\+2015\+Logo|Notebooks\+Journals|Office|Shop\+by\+Brand|Small\+Goods|Stationery|Wearables)')
+        OR
+        REGEXP_CONTAINS(segment5, r'(?i)(Accessories|Apparel|Brands|Campus\+Collection|Drinkware|Electronics|Google\+Redesign|Lifestyle|Nest|New\+2015\+Logo|Notebooks\+Journals|Office|Shop\+by\+Brand|Small\+Goods|Stationery|Wearables)')
       )
-    THEN 'PLP'
-    WHEN ARRAY_LENGTH(url_segments) >= 5
-      AND CONTAINS_SUBSTR(url_segments[ORDINAL(ARRAY_LENGTH(url_segments))], '+')
-      AND (
-        LOWER(url_segments[SAFE_OFFSET(3)]) IN UNNEST([
-          'accessories', 'apparel', 'brands', 'campus+collection',
-          'drinkware', 'electronics', 'google+redesign', 'lifestyle',
-          'nest', 'new+2015+logo', 'notebooks+journals', 'office',
-          'shop+by+brand', 'small+goods', 'stationery', 'wearables'
-        ]) OR
-        LOWER(url_segments[SAFE_OFFSET(4)]) IN UNNEST([
-          'accessories', 'apparel', 'brands', 'campus+collection',
-          'drinkware', 'electronics', 'google+redesign', 'lifestyle',
-          'nest', 'new+2015+logo', 'notebooks+journals', 'office',
-          'shop+by+brand', 'small+goods', 'stationery', 'wearables'
-        ])
-      )
+      AND REGEXP_CONTAINS(last_segment, r'\+')
     THEN 'PDP'
+    WHEN
+      num_segments >= 5
+      AND (
+        REGEXP_CONTAINS(segment4, r'(?i)(Accessories|Apparel|Brands|Campus\+Collection|Drinkware|Electronics|Google\+Redesign|Lifestyle|Nest|New\+2015\+Logo|Notebooks\+Journals|Office|Shop\+by\+Brand|Small\+Goods|Stationery|Wearables)')
+        OR
+        REGEXP_CONTAINS(segment5, r'(?i)(Accessories|Apparel|Brands|Campus\+Collection|Drinkware|Electronics|Google\+Redesign|Lifestyle|Nest|New\+2015\+Logo|Notebooks\+Journals|Office|Shop\+by\+Brand|Small\+Goods|Stationery|Wearables)')
+      )
+      AND NOT REGEXP_CONTAINS(segment4, r'\+')
+      AND NOT REGEXP_CONTAINS(segment5, r'\+')
+    THEN 'PLP'
     ELSE 'Other'
   END AS Page_Type
 FROM (
   SELECT
-    e.event_timestamp,
-    MAX(CASE WHEN ep.key = 'page_title' THEN ep.value.string_value END) AS page_title,
-    SPLIT(
-      REGEXP_REPLACE(
-        MAX(CASE WHEN ep.key = 'page_location' THEN ep.value.string_value END),
-        r'^https?://[^/]+',
-        ''
-      ),
-      '/'
-    ) AS url_segments
-  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102` AS e
-  CROSS JOIN UNNEST(e.event_params) AS ep
-  WHERE
-    e.user_pseudo_id = '1402138.5184246691'
-    AND e.event_name = 'page_view'
-    AND e.event_date = '20210102'
-  GROUP BY e.event_timestamp
+    Page_Name,
+    SPLIT(path, '/') AS path_segments,
+    ARRAY_LENGTH(SPLIT(path, '/')) AS num_segments,
+    SPLIT(path, '/')[SAFE_ORDINAL(4)] AS segment4,
+    SPLIT(path, '/')[SAFE_ORDINAL(5)] AS segment5,
+    SPLIT(path, '/')[ORDINAL(ARRAY_LENGTH(SPLIT(path, '/')))] AS last_segment
+  FROM (
+    SELECT
+      ep_page_location.value.string_value AS Page_Name,
+      REGEXP_EXTRACT(ep_page_location.value.string_value, r'https?://[^/]+(/.*)') AS path
+    FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102` AS e
+    CROSS JOIN UNNEST(e.event_params) AS ep_page_location
+    WHERE e.user_pseudo_id = '1402138.5184246691'
+      AND ep_page_location.key = 'page_location'
+      AND ep_page_location.value.string_value IS NOT NULL
+  )
 )

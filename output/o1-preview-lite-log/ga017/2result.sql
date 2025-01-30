@@ -1,20 +1,27 @@
-WITH most_visited_page AS (
-  SELECT ep.value.string_value AS page_title,
-         COUNT(*) AS view_count
-  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` AS t
-  JOIN UNNEST(t.event_params) AS ep
-  WHERE t.event_name = 'page_view'
-    AND ep.key = 'page_title'
-    AND _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'
+WITH page_views AS (
+  SELECT
+    param.value.string_value AS page_title,
+    COUNT(*) AS total_views
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    UNNEST(`event_params`) AS param
+  WHERE
+    `_TABLE_SUFFIX` BETWEEN '20210101' AND '20210131'
+    AND `event_name` = 'page_view'
+    AND param.key = 'page_title'
+    AND param.value.string_value IS NOT NULL
   GROUP BY page_title
-  ORDER BY view_count DESC
+),
+most_viewed_page AS (
+  SELECT page_title
+  FROM page_views
+  ORDER BY total_views DESC
   LIMIT 1
 )
-SELECT COUNT(DISTINCT t.user_pseudo_id) AS number_of_distinct_users
-FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` AS t
-JOIN UNNEST(t.event_params) AS ep
-JOIN most_visited_page mvp
-  ON ep.value.string_value = mvp.page_title
-WHERE t.event_name = 'page_view'
-  AND ep.key = 'page_title'
-  AND _TABLE_SUFFIX BETWEEN '20210101' AND '20210131';
+SELECT COUNT(DISTINCT `user_pseudo_id`) AS Number_of_Distinct_Users
+FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+  UNNEST(`event_params`) AS param
+WHERE
+  `_TABLE_SUFFIX` BETWEEN '20210101' AND '20210131'
+  AND `event_name` = 'page_view'
+  AND param.key = 'page_title'
+  AND param.value.string_value = (SELECT page_title FROM most_viewed_page);

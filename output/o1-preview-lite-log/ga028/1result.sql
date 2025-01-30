@@ -1,39 +1,175 @@
-WITH initial_cohort AS (
-  SELECT DISTINCT user_pseudo_id
-  FROM `firebase-public-project.analytics_153293282.events_*`
-  WHERE _TABLE_SUFFIX BETWEEN '20180702' AND '20180708'
-    AND user_first_touch_timestamp BETWEEN UNIX_MICROS(TIMESTAMP '2018-07-02') AND UNIX_MICROS(TIMESTAMP '2018-07-09')
+WITH first_session AS (
+    SELECT
+        user_pseudo_id,
+        MIN(DATE(TIMESTAMP_MICROS(event_timestamp))) AS first_session_date
+    FROM (
+        SELECT user_pseudo_id, event_timestamp
+        FROM `firebase-public-project.analytics_153293282.events_20180702`
+        WHERE event_name = 'session_start'
+        UNION ALL
+        SELECT user_pseudo_id, event_timestamp
+        FROM `firebase-public-project.analytics_153293282.events_20180703`
+        WHERE event_name = 'session_start'
+        UNION ALL
+        SELECT user_pseudo_id, event_timestamp
+        FROM `firebase-public-project.analytics_153293282.events_20180704`
+        WHERE event_name = 'session_start'
+        UNION ALL
+        SELECT user_pseudo_id, event_timestamp
+        FROM `firebase-public-project.analytics_153293282.events_20180705`
+        WHERE event_name = 'session_start'
+        UNION ALL
+        SELECT user_pseudo_id, event_timestamp
+        FROM `firebase-public-project.analytics_153293282.events_20180706`
+        WHERE event_name = 'session_start'
+        UNION ALL
+        SELECT user_pseudo_id, event_timestamp
+        FROM `firebase-public-project.analytics_153293282.events_20180707`
+        WHERE event_name = 'session_start'
+        UNION ALL
+        SELECT user_pseudo_id, event_timestamp
+        FROM `firebase-public-project.analytics_153293282.events_20180708`
+        WHERE event_name = 'session_start'
+    )
+    GROUP BY user_pseudo_id
 ),
-user_activity AS (
-  SELECT
-    user_pseudo_id,
-    CASE
-      WHEN _TABLE_SUFFIX BETWEEN '20180702' AND '20180708' THEN 'Week0'
-      WHEN _TABLE_SUFFIX BETWEEN '20180709' AND '20180715' THEN 'Week1'
-      WHEN _TABLE_SUFFIX BETWEEN '20180716' AND '20180722' THEN 'Week2'
-      WHEN _TABLE_SUFFIX BETWEEN '20180723' AND '20180729' THEN 'Week3'
-      WHEN _TABLE_SUFFIX BETWEEN '20180730' AND '20180805' THEN 'Week4'
-    END AS Week
-  FROM `firebase-public-project.analytics_153293282.events_*`
-  WHERE _TABLE_SUFFIX BETWEEN '20180702' AND '20180805'
-    AND user_pseudo_id IN (SELECT user_pseudo_id FROM initial_cohort)
+new_users AS (
+    SELECT user_pseudo_id
+    FROM first_session
+    WHERE first_session_date BETWEEN '2018-07-02' AND '2018-07-08'
 ),
-retention_counts AS (
-  SELECT Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Retained_Users
-  FROM user_activity
-  GROUP BY Week
+week0 AS (
+    SELECT 'Week0' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+    FROM new_users
 ),
-weeks AS (
-  SELECT 'Week0' AS Week UNION ALL
-  SELECT 'Week1' UNION ALL
-  SELECT 'Week2' UNION ALL
-  SELECT 'Week3' UNION ALL
-  SELECT 'Week4'
+week1 AS (
+    SELECT 'Week1' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+    FROM (
+        SELECT DISTINCT user_pseudo_id
+        FROM (
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180709`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180710`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180711`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180712`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180713`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180714`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180715`
+        )
+        WHERE DATE(TIMESTAMP_MICROS(event_timestamp)) BETWEEN '2018-07-09' AND '2018-07-15'
+          AND user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    )
+),
+week2 AS (
+    SELECT 'Week2' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+    FROM (
+        SELECT DISTINCT user_pseudo_id
+        FROM (
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180716`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180717`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180718`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180719`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180720`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180721`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180722`
+        )
+        WHERE DATE(TIMESTAMP_MICROS(event_timestamp)) BETWEEN '2018-07-16' AND '2018-07-22'
+          AND user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    )
+),
+week3 AS (
+    SELECT 'Week3' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+    FROM (
+        SELECT DISTINCT user_pseudo_id
+        FROM (
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180723`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180724`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180725`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180726`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180727`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180728`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180729`
+        )
+        WHERE DATE(TIMESTAMP_MICROS(event_timestamp)) BETWEEN '2018-07-23' AND '2018-07-29'
+          AND user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    )
+),
+week4 AS (
+    SELECT 'Week4' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+    FROM (
+        SELECT DISTINCT user_pseudo_id
+        FROM (
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180730`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180731`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180801`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180802`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180803`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180804`
+            UNION ALL
+            SELECT user_pseudo_id, event_timestamp
+            FROM `firebase-public-project.analytics_153293282.events_20180805`
+        )
+        WHERE DATE(TIMESTAMP_MICROS(event_timestamp)) BETWEEN '2018-07-30' AND '2018-08-05'
+          AND user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    )
 )
-SELECT
-  weeks.Week,
-  (SELECT COUNT(*) FROM initial_cohort) AS Total_New_Users,
-  IFNULL(retention_counts.Number_of_Retained_Users, 0) AS Number_of_Retained_Users
-FROM weeks
-LEFT JOIN retention_counts USING (Week)
+
+SELECT * FROM week0
+UNION ALL
+SELECT * FROM week1
+UNION ALL
+SELECT * FROM week2
+UNION ALL
+SELECT * FROM week3
+UNION ALL
+SELECT * FROM week4
 ORDER BY Week;

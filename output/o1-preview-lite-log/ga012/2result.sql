@@ -1,22 +1,33 @@
+WITH highest_tax_category AS (
+  SELECT item_category
+  FROM (
+    SELECT
+      item.item_category,
+      SAFE_DIVIDE(SUM(ecommerce.tax_value), SUM(ecommerce.purchase_revenue)) AS tax_rate
+    FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201130`,
+      UNNEST(items) AS item
+    WHERE
+      event_date = '20201130'
+      AND item.item_category IS NOT NULL
+      AND item.item_category != ''
+      AND ecommerce.tax_value IS NOT NULL
+      AND ecommerce.purchase_revenue IS NOT NULL
+      AND ecommerce.purchase_revenue != 0
+    GROUP BY item.item_category
+    ORDER BY tax_rate DESC
+    LIMIT 1
+  )
+)
 SELECT DISTINCT
-  t.ecommerce.transaction_id,
-  t.ecommerce.total_item_quantity,
-  t.ecommerce.purchase_revenue_in_usd
-FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201130` AS t
-JOIN UNNEST(t.items) AS item
-WHERE t.event_date = '20201130'
-  AND t.event_name = 'purchase'
-  AND item.item_category = (
-    SELECT item_category
-    FROM (
-      SELECT
-        item.item_category,
-        AVG(t.ecommerce.tax_value_in_usd / t.ecommerce.purchase_revenue_in_usd) AS avg_tax_rate
-      FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201130` AS t
-      JOIN UNNEST(t.items) AS item
-      WHERE t.event_date = '20201130' AND t.event_name = 'purchase'
-      GROUP BY item.item_category
-      ORDER BY avg_tax_rate DESC
-      LIMIT 1
-    ) AS sub_query
-  );
+  ecommerce.transaction_id,
+  ecommerce.total_item_quantity,
+  ecommerce.purchase_revenue
+FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20201130`,
+  UNNEST(items) AS item,
+  highest_tax_category
+WHERE
+  event_date = '20201130'
+  AND item.item_category = highest_tax_category.item_category
+  AND ecommerce.transaction_id IS NOT NULL
+  AND ecommerce.total_item_quantity IS NOT NULL
+  AND ecommerce.purchase_revenue IS NOT NULL

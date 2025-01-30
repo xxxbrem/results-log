@@ -1,59 +1,53 @@
-WITH sessions AS (
-  SELECT
-    user_pseudo_id,
-    (SELECT CAST(value.int_value AS STRING) FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS ga_session_id,
-    event_timestamp,
-    event_name,
-    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_title') AS page_title
-  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102`
+WITH event_pages AS (
+    SELECT
+        (SELECT ep.value.int_value FROM UNNEST(events.event_params) ep WHERE ep.key = 'ga_session_id') AS session_id,
+        LOWER((SELECT ep.value.string_value FROM UNNEST(events.event_params) ep WHERE ep.key = 'page_title')) AS page_title,
+        events.event_timestamp
+    FROM
+        `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_20210102` AS events
 ),
-session_first_events AS (
-  SELECT
-    user_pseudo_id,
-    ga_session_id,
-    MIN(event_timestamp) AS session_start_timestamp
-  FROM sessions
-  GROUP BY user_pseudo_id, ga_session_id
+sessions_first_page AS (
+    SELECT
+        session_id,
+        page_title
+    FROM (
+        SELECT
+            session_id,
+            page_title,
+            ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY event_timestamp ASC) AS rn
+        FROM
+            event_pages
+        WHERE
+            session_id IS NOT NULL
+    )
+    WHERE rn = 1
 ),
-session_start_page AS (
-  SELECT
-    sfe.user_pseudo_id,
-    sfe.ga_session_id,
-    sfe.session_start_timestamp,
-    s.event_name AS first_event_name,
-    s.page_title AS first_page_title
-  FROM session_first_events sfe
-  JOIN sessions s
-    ON sfe.user_pseudo_id = s.user_pseudo_id
-    AND sfe.ga_session_id = s.ga_session_id
-    AND sfe.session_start_timestamp = s.event_timestamp
+sessions_started_with_home AS (
+    SELECT
+        session_id
+    FROM
+        sessions_first_page
+    WHERE
+        page_title = 'home'
 ),
-sessions_with_home_landing AS (
-  SELECT DISTINCT
-    user_pseudo_id,
-    ga_session_id
-  FROM session_start_page
-  WHERE first_event_name = 'page_view' AND first_page_title = 'Home'
-),
-sessions_with_checkout_confirmation AS (
-  SELECT DISTINCT
-    user_pseudo_id,
-    ga_session_id
-  FROM sessions
-  WHERE page_title = 'Checkout Confirmation'
-),
-sessions_landed_home_and_reached_checkout AS (
-  SELECT
-    shl.user_pseudo_id,
-    shl.ga_session_id
-  FROM sessions_with_home_landing shl
-  INNER JOIN sessions_with_checkout_confirmation swcc
-    ON shl.user_pseudo_id = swcc.user_pseudo_id
-    AND shl.ga_session_id = swcc.ga_session_id
+sessions_with_checkout AS (
+    SELECT DISTINCT
+        session_id
+    FROM
+        event_pages
+    WHERE
+        page_title = 'checkout confirmation'
+        AND session_id IS NOT NULL
 )
+
 SELECT
-  ROUND(
-    (SELECT COUNT(*) FROM sessions_landed_home_and_reached_checkout) * 100.0 /
-    (SELECT COUNT(*) FROM sessions_with_home_landing),
-    4
-  ) AS conversion_rate;
+    ROUND(
+        SAFE_MULTIPLY(
+            SAFE_DIVIDE(
+                (SELECT COUNT(DISTINCT session_id) FROM sessions_started_with_home WHERE session_id IN (SELECT session_id FROM sessions_with_checkout)),
+                (SELECT COUNT(DISTINCT session_id) FROM sessions_started_with_home)
+            ),
+            100
+        ),
+        4
+    ) AS conversion_rate;

@@ -1,112 +1,84 @@
-WITH all_events AS (
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180702`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180703`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180704`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180705`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180706`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180707`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180708`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180709`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180710`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180711`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180712`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180713`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180714`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180715`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180716`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180717`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180718`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180719`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180720`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180721`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180722`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180723`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180724`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180725`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180726`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180727`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180728`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180729`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180730`
-  UNION ALL
-  SELECT * FROM `firebase-public-project.analytics_153293282.events_20180731`
+WITH initial_events AS (
+    SELECT
+        user_pseudo_id,
+        MIN(event_timestamp) AS first_event_timestamp,
+        event_name AS quickplay_event_type
+    FROM
+        `firebase-public-project.analytics_153293282.events_*`
+    WHERE
+        event_date BETWEEN '20180702' AND '20180716'
+        AND event_name IN (
+            'level_complete_quickplay',
+            'level_end_quickplay',
+            'level_fail_quickplay',
+            'level_reset_quickplay',
+            'level_retry_quickplay',
+            'level_start_quickplay'
+        )
+    GROUP BY
+        user_pseudo_id,
+        event_name
 ),
-
-initial_events AS (
-  SELECT
-    user_pseudo_id,
-    MIN(event_timestamp) AS initial_event_timestamp,
-    event_name AS quickplay_event_type
-  FROM
-    all_events
-  WHERE
-    event_name IN (
-      'level_start_quickplay',
-      'level_complete_quickplay',
-      'level_fail_quickplay',
-      'level_retry_quickplay',
-      'level_reset_quickplay',
-      'level_end_quickplay'
-    )
-    AND event_date BETWEEN '20180702' AND '20180716'
-  GROUP BY
-    user_pseudo_id,
-    event_name
+session_users AS (
+    SELECT DISTINCT user_pseudo_id
+    FROM `firebase-public-project.analytics_153293282.events_*`
+    WHERE event_name = 'session_start'
+      AND event_date BETWEEN '20180702' AND '20180716'
 ),
-
+retention AS (
+    SELECT
+        ie.quickplay_event_type,
+        ie.user_pseudo_id,
+        ie.first_event_timestamp,
+        TIMESTAMP_ADD(TIMESTAMP_MICROS(ie.first_event_timestamp), INTERVAL 14 DAY) AS start_retention_period,
+        TIMESTAMP_ADD(TIMESTAMP_MICROS(ie.first_event_timestamp), INTERVAL 28 DAY) AS end_retention_period
+    FROM
+        initial_events ie
+    JOIN
+        session_users su
+        ON ie.user_pseudo_id = su.user_pseudo_id
+),
 retained_users AS (
-  SELECT DISTINCT
-    ie.user_pseudo_id,
-    ie.quickplay_event_type
-  FROM
-    initial_events ie
-  JOIN
-    all_events e
-  ON
-    ie.user_pseudo_id = e.user_pseudo_id
-  WHERE
-    TIMESTAMP_MICROS(e.event_timestamp) >= TIMESTAMP_ADD(TIMESTAMP_MICROS(ie.initial_event_timestamp), INTERVAL 14 DAY)
-    AND TIMESTAMP_MICROS(e.event_timestamp) < TIMESTAMP_ADD(TIMESTAMP_MICROS(ie.initial_event_timestamp), INTERVAL 21 DAY)
-    AND e.event_timestamp != ie.initial_event_timestamp
+    SELECT DISTINCT
+        r.quickplay_event_type,
+        r.user_pseudo_id
+    FROM
+        retention r
+    JOIN
+        `firebase-public-project.analytics_153293282.events_*` ev
+    ON
+        r.user_pseudo_id = ev.user_pseudo_id
+    WHERE
+        ev.event_timestamp BETWEEN
+            UNIX_MICROS(r.start_retention_period)
+            AND UNIX_MICROS(r.end_retention_period)
+        AND ev.event_name = r.quickplay_event_type
+),
+user_counts AS (
+    SELECT
+        quickplay_event_type,
+        COUNT(DISTINCT user_pseudo_id) AS total_users
+    FROM
+        retention
+    GROUP BY
+        quickplay_event_type
+),
+retained_counts AS (
+    SELECT
+        quickplay_event_type,
+        COUNT(DISTINCT user_pseudo_id) AS retained_users
+    FROM
+        retained_users
+    GROUP BY
+        quickplay_event_type
 )
-
 SELECT
-  ie.quickplay_event_type AS Quickplay_Event_Type,
-  ROUND(COUNT(DISTINCT ru.user_pseudo_id) * 100.0 / COUNT(DISTINCT ie.user_pseudo_id), 4) AS Retention_Rate
+    uc.quickplay_event_type,
+    ROUND(100 * IFNULL(rc.retained_users, 0) / uc.total_users, 4) AS retention_rate_after_two_weeks
 FROM
-  initial_events ie
+    user_counts uc
 LEFT JOIN
-  retained_users ru ON ie.user_pseudo_id = ru.user_pseudo_id
-  AND ie.quickplay_event_type = ru.quickplay_event_type
-GROUP BY
-  Quickplay_Event_Type
+    retained_counts rc
+    ON uc.quickplay_event_type = rc.quickplay_event_type
 ORDER BY
-  Retention_Rate DESC
+    uc.quickplay_event_type;

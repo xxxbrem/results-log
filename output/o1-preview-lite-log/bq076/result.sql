@@ -1,13 +1,7 @@
-SELECT
-  LPAD(CAST(EXTRACT(MONTH FROM DATETIME(`date`, 'America/Chicago')) AS STRING), 2, '0') AS `Month_num`,
-  FORMAT_DATETIME('%B', DATETIME(`date`, 'America/Chicago')) AS `Month`
-FROM
-  `bigquery-public-data.chicago_crime.crime`
-WHERE
-  EXTRACT(YEAR FROM DATETIME(`date`, 'America/Chicago')) = 2016
-  AND `primary_type` = 'MOTOR VEHICLE THEFT'
-GROUP BY
-  `Month_num`, `Month`
-ORDER BY
-  COUNT(*) DESC
-LIMIT 1;
+SELECT MAX(incident_count) AS Highest_number_of_motor_vehicle_theft_incidents_in_a_month
+FROM (
+    SELECT EXTRACT(MONTH FROM `date`) AS month, COUNT(*) AS incident_count
+    FROM `bigquery-public-data.chicago_crime.crime`
+    WHERE `primary_type` = 'MOTOR VEHICLE THEFT' AND `year` = 2016
+    GROUP BY month
+);

@@ -1,45 +1,39 @@
-WITH user_cohorts AS (
+WITH cohorts AS (
   SELECT
-    user_pseudo_id,
-    DATE_TRUNC(DATE(TIMESTAMP_MICROS(MIN(user_first_touch_timestamp))), WEEK(MONDAY)) AS cohort_week
+    `user_pseudo_id`,
+    DATE_TRUNC(DATE(TIMESTAMP_MICROS(MIN(`event_timestamp`))), WEEK(MONDAY)) AS `Cohort_Week_Start_Date`,
+    DATE(TIMESTAMP_MICROS(MIN(`event_timestamp`))) AS `first_session_date`
   FROM `firebase-public-project.analytics_153293282.events_*`
-  WHERE
-    _TABLE_SUFFIX BETWEEN '20180709' AND '20180917'
-  GROUP BY user_pseudo_id
-  HAVING MIN(DATE(TIMESTAMP_MICROS(user_first_touch_timestamp))) >= DATE('2018-07-09')
+  WHERE `event_name` = 'session_start'
+    AND DATE(TIMESTAMP_MICROS(`event_timestamp`)) >= '2018-07-09'
+    AND DATE(TIMESTAMP_MICROS(`event_timestamp`)) <= '2018-09-23'
+  GROUP BY `user_pseudo_id`
 ),
-events AS (
+cohort_sizes AS (
   SELECT
-    user_pseudo_id,
-    DATE_TRUNC(DATE(TIMESTAMP_MICROS(event_timestamp)), WEEK(MONDAY)) AS event_week
-  FROM `firebase-public-project.analytics_153293282.events_*`
-  WHERE
-    _TABLE_SUFFIX BETWEEN '20180709' AND '20181002'
+    `Cohort_Week_Start_Date`,
+    COUNT(DISTINCT `user_pseudo_id`) AS `users_in_cohort`
+  FROM cohorts
+  GROUP BY `Cohort_Week_Start_Date`
 ),
-user_activity AS (
+retention_counts AS (
   SELECT
-    uc.user_pseudo_id,
-    uc.cohort_week,
-    e.event_week,
-    DATE_DIFF(e.event_week, uc.cohort_week, WEEK(MONDAY)) AS week_number
-  FROM user_cohorts uc
-  JOIN events e ON uc.user_pseudo_id = e.user_pseudo_id
-  WHERE DATE_DIFF(e.event_week, uc.cohort_week, WEEK(MONDAY)) IN (1, 2)
-),
-retention AS (
-  SELECT
-    uc.cohort_week,
-    COUNT(DISTINCT uc.user_pseudo_id) AS users_in_cohort,
-    COUNT(DISTINCT IF(ua.week_number = 1, ua.user_pseudo_id, NULL)) AS retained_week1,
-    COUNT(DISTINCT IF(ua.week_number = 2, ua.user_pseudo_id, NULL)) AS retained_week2
-  FROM user_cohorts uc
-  LEFT JOIN user_activity ua ON uc.user_pseudo_id = ua.user_pseudo_id AND uc.cohort_week = ua.cohort_week
-  GROUP BY uc.cohort_week
+    cohorts.`Cohort_Week_Start_Date`,
+    COUNT(DISTINCT cohorts.`user_pseudo_id`) AS `retained_users`
+  FROM cohorts
+  JOIN `firebase-public-project.analytics_153293282.events_*` AS returns
+    ON cohorts.`user_pseudo_id` = returns.`user_pseudo_id`
+  WHERE returns.`event_name` = 'session_start'
+    AND DATE(TIMESTAMP_MICROS(returns.`event_timestamp`)) BETWEEN DATE_ADD(cohorts.`first_session_date`, INTERVAL 8 DAY)
+      AND DATE_ADD(cohorts.`first_session_date`, INTERVAL 14 DAY)
+  GROUP BY cohorts.`Cohort_Week_Start_Date`
 )
 SELECT
-  FORMAT_DATE('%Y-%m-%d', r.cohort_week) AS Cohort_Week_Start,
-  r.users_in_cohort AS Users_in_Cohort,
-  ROUND((COALESCE(r.retained_week1, 0) / r.users_in_cohort) * 100, 4) AS Retention_Week1_Pct,
-  ROUND((COALESCE(r.retained_week2, 0) / r.users_in_cohort) * 100, 4) AS Retention_Week2_Pct
-FROM retention r
-ORDER BY r.cohort_week;
+  cohort_sizes.`Cohort_Week_Start_Date`,
+  ROUND((IFNULL(retention_counts.`retained_users`, 0) / cohort_sizes.`users_in_cohort`) * 100, 4) AS `Retention_Rate_Percentage`
+FROM cohort_sizes
+LEFT JOIN retention_counts
+  ON cohort_sizes.`Cohort_Week_Start_Date` = retention_counts.`Cohort_Week_Start_Date`
+WHERE cohort_sizes.`Cohort_Week_Start_Date` BETWEEN DATE('2018-07-09') AND DATE('2018-09-17')
+ORDER BY cohort_sizes.`Cohort_Week_Start_Date`
+LIMIT 11

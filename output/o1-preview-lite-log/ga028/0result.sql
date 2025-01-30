@@ -1,57 +1,36 @@
-WITH cohort_users AS (
-    SELECT DISTINCT user_pseudo_id
+WITH new_users AS (
+  SELECT user_pseudo_id
+  FROM (
+    SELECT user_pseudo_id, MIN(event_date) AS first_session_date
     FROM `firebase-public-project.analytics_153293282.events_*`
-    WHERE DATE(TIMESTAMP_MICROS(user_first_touch_timestamp)) BETWEEN '2018-07-02' AND '2018-07-08'
+    WHERE event_name = 'session_start'
+    GROUP BY user_pseudo_id
+  )
+  WHERE first_session_date BETWEEN '20180702' AND '20180708'
 ),
-cohort_size AS (
-    SELECT COUNT(*) AS total_new_users FROM cohort_users
-),
-user_events AS (
-    SELECT
-        user_pseudo_id,
-        DATE(TIMESTAMP_MICROS(event_timestamp)) AS event_date
-    FROM `firebase-public-project.analytics_153293282.events_*`
-    WHERE
-        DATE(TIMESTAMP_MICROS(event_timestamp)) BETWEEN '2018-07-02' AND '2018-08-05'
-        AND user_pseudo_id IN (SELECT user_pseudo_id FROM cohort_users)
-),
-user_weeks AS (
-    SELECT
-        DISTINCT user_pseudo_id,
-        CASE
-            WHEN event_date BETWEEN '2018-07-02' AND '2018-07-08' THEN 0
-            WHEN event_date BETWEEN '2018-07-09' AND '2018-07-15' THEN 1
-            WHEN event_date BETWEEN '2018-07-16' AND '2018-07-22' THEN 2
-            WHEN event_date BETWEEN '2018-07-23' AND '2018-07-29' THEN 3
-            WHEN event_date BETWEEN '2018-07-30' AND '2018-08-05' THEN 4
-        END AS week_number
-    FROM user_events
-),
-week_numbers AS (
-    SELECT 0 AS week_number UNION ALL
-    SELECT 1 UNION ALL
-    SELECT 2 UNION ALL
-    SELECT 3 UNION ALL
-    SELECT 4
-),
-retention_counts AS (
-    SELECT
-        wn.week_number,
-        COUNT(DISTINCT uw.user_pseudo_id) AS Number_of_Retained_Users
-    FROM
-        week_numbers wn
-    LEFT JOIN
-        user_weeks uw
-    ON
-        wn.week_number = uw.week_number
-    GROUP BY
-        wn.week_number
+retention AS (
+  SELECT 'Week0' AS Week, COUNT(*) AS Number_of_Users FROM new_users
+  UNION ALL
+  SELECT 'Week1' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+  FROM `firebase-public-project.analytics_153293282.events_*`
+  WHERE user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    AND event_date BETWEEN '20180709' AND '20180715'
+  UNION ALL
+  SELECT 'Week2' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+  FROM `firebase-public-project.analytics_153293282.events_*`
+  WHERE user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    AND event_date BETWEEN '20180716' AND '20180722'
+  UNION ALL
+  SELECT 'Week3' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+  FROM `firebase-public-project.analytics_153293282.events_*`
+  WHERE user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    AND event_date BETWEEN '20180723' AND '20180729'
+  UNION ALL
+  SELECT 'Week4' AS Week, COUNT(DISTINCT user_pseudo_id) AS Number_of_Users
+  FROM `firebase-public-project.analytics_153293282.events_*`
+  WHERE user_pseudo_id IN (SELECT user_pseudo_id FROM new_users)
+    AND event_date BETWEEN '20180730' AND '20180805'
 )
-SELECT
-    CONCAT('Week', CAST(week_number AS STRING)) AS Week,
-    (SELECT total_new_users FROM cohort_size) AS Total_New_Users,
-    Number_of_Retained_Users
-FROM
-    retention_counts
-ORDER BY
-    week_number;
+SELECT Week, Number_of_Users
+FROM retention
+ORDER BY Week;

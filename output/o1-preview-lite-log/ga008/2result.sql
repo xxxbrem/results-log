@@ -1,38 +1,35 @@
-WITH events AS (
-  SELECT
-    PARSE_DATE('%Y%m%d', event_date) AS Date,
-    user_pseudo_id,
-    event_name
+WITH buyers AS (
+  SELECT DISTINCT user_pseudo_id, event_date
   FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
-  WHERE _TABLE_SUFFIX BETWEEN '20201101' AND '20201130'
-),
-buyers AS (
-  SELECT DISTINCT Date, user_pseudo_id
-  FROM events
   WHERE event_name = 'purchase'
+    AND event_date BETWEEN '20201101' AND '20201130'
+    AND _TABLE_SUFFIX BETWEEN '20201101' AND '20201130'
 ),
-page_views_per_buyer AS (
+page_views AS (
   SELECT
-    b.Date,
-    b.user_pseudo_id,
-    COUNTIF(e.event_name = 'page_view') AS page_view_count
-  FROM buyers b
-  LEFT JOIN events e
-    ON b.Date = e.Date AND b.user_pseudo_id = e.user_pseudo_id
-  GROUP BY b.Date, b.user_pseudo_id
+    event_date,
+    user_pseudo_id,
+    COUNT(*) AS page_views
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+  WHERE event_name = 'page_view'
+    AND event_date BETWEEN '20201101' AND '20201130'
+    AND _TABLE_SUFFIX BETWEEN '20201101' AND '20201130'
+  GROUP BY event_date, user_pseudo_id
 ),
-summary AS (
+joined_data AS (
   SELECT
-    Date,
-    COUNT(DISTINCT user_pseudo_id) AS buyer_count,
-    SUM(page_view_count) AS total_page_views,
-    AVG(page_view_count) AS avg_page_views_per_buyer
-  FROM page_views_per_buyer
-  GROUP BY Date
+    buyers.event_date,
+    buyers.user_pseudo_id,
+    IFNULL(page_views.page_views, 0) AS page_views
+  FROM buyers
+  LEFT JOIN page_views
+    ON buyers.user_pseudo_id = page_views.user_pseudo_id
+    AND buyers.event_date = page_views.event_date
 )
 SELECT
-  FORMAT_DATE('%Y-%m-%d', Date) AS Date,
-  ROUND(avg_page_views_per_buyer, 4) AS Average_Page_Views_per_Buyer,
-  total_page_views AS Total_Page_Views
-FROM summary
-ORDER BY Date;
+  event_date,
+  AVG(page_views) AS Average_Page_Views_per_Buyer,
+  SUM(page_views) AS Total_Page_Views_Among_Buyers
+FROM joined_data
+GROUP BY event_date
+ORDER BY event_date;

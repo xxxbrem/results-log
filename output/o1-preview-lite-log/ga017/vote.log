@@ -1,30 +1,51 @@
-After comparing both SQL queries, **`2result.sql`** is the correct and preferred answer.
+The correct SQL query is **`0result.sql`**.
+
+---
 
 **Reasoning:**
 
-1. **Use of Explicit JOINs:**
-   - **`2result.sql`** uses explicit `JOIN` statements with `ON` clauses to join tables and datasets.
-   - This approach is clearer and more standard compared to using commas in the `FROM` clause, which can lead to implicit cross joins.
-   - Explicit joins improve readability and maintainability of the SQL code.
+Both SQL queries aim to determine the number of distinct users who viewed the most frequently visited page during January 2021. They both follow these steps:
 
-2. **Query Efficiency:**
-   - By using explicit `JOIN` operations, **`2result.sql`** ensures that the query planner can optimize the query execution plan more effectively.
-   - This can lead to better performance, especially on large datasets.
+1. **Identify the Most Visited Page:**
+   - They select the `page_location` with the highest number of `page_view` events.
+   - This is done by grouping by `page_location`, counting the occurrences, ordering by count in descending order, and limiting the result to the top one.
 
-3. **Clarity and SQL Best Practices:**
-   - **`2result.sql`** follows SQL best practices by:
-     - Clearly specifying join conditions.
-     - Avoiding potential confusion or errors that can arise from implicit joins.
-   - This makes the query easier to understand for others who may read or maintain the code in the future.
+2. **Count Distinct Users Who Viewed That Page:**
+   - They count the number of distinct `user_pseudo_id` who had a `page_view` event for that `page_location`.
 
-4. **Equivalent Results:**
-   - Both queries return the same result (`number_of_distinct_users = 37165`), confirming that they are functionally equivalent in terms of output.
-   - However, the approach in **`2result.sql`** is more robust and aligns with best practices.
+**Comparison of the Two Queries:**
+
+1. **Table References:**
+   - **`0result.sql`:** Uses wildcard table `events_*` with a date range filter using `_TABLE_SUFFIX BETWEEN '20210101' AND '20210131'`.
+     ```sql
+     FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+     WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'
+     ```
+   - **`1result.sql`:** Uses the table pattern `events_202101*`, which also selects tables for January 2021.
+     ```sql
+     FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_202101*`
+     ```
+
+2. **Flexibility and Best Practices:**
+   - **`0result.sql`** is more flexible and scalable because it explicitly filters the date range using `_TABLE_SUFFIX`. This method is preferred when dealing with large datasets and when the date range might change, as it can accommodate different months or years without changing the table pattern.
+   - **`1result.sql`** directly queries tables matching a specific pattern. While this works for a fixed date range, it requires modifying the table pattern when the date range changes.
+
+3. **Consistency:**
+   - **`0result.sql`** consistently applies the date filter in both the subquery (to find the most visited page) and the main query (to count distinct users), ensuring that the data is accurately scoped to the desired time frame.
+   - **`1result.sql`** also filters data for January 2021 but relies on the table pattern for date scoping.
+
+4. **Performance:**
+   - Using `_TABLE_SUFFIX` can lead to better performance optimization because BigQuery can more efficiently scan the required tables based on the suffix range.
+
+5. **Result Consistency:**
+   - Both queries produce the same result (`Number_of_Distinct_Users: 30467`), indicating that they are functionally equivalent in this context.
 
 **Conclusion:**
 
-Given the reasons above, **`2result.sql`** is the correct and better-structured query to use.
+While both queries yield the correct result, **`0result.sql`** is the preferred choice due to its flexibility, scalability, adherence to best practices, and explicit date range filtering using `_TABLE_SUFFIX`.
+
+---
 
 ```plaintext
-2result.sql
+0result.sql
 ```

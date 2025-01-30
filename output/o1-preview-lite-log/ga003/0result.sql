@@ -1,23 +1,15 @@
 SELECT
   board_type,
-  ROUND(AVG(score), 4) AS average_score
+  AVG(score) AS average_score
 FROM (
   SELECT
-    (SELECT param.value.string_value 
-     FROM UNNEST(event_params) AS param 
-     WHERE param.key = 'level_name') AS board_type,
-    (SELECT 
-        COALESCE(
-          param.value.int_value, 
-          param.value.float_value,
-          param.value.double_value,
-          SAFE_CAST(param.value.string_value AS FLOAT64)
-        ) 
-     FROM UNNEST(event_params) AS param 
-     WHERE param.key = 'value') AS score
-  FROM `firebase-public-project.analytics_153293282.events_20180915`
-  WHERE event_name = 'level_complete'
+    t.event_timestamp,
+    MAX(IF(ep.key = 'board', ep.value.string_value, NULL)) AS board_type,
+    MAX(IF(ep.key = 'value', ep.value.int_value, NULL)) AS score
+  FROM `firebase-public-project.analytics_153293282.events_20180915` AS t,
+  UNNEST(t.event_params) AS ep
+  WHERE t.event_name = 'level_complete_quickplay'
+  GROUP BY t.event_timestamp
 )
 WHERE board_type IS NOT NULL AND score IS NOT NULL
-GROUP BY board_type
-ORDER BY average_score DESC;
+GROUP BY board_type;
