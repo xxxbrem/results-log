@@ -85,18 +85,46 @@ lite_all_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite"
 lite_complement_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-complement"
 lite_json_name = "spider2-lite.jsonl"
 
-mv(snow_all_path, snow_close_path, snow_close_list, snow_json_name)
-mv(snow_all_path, snow_correct_path, snow_correct_list, snow_json_name)
-mv(lite_all_path, lite_close_path, lite_close_list, lite_json_name)
-mv(lite_all_path, lite_correct_path, lite_correct_list, lite_json_name)
+# mv(snow_all_path, snow_close_path, snow_close_list, snow_json_name)
+# mv(snow_all_path, snow_correct_path, snow_correct_list, snow_json_name)
+# mv(lite_all_path, lite_close_path, lite_close_list, lite_json_name)
+# mv(lite_all_path, lite_correct_path, lite_correct_list, lite_json_name)
 
-snow_full_list = get_full_list(snow_json_name, snow_all_path)
-lite_full_list = get_full_list(lite_json_name, lite_all_path)
+# snow_full_list = get_full_list(snow_json_name, snow_all_path)
+# lite_full_list = get_full_list(lite_json_name, lite_all_path)
 
-lite_full_list_no_sf = list(set(lite_full_list) - set(snow_full_list))
+# lite_full_list_no_sf = list(set(lite_full_list) - set(snow_full_list))
 
-snow_complement_list = list(set(snow_full_list) - (set(snow_close_list) | set(snow_correct_list)))
-lite_complement_list = list(set(lite_full_list_no_sf) - (set(lite_close_list) | (set(lite_correct_list))))
+# snow_complement_list = list(set(snow_full_list) - (set(snow_close_list) | set(snow_correct_list)))
+# lite_complement_list = list(set(lite_full_list_no_sf) - (set(lite_close_list) | (set(lite_correct_list))))
 
-mv(snow_all_path, snow_complement_path, snow_complement_list, snow_json_name)
-mv(lite_all_path, lite_complement_path, lite_complement_list, lite_json_name)
+# mv(snow_all_path, snow_complement_path, snow_complement_list, snow_json_name)
+# mv(lite_all_path, lite_complement_path, lite_complement_list, lite_json_name)
+
+snow_added_path_txt = "/workspace/minghang/snow_added_changes.txt"
+lite_added_path_txt = "/workspace/minghang/lite_added_changes.txt"
+with open(lite_added_path_txt) as f:
+    lines = f.readlines()
+lite_added_list = []
+for line in lines:
+    lite_added_list.append(line[line.find("instance_id")+len('"instance_id": '):line.find('", "db"')])
+print(lite_added_list)
+print(len(lite_added_list))
+with open(snow_added_path_txt) as f:
+    lines = f.readlines()
+snow_added_list = []
+for line in lines:
+    snow_added_list.append(line[line.find("instance_id")+len('"instance_id": '):line.find('", "instruction"')])
+print(snow_added_list)
+print(len(snow_added_list))
+
+lite_added_list_no_sf = list(set(lite_added_list) - set(snow_added_list))
+print(lite_added_list_no_sf)
+print(len(lite_added_list_no_sf))
+
+print(list(set(lite_added_list) & set(snow_added_list)))
+# snow_added_path = "../snow-spider-agent/methods/spider-self-refine/examples-added"
+# mv(snow_all_path, snow_added_path, snow_added_list, snow_json_name)
+
+# lite_added_path = "../snow-spider-agent/methods/spider-self-refine/examples_lite-added"
+# mv(lite_all_path, lite_added_path, lite_added_list_no_sf, lite_json_name)
