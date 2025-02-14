@@ -1,40 +1,26 @@
-WITH net_changes AS (
-  SELECT 
-    COALESCE(r."address", s."address") AS "Address",
-    COALESCE(r."type", s."type") AS "Type",
-    COALESCE(r."total_received", 0) - COALESCE(s."total_sent", 0) AS "NetChange"
-  FROM
-    (
-      SELECT f.value::STRING AS "address", t."type", SUM(t."value") AS "total_received"
-      FROM "CRYPTO"."CRYPTO_BITCOIN_CASH"."OUTPUTS" t,
-           LATERAL FLATTEN(input => t."addresses") f
-      WHERE t."block_timestamp" >= DATE_PART(EPOCH_MICROSECOND, TIMESTAMP '2023-04-01')
-        AND t."block_timestamp" < DATE_PART(EPOCH_MICROSECOND, TIMESTAMP '2023-05-01')
-      GROUP BY "address", t."type"
-    ) r
-  FULL OUTER JOIN
-    (
-      SELECT f.value::STRING AS "address", t."type", SUM(t."value") AS "total_sent"
-      FROM "CRYPTO"."CRYPTO_BITCOIN_CASH"."INPUTS" t,
-           LATERAL FLATTEN(input => t."addresses") f
-      WHERE t."block_timestamp" >= DATE_PART(EPOCH_MICROSECOND, TIMESTAMP '2023-04-01')
-        AND t."block_timestamp" < DATE_PART(EPOCH_MICROSECOND, TIMESTAMP '2023-05-01')
-      GROUP BY "address", t."type"
-    ) s
-  ON r."address" = s."address" AND r."type" = s."type"
-),
-highest_net_change AS (
-  SELECT "Address", "Type", ROUND("NetChange", 4) AS "NetChange"
-  FROM net_changes
-  ORDER BY "NetChange" DESC NULLS LAST
-  LIMIT 1
-),
-lowest_net_change AS (
-  SELECT "Address", "Type", ROUND("NetChange", 4) AS "NetChange"
-  FROM net_changes
-  ORDER BY "NetChange" ASC NULLS LAST
-  LIMIT 1
+WITH net_balances AS (
+  SELECT
+    f.value::STRING AS "Address",
+    SUM(t."value") AS "Resulting_Balance"
+  FROM (
+    SELECT
+      t."addresses",
+      -t."value" AS "value"
+    FROM "CRYPTO"."CRYPTO_DASH"."INPUTS" t
+    WHERE t."block_timestamp" >= 1680307200000000 AND t."block_timestamp" < 1682899200000000
+
+    UNION ALL
+
+    SELECT
+      t."addresses",
+      t."value" AS "value"
+    FROM "CRYPTO"."CRYPTO_DASH"."OUTPUTS" t
+    WHERE t."block_timestamp" >= 1680307200000000 AND t."block_timestamp" < 1682899200000000
+  ) t,
+  LATERAL FLATTEN(input => t."addresses") f
+  GROUP BY f.value::STRING
 )
-SELECT * FROM highest_net_change
-UNION ALL
-SELECT * FROM lowest_net_change;
+SELECT "Address", "Resulting_Balance"
+FROM net_balances
+WHERE "Resulting_Balance" = (SELECT MAX("Resulting_Balance") FROM net_balances)
+   OR "Resulting_Balance" = (SELECT MIN("Resulting_Balance") FROM net_balances);

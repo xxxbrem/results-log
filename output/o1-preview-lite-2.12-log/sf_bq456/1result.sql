@@ -1,24 +1,29 @@
 SELECT
-  qm."PatientID",
-  dp."StudyInstanceUID",
-  dp."StudyDate",
-  qm."findingSite":"CodeMeaning"::STRING AS "FindingSite",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'elongation' THEN qm."Value" END), 4) AS "Elongation",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'flatness' THEN qm."Value" END), 4) AS "Flatness",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'least axis in 3d length' THEN qm."Value" END), 4) AS "LeastAxisIn3DLength",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'major axis in 3d length' THEN qm."Value" END), 4) AS "MajorAxisIn3DLength",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'maximum 3d diameter of a mesh' THEN qm."Value" END), 4) AS "Maximum3DDiameterOfMesh",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'minor axis in 3d length' THEN qm."Value" END), 4) AS "MinorAxisIn3DLength",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'sphericity' THEN qm."Value" END), 4) AS "Sphericity",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'surface area of mesh' THEN qm."Value" END), 4) AS "SurfaceAreaOfMesh",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'surface to volume ratio' THEN qm."Value" END), 4) AS "SurfaceToVolumeRatio",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'volume from voxel summation' THEN qm."Value" END), 4) AS "VolumeFromVoxelSummation",
-  ROUND(MAX(CASE WHEN LOWER(qm."Quantity":"CodeMeaning"::STRING) = 'volume of mesh' THEN qm."Value" END), 4) AS "VolumeOfMesh"
-FROM IDC.IDC_V17."QUANTITATIVE_MEASUREMENTS" AS qm
-JOIN IDC.IDC_V17."DICOM_PIVOT" AS dp
-  ON qm."SOPInstanceUID" = dp."SOPInstanceUID"
-WHERE dp."StudyDate" >= '2001-01-01' AND dp."StudyDate" < '2002-01-01'
-GROUP BY 
-  qm."PatientID", dp."StudyInstanceUID", dp."StudyDate", qm."findingSite":"CodeMeaning"::STRING
-ORDER BY 
-  qm."PatientID", dp."StudyInstanceUID";
+  t1."PatientID",
+  t1."StudyInstanceUID",
+  t1."StudyDate",
+  t2."findingSite":"CodeMeaning"::STRING AS "FindingSite_CodeMeaning",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Elongation' THEN t2."Value" END) AS "Max_Elongation",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Flatness' THEN t2."Value" END) AS "Max_Flatness",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Least Axis in 3D Length' THEN t2."Value" END) AS "Max_Least_Axis_in_3D_Length",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Major Axis in 3D Length' THEN t2."Value" END) AS "Max_Major_Axis_in_3D_Length",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Maximum 3D Diameter of a Mesh' THEN t2."Value" END) AS "Max_Maximum_3D_Diameter_of_a_Mesh",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Minor Axis in 3D Length' THEN t2."Value" END) AS "Max_Minor_Axis_in_3D_Length",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Sphericity' THEN t2."Value" END) AS "Max_Sphericity",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Surface Area of Mesh' THEN t2."Value" END) AS "Max_Surface_Area_of_Mesh",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Surface to Volume Ratio' THEN t2."Value" END) AS "Max_Surface_to_Volume_Ratio",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Volume from Voxel Summation' THEN t2."Value" END) AS "Max_Volume_from_Voxel_Summation",
+  MAX(CASE WHEN t2."Quantity":"CodeMeaning"::STRING = 'Volume of Mesh' THEN t2."Value" END) AS "Max_Volume_of_Mesh"
+FROM
+  IDC.IDC_V17.DICOM_ALL t1
+JOIN 
+  IDC.IDC_V17.QUANTITATIVE_MEASUREMENTS t2
+ON
+  t1."SOPInstanceUID" = t2."segmentationInstanceUID"
+WHERE
+  EXTRACT(YEAR FROM t1."StudyDate") = 2001
+GROUP BY
+  t1."PatientID",
+  t1."StudyInstanceUID",
+  t1."StudyDate",
+  "FindingSite_CodeMeaning";

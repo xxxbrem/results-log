@@ -1,62 +1,55 @@
-WITH citing_patents AS (
-    SELECT
-        t."publication_number" AS citing_publication_number,
-        c.value::VARIANT:"publication_number"::STRING AS cited_publication_number
-    FROM
-        PATENTS.PATENTS.PUBLICATIONS t,
-        LATERAL FLATTEN(input => t."citation") c
-    WHERE
-        t."country_code" = 'US'
-        AND t."kind_code" = 'B2'
-        AND t."grant_date" BETWEEN 20150101 AND 20181231
+WITH us_b2_2015_2018 AS (
+    SELECT t."publication_number", t."citation"
+    FROM PATENTS.PATENTS.PUBLICATIONS t
+    WHERE t."country_code" = 'US' AND t."kind_code" = 'B2' AND t."grant_date" BETWEEN 20150101 AND 20181231
 ),
-cited_ipc_codes AS (
+citations AS (
     SELECT
-        p."publication_number" AS cited_publication_number,
-        SUBSTR(ipc_item.value::VARIANT:"code"::STRING, 1, 4) AS ipc_4
-    FROM
-        PATENTS.PATENTS.PUBLICATIONS p,
-        LATERAL FLATTEN(input => p."ipc") ipc_item
+        t."publication_number" AS "citing_publication",
+        c.value::VARIANT:"publication_number"::STRING AS "cited_publication_number"
+    FROM us_b2_2015_2018 t,
+    LATERAL FLATTEN(input => t."citation") c
+),
+cited_ipcs AS (
+    SELECT
+        cp."publication_number" AS "cited_publication_number",
+        SUBSTR(ipc.value::VARIANT:"code"::STRING, 0, 4) AS "ipc4_code"
+    FROM PATENTS.PATENTS.PUBLICATIONS cp,
+    LATERAL FLATTEN(input => cp."ipc") ipc
+),
+citations_with_ipc AS (
+    SELECT
+        c."citing_publication",
+        ci."ipc4_code"
+    FROM citations c
+    LEFT JOIN cited_ipcs ci ON c."cited_publication_number" = ci."cited_publication_number"
 ),
 ipc_counts AS (
     SELECT
-        cp.citing_publication_number,
-        cic.ipc_4,
-        COUNT(*) AS ipc_count
-    FROM
-        citing_patents cp
-    LEFT JOIN cited_ipc_codes cic
-        ON cp.cited_publication_number = cic.cited_publication_number
-    WHERE
-        cic.ipc_4 IS NOT NULL
-    GROUP BY
-        cp.citing_publication_number,
-        cic.ipc_4
+        "citing_publication",
+        "ipc4_code",
+        COUNT(*) AS "occurrences"
+    FROM citations_with_ipc
+    WHERE "ipc4_code" IS NOT NULL
+    GROUP BY "citing_publication", "ipc4_code"
 ),
-total_citations AS (
+calculations AS (
     SELECT
-        cp.citing_publication_number,
-        COUNT(*) AS total_citation_count
-    FROM
-        citing_patents cp
-    GROUP BY
-        cp.citing_publication_number
+        "citing_publication",
+        SUM("occurrences") AS "total_occurrences",
+        SUM("occurrences" * "occurrences") AS "sum_of_squared_occurrences"
+        FROM ipc_counts
+    GROUP BY "citing_publication"
+    HAVING SUM("occurrences") > 0
 ),
-originality_scores AS (
+originality AS (
     SELECT
-        ic.citing_publication_number,
-        ROUND(1 - SUM(POWER(ic.ipc_count::FLOAT / tc.total_citation_count, 2)), 4) AS originality
-    FROM
-        ipc_counts ic
-    JOIN total_citations tc
-        ON ic.citing_publication_number = tc.citing_publication_number
-    GROUP BY
-        ic.citing_publication_number
+        "citing_publication",
+        ROUND(1 - ("sum_of_squared_occurrences"::FLOAT / POWER("total_occurrences", 2)), 4) AS "Originality_Score"
+    FROM calculations
 )
-SELECT
-    os.citing_publication_number AS "Publication_Number"
-FROM
-    originality_scores os
-ORDER BY
-    os.originality DESC NULLS LAST
+
+SELECT "citing_publication" AS "Publication_Number", "Originality_Score"
+FROM originality
+ORDER BY "Originality_Score" DESC NULLS LAST
 LIMIT 1;

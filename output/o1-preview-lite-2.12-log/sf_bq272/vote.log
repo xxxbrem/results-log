@@ -1,19 +1,28 @@
-After comparing the SQL queries and their results, **Option 1 (1result.sql)** is the correct SQL for the following reasons:
+After comparing the SQL queries and their results, **the first SQL query in `0result.sql` is the correct one** that satisfies the requirements.
 
-1. **Excluding Both Cancelled/Returned Orders and Order Items**: Option 1 joins the `ORDER_ITEMS` table with the `ORDERS` table and filters out records where either the order item status or the order status is `'Returned'`, `'Cancelled'`, or `'Canceled'`. This ensures that all cancelled or returned transactions at both the item and order levels are excluded, providing accurate profit calculations.
+**Reason:**
 
-2. **Correct Date Filtering**: It filters the `"created_at"` timestamp within the specified date range between January 1, 2019, and August 31, 2022, by converting microseconds to timestamps using `TO_TIMESTAMP_NTZ(oi."created_at" / 1e6)`. This accurately selects the relevant data for the given period.
+- **Filtering Returned Items:**
+  - The first SQL query explicitly excludes order items where `"status"` is 'Cancelled' or 'Returned' **and** where `"returned_at"` is not `NULL`. This ensures that all returned items are excluded from the profit calculations.
+  - The second SQL query only excludes items based on the `"status"` but does **not** check the `"returned_at"` field. Therefore, it might include items that were returned but not properly marked with the 'Returned' status, potentially skewing the results.
 
-3. **Profit Calculation**: The query calculates profit by subtracting the product `"cost"` from the order item's `"sale_price"`, ensuring a correct computation of profit per item.
+- **Date Range Filtering:**
+  - Both queries correctly filter the data between January 1, 2019, and August 31, 2022, which matches the required date range.
 
-4. **Grouping and Ranking**: It groups the data by product name and month, and uses the `ROW_NUMBER()` window function with `PARTITION BY` to rank products based on total profit within each month. The `QUALIFY` clause efficiently filters the top three products per month.
+- **Profit Calculation:**
+  - Both queries calculate profit as the difference between the sum of `"sale_price"` and the sum of `"cost"` for each product per month, which aligns with the specified profit calculation method.
 
-5. **Data Integrity Checks**: By including conditions to check that `"sale_price"` and `"cost"` are not null, the query ensures that the calculations are based on valid data.
+- **Top Three Most Profitable Products Per Month:**
+  - Both queries rank the products based on profit within each month and select the top three. However, due to the more accurate filtering of returned items in the first query, its results are more reliable.
 
-6. **Order of Results**: The final `ORDER BY` clause sorts the results first by month and then by total profit in descending order, providing a clear and organized output.
+**Conclusion:**
 
-**Therefore, Option 1 provides the most accurate and comprehensive SQL solution for the task.**
+The first SQL query (`0result.sql`) accurately fulfills the requirements by:
+
+- Properly excluding canceled and returned orders.
+- Correctly calculating the profit per product per month.
+- Identifying the top three most profitable products for each month within the specified date range.
 
 ```plaintext
-1result.sql
+0result.sql
 ```

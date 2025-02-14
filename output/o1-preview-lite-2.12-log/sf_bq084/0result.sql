@@ -1,21 +1,24 @@
+WITH monthly_transactions AS (
+    SELECT
+        EXTRACT(YEAR FROM TO_TIMESTAMP(FLOOR("block_timestamp" / 1e6))) AS "Year",
+        EXTRACT(MONTH FROM TO_TIMESTAMP(FLOOR("block_timestamp" / 1e6))) AS "Month_num",
+        COUNT(*) AS "Monthly_Transaction_Count"
+    FROM GOOG_BLOCKCHAIN.GOOG_BLOCKCHAIN_ARBITRUM_ONE_US."LOGS"
+    WHERE EXTRACT(YEAR FROM TO_TIMESTAMP(FLOOR("block_timestamp" / 1e6))) = 2023
+    GROUP BY "Year", "Month_num"
+)
 SELECT
-    DATE_TRUNC('MONTH', TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "Month",
-    COUNT(DISTINCT "transaction_hash") AS "Transaction_Count",
+    "Year",
+    "Month_num",
+    TO_CHAR(DATE_FROM_PARTS("Year", "Month_num", 1), 'Mon') AS "Month",
+    "Monthly_Transaction_Count",
     ROUND(
-        COUNT(DISTINCT "transaction_hash") /
-        DATEDIFF(
-            'SECOND',
-            DATE_TRUNC('MONTH', TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)),
-            DATEADD('MONTH', 1, DATE_TRUNC('MONTH', TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)))
+        "Monthly_Transaction_Count" / DATEDIFF(
+            'second',
+            DATE_TRUNC('month', DATE_FROM_PARTS("Year", "Month_num", 1)),
+            DATE_TRUNC('month', DATEADD('month', 1, DATE_FROM_PARTS("Year", "Month_num", 1)))
         ),
         4
-    ) AS "Transactions_Per_Second"
-FROM
-    GOOG_BLOCKCHAIN.GOOG_BLOCKCHAIN_ARBITRUM_ONE_US.LOGS
-WHERE
-    TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) >= '2023-01-01'
-    AND TO_TIMESTAMP_NTZ("block_timestamp" / 1e6) < '2024-01-01'
-GROUP BY
-    "Month"
-ORDER BY
-    "Transaction_Count" DESC NULLS LAST;
+    ) AS "Computed_Transactions_Per_Second"
+FROM monthly_transactions
+ORDER BY "Monthly_Transaction_Count" DESC NULLS LAST;

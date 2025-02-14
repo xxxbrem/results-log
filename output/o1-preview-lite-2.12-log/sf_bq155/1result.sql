@@ -1,75 +1,39 @@
-WITH cohort_patients AS (
-    SELECT DISTINCT "case_barcode"
-    FROM "TCGA_HG38_DATA_V0"."TCGA_BIOCLIN_V0"."CLINICAL_V1_1"
-    WHERE "disease_code" = 'BRCA'
-      AND TRY_TO_NUMBER("age_at_diagnosis") <= 80
-      AND "pathologic_stage" IN ('Stage I', 'Stage II', 'Stage IIA')
-      AND "case_barcode" IS NOT NULL
+WITH ClinicalData AS (
+   SELECT c."case_barcode"
+   FROM "TCGA_HG38_DATA_V0"."TCGA_BIOCLIN_V0"."CLINICAL" c
+   WHERE c."disease_code" = 'BRCA'
+     AND (c."age_at_diagnosis" / 365.25) <= 80
+     AND c."pathologic_stage" IN ('Stage I', 'Stage II', 'Stage IIA')
 ),
-snora31_expr AS (
-    SELECT "case_barcode",
-           LOG(10, "HTSeq__FPKM" + 1) AS "snora31_log_expr"
-    FROM "TCGA_HG38_DATA_V0"."TCGA_HG38_DATA_V0"."RNASEQ_GENE_EXPRESSION"
-    WHERE "gene_name" = 'SNORA31'
-      AND "case_barcode" IS NOT NULL
+SNORA31Expr AS (
+   SELECT r."case_barcode", 
+          LOG(10, AVG(r."HTSeq__Counts" + 1)) AS "SNORA31_log_expr"
+   FROM "TCGA_HG38_DATA_V0"."TCGA_HG38_DATA_V0"."RNASEQ_GENE_EXPRESSION" r
+   WHERE r."gene_name" = 'SNORA31'
+   GROUP BY r."case_barcode"
 ),
-miRNA_expr AS (
-    SELECT "case_barcode",
-           "mirna_id",
-           LOG(10, "reads_per_million_miRNA_mapped" + 1) AS "miRNA_log_expr"
-    FROM "TCGA_HG38_DATA_V0"."TCGA_HG38_DATA_V0"."MIRNASEQ_EXPRESSION"
-    WHERE "case_barcode" IS NOT NULL
-          AND "reads_per_million_miRNA_mapped" IS NOT NULL
+miRNAExpr AS (
+   SELECT m."case_barcode", m."mirna_id",
+          AVG(m."reads_per_million_miRNA_mapped") AS "miRNA_avg_expr"
+   FROM "TCGA_HG38_DATA_V0"."TCGA_HG38_DATA_V0"."MIRNASEQ_EXPRESSION" m
+   GROUP BY m."case_barcode", m."mirna_id"
 ),
-miRNA_cohort_expr AS (
-    SELECT m."case_barcode",
-           m."mirna_id",
-           m."miRNA_log_expr"
-    FROM miRNA_expr m
-    INNER JOIN cohort_patients c ON m."case_barcode" = c."case_barcode"
-    WHERE m."miRNA_log_expr" IS NOT NULL
+CombinedData AS (
+   SELECT c."case_barcode", s."SNORA31_log_expr", m."mirna_id", m."miRNA_avg_expr"
+   FROM ClinicalData c
+   JOIN SNORA31Expr s ON c."case_barcode" = s."case_barcode"
+   JOIN miRNAExpr m ON c."case_barcode" = m."case_barcode"
 ),
-data AS (
-    SELECT m."case_barcode",
-           m."mirna_id",
-           m."miRNA_log_expr",
-           s."snora31_log_expr"
-    FROM miRNA_cohort_expr m
-    INNER JOIN snora31_expr s ON m."case_barcode" = s."case_barcode"
-    WHERE s."snora31_log_expr" IS NOT NULL
-),
-stats AS (
-    SELECT
-        "mirna_id",
-        COUNT(*) AS n,
-        SUM("snora31_log_expr") AS sum_x,
-        SUM("miRNA_log_expr") AS sum_y,
-        SUM("snora31_log_expr" * "snora31_log_expr") AS sum_xx,
-        SUM("miRNA_log_expr" * "miRNA_log_expr") AS sum_yy,
-        SUM("snora31_log_expr" * "miRNA_log_expr") AS sum_xy
-    FROM data
-    GROUP BY "mirna_id"
-),
-correlations AS (
-    SELECT
-        "mirna_id",
-        n,
-        sum_x,
-        sum_y,
-        sum_xx,
-        sum_yy,
-        sum_xy,
-        (n * sum_xy - sum_x * sum_y) /
-        NULLIF(SQRT( (n * sum_xx - sum_x * sum_x) * (n * sum_yy - sum_y * sum_y) ), 0) AS r
-    FROM stats
-    WHERE n > 25
+CorrelationData AS (
+   SELECT "mirna_id",
+          COUNT(*) AS n,
+          CORR("SNORA31_log_expr", "miRNA_avg_expr") AS r
+   FROM CombinedData
+   GROUP BY "mirna_id"
+   HAVING COUNT(*) > 25
+     AND ABS(CORR("SNORA31_log_expr", "miRNA_avg_expr")) BETWEEN 0.3 AND 1.0
 )
-SELECT
-    "mirna_id" AS "miRNA_ID",
-    ROUND(r, 4) AS "Pearson_Correlation",
-    ROUND(r * SQRT( (n - 2) / NULLIF(1 - r * r, 0) ), 4) AS "t_statistic",
-    n AS "Sample_Size"
-FROM correlations
-WHERE ABS(r) >= 0.3 AND ABS(r) < 1.0
-  AND r IS NOT NULL
-ORDER BY "miRNA_ID";
+SELECT "mirna_id" AS "microRNA_ID",
+       r * SQRT((n - 2) / NULLIF(1 - POWER(r, 2), 0)) AS t_statistic
+FROM CorrelationData
+ORDER BY t_statistic DESC NULLS LAST;

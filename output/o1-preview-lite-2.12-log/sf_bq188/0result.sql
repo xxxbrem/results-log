@@ -1,24 +1,35 @@
-WITH top_category AS (
-    SELECT P."category"
-    FROM "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDER_ITEMS" OI
-    JOIN "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."PRODUCTS" P
-      ON OI."product_id" = P."id"
-    GROUP BY P."category"
-    ORDER BY COUNT(*) DESC NULLS LAST
-    LIMIT 1
+WITH category_product AS (
+  SELECT
+    p2."category"
+  FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."ORDER_ITEMS" o2
+  JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."PRODUCTS" p2
+    ON o2."product_id" = p2."id"
+  GROUP BY p2."category"
+  ORDER BY COUNT(o2."id") DESC NULLS LAST
+  LIMIT 1
 ),
-session_durations AS (
-    SELECT E."session_id",
-           ((MAX(E."created_at") - MIN(E."created_at")) / (1e9 * 60.0)) AS "session_duration_minutes"
-    FROM "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."EVENTS" E
-    JOIN "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."PRODUCTS" P
-      ON CAST(SPLIT_PART(E."uri", '/', 3) AS NUMBER(38,0)) = P."id"
-    WHERE E."uri" LIKE '/product/%'
-      AND P."category" = (SELECT "category" FROM top_category)
-      AND E."session_id" IS NOT NULL
-      AND E."created_at" IS NOT NULL
-    GROUP BY E."session_id"
+category_product_events AS (
+  SELECT
+    e."session_id",
+    e."user_id",
+    e."sequence_number",
+    e."created_at" AS "event_time",
+    LEAD(e."created_at") OVER (
+      PARTITION BY e."session_id"
+      ORDER BY e."sequence_number"
+    ) AS "next_event_time"
+  FROM
+    THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."EVENTS" e
+  JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."PRODUCTS" p
+    ON TRY_TO_NUMBER(SPLIT_PART(e."uri", '/', 3)) = p."id"
+  WHERE e."event_type" = 'product'
+    AND p."category" = (SELECT "category" FROM category_product)
 )
-SELECT (SELECT "category" FROM top_category) AS "Category",
-       ROUND(AVG("session_duration_minutes"), 4) AS "Average_Time_Minutes"
-FROM session_durations;
+SELECT
+  (SELECT "category" FROM category_product) AS "Category_with_highest_total_quantity_purchased",
+  ROUND(AVG( ("next_event_time" - "event_time") / 60000000.0 ), 4) AS "Average_time_spent_on_product_page_minutes"
+FROM
+  category_product_events
+WHERE
+  "next_event_time" IS NOT NULL
+  AND "next_event_time" > "event_time";

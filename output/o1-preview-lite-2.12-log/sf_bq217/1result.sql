@@ -1,11 +1,15 @@
-SELECT COUNT(*) AS "Total_pull_requests" FROM (
-  SELECT e."id"
-  FROM "GITHUB_REPOS_DATE"."YEAR"."_2023" e
-  JOIN "GITHUB_REPOS_DATE"."GITHUB_REPOS"."LANGUAGES" l
-    ON LOWER(e."repo":"name"::STRING) = LOWER(l."repo_name")
-    , LATERAL FLATTEN(input => l."language") f
-  WHERE e."type" = 'PullRequestEvent'
-    AND TO_DATE(TO_TIMESTAMP(e."created_at" / 1000000)) = '2023-01-18'
-    AND PARSE_JSON(e."payload"):"action"::STRING = 'opened'
-    AND f.value::STRING ILIKE '%JavaScript%'
-);
+SELECT COUNT(*) AS "Number_of_Pull_Requests"
+FROM (
+  SELECT DISTINCT t."id"
+  FROM "GITHUB_REPOS_DATE"."DAY"."_20230118" t
+  JOIN (
+    SELECT l."repo_name"
+    FROM "GITHUB_REPOS_DATE"."GITHUB_REPOS"."LANGUAGES" l,
+         LATERAL FLATTEN(INPUT => l."language") k
+    WHERE k.VALUE:"name"::STRING = 'JavaScript'
+    GROUP BY l."repo_name"
+  ) l
+    ON PARSE_JSON(t."repo"):"name"::STRING = l."repo_name"
+  WHERE t."type" = 'PullRequestEvent'
+    AND PARSE_JSON(t."payload"):"action"::STRING = 'opened'
+) sub;

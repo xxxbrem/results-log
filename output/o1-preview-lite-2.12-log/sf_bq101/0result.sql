@@ -1,30 +1,27 @@
 SELECT
-  "package_name",
-  COUNT(*) AS "Count"
-FROM
-  (
+    "PackageName",
+    COUNT(*) AS "ImportCount"
+FROM (
     SELECT
-      REGEXP_SUBSTR(
-        LINES.VALUE::STRING,
-        'import\\s+([\\w\\.\\*]+);',
-        1,
-        1,
-        'e',
-        1
-      ) AS "package_name"
+        REGEXP_SUBSTR(
+            TRIM(f.VALUE),
+            'import(\\s+static)?\\s+([a-zA-Z0-9_\\.]+)\\.(\\w+|\\*)\\s*;',
+            1,
+            1,
+            '',
+            2
+        ) AS "PackageName"
     FROM
-      GITHUB_REPOS.GITHUB_REPOS.SAMPLE_CONTENTS,
-      LATERAL FLATTEN(INPUT => SPLIT("content", '\n')) LINES
+        "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" sc,
+        LATERAL FLATTEN(INPUT => SPLIT(sc."content", '\n')) f
     WHERE
-      "sample_path" LIKE '%.java'
-      AND "binary" = FALSE
-      AND "content" ILIKE '%import%'
-      AND LINES.VALUE::STRING ILIKE 'import%'
-  ) AS IMPORTED_PACKAGES
+        sc."sample_path" LIKE '%.java'
+        AND TRIM(f.VALUE) LIKE 'import %'
+)
 WHERE
-  "package_name" IS NOT NULL
+    "PackageName" IS NOT NULL
 GROUP BY
-  "package_name"
+    "PackageName"
 ORDER BY
-  "Count" DESC NULLS LAST
+    "ImportCount" DESC NULLS LAST
 LIMIT 10;

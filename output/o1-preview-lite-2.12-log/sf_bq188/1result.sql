@@ -1,28 +1,50 @@
-WITH
-Top_Category AS (
-    SELECT P."category"
-    FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."ORDER_ITEMS" OI
-    JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."PRODUCTS" P
-      ON OI."product_id" = P."id"
-    GROUP BY P."category"
-    ORDER BY COUNT(*) DESC NULLS LAST
-    LIMIT 1
+WITH CategoryPurchases AS (
+   SELECT P."category", COUNT(*) AS "total_quantity_purchased"
+   FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."ORDER_ITEMS" OI
+   JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."PRODUCTS" P
+     ON OI."product_id" = P."id"
+   GROUP BY P."category"
+   ORDER BY "total_quantity_purchased" DESC NULLS LAST
+   LIMIT 1
 ),
-Category_Sessions AS (
-    SELECT DISTINCT E."session_id"
-    FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."EVENTS" E
-    CROSS JOIN Top_Category TC
-    WHERE E."uri" ILIKE CONCAT('%/category/', REGEXP_REPLACE(LOWER(TC."category"), '[ &]', ''), '/%')
+ProductPageViews AS (
+   SELECT
+     E1."user_id",
+     E1."session_id",
+     E1."sequence_number",
+     E1."created_at" AS "view_time",
+     E1."uri",
+     REGEXP_SUBSTR(E1."uri", '([0-9]+)$') AS "product_id_str",
+     E2."created_at" AS "next_event_time"
+   FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."EVENTS" E1
+   LEFT JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."EVENTS" E2
+     ON E1."user_id" = E2."user_id"
+     AND E1."session_id" = E2."session_id"
+     AND E2."sequence_number" = E1."sequence_number" + 1
+   WHERE E1."event_type" = 'product'
 ),
-Session_Durations AS (
-    SELECT
-        E."session_id",
-        (MAX(E."created_at") - MIN(E."created_at")) / 60000000.0 AS "session_duration_minutes"
-    FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."EVENTS" E
-    WHERE E."session_id" IN (SELECT "session_id" FROM Category_Sessions)
-    GROUP BY E."session_id"
+ProductPageTimes AS (
+   SELECT
+     PPV.*,
+     TRY_TO_NUMBER(PPV."product_id_str") AS "product_id"
+   FROM ProductPageViews PPV
+   WHERE PPV."product_id_str" IS NOT NULL
+),
+ProductPageTimesWithCategory AS (
+   SELECT
+     PPT.*,
+     P."category",
+     (PPT."next_event_time" - PPT."view_time") / 60000000.0 AS "time_spent_minutes"
+   FROM ProductPageTimes PPT
+   JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."PRODUCTS" P
+     ON P."id" = PPT."product_id"
+   WHERE PPT."next_event_time" IS NOT NULL
+     AND P."category" IS NOT NULL
 )
 SELECT
-    (SELECT "category" FROM Top_Category) AS "Category",
-    ROUND(AVG("session_duration_minutes"), 4) AS "Average_Time_Minutes"
-FROM Session_Durations;
+   CPT."category" AS "Category_with_highest_total_quantity_purchased",
+   ROUND(AVG(PPTWC."time_spent_minutes"), 4) AS "Average_time_spent_on_product_page_minutes"
+FROM CategoryPurchases CPT
+JOIN ProductPageTimesWithCategory PPTWC
+  ON PPTWC."category" = CPT."category"
+GROUP BY CPT."category";

@@ -1,75 +1,83 @@
-WITH py_contents AS (
+SELECT
+    "library_name"
+FROM (
     SELECT
-        SPLIT(c."content", '\n') AS lines
-    FROM
-        "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" c
-    INNER JOIN
-        "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" f ON c."id" = f."id"
-    WHERE
-        f."path" LIKE '%.py' OR f."path" LIKE '%.ipynb'
-),
-py_lines AS (
-    SELECT value AS line
-    FROM py_contents,
-    LATERAL FLATTEN(input => lines)
-),
-py_modules AS (
-    SELECT
-        COALESCE(
-            REGEXP_SUBSTR(line, '^\\s*from\\s+([\\w\\.]+)', 1, 1, 'i', 1),
-            REGEXP_SUBSTR(line, '^\\s*import\\s+([\\w\\.]+)', 1, 1, 'i', 1)
-        ) AS module_name
-    FROM py_lines
-    WHERE line ILIKE '%import %'
-),
-extracted_py_modules AS (
-    SELECT LOWER(module_name) AS module_name
-    FROM py_modules
-    WHERE module_name IS NOT NULL
-),
-r_contents AS (
-    SELECT
-        SPLIT(c."content", '\n') AS lines
-    FROM
-        "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" c
-    INNER JOIN
-        "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" f ON c."id" = f."id"
-    WHERE
-        f."path" LIKE '%.R'
-),
-r_lines AS (
-    SELECT value AS line
-    FROM r_contents,
-    LATERAL FLATTEN(input => lines)
-),
-r_modules AS (
-    SELECT
-        REGEXP_SUBSTR(line, '^\\s*(?:library|require)\\(\\s*([\\w\\.]+)', 1, 1, 'i', 1) AS module_name
-    FROM r_lines
-    WHERE line ILIKE '%library(%' OR line ILIKE '%require(%'
-),
-extracted_r_modules AS (
-    SELECT LOWER(module_name) AS module_name
-    FROM r_modules
-    WHERE module_name IS NOT NULL
-),
-all_modules AS (
-    SELECT module_name FROM extracted_py_modules
-    UNION ALL
-    SELECT module_name FROM extracted_r_modules
-),
-module_counts AS (
-    SELECT module_name, COUNT(*) AS Frequency
-    FROM all_modules
-    GROUP BY module_name
-),
-ordered_modules AS (
-    SELECT module_name, Frequency,
-        ROW_NUMBER() OVER (ORDER BY Frequency DESC NULLS LAST, module_name) AS rn
-    FROM module_counts
+        "library_name",
+        ROW_NUMBER() OVER (ORDER BY "total_count" DESC NULLS LAST) AS rn
+    FROM (
+        SELECT
+            "library_name",
+            COUNT(*) AS "total_count"
+        FROM (
+            -- Python imports
+            SELECT
+                LOWER(
+                    REGEXP_SUBSTR(c."content", '\\bimport\\s+([\\w\\.]+)', 1, 1, 'i', 1)
+                ) AS "library_name"
+            FROM
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" AS f
+            JOIN
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" AS c
+            ON
+                f."id" = c."id"
+            WHERE
+                LOWER(f."path") LIKE '%.py'
+                AND c."binary" = FALSE
+                AND c."content" IS NOT NULL
+
+            UNION ALL
+
+            -- R library imports
+            SELECT
+                LOWER(
+                    REGEXP_SUBSTR(c."content", '\\blibrary\\s*\\(\\s*["\']?([\\w\\.]+)["\']?', 1, 1, 'i', 1)
+                ) AS "library_name"
+            FROM
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" AS f
+            JOIN
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" AS c
+            ON
+                f."id" = c."id"
+            WHERE
+                (
+                    LOWER(f."path") LIKE '%.r'
+                    OR LOWER(f."path") LIKE '%.rmd'
+                    OR LOWER(f."path") LIKE '%.R'
+                    OR LOWER(f."path") LIKE '%.Rmd'
+                )
+                AND c."binary" = FALSE
+                AND c."content" IS NOT NULL
+
+            UNION ALL
+
+            -- IPython notebook imports
+            SELECT
+                LOWER(
+                    REGEXP_SUBSTR(
+                        source_line.VALUE::STRING,
+                        '\\bimport\\s+([\\w\\.]+)',
+                        1, 1, 'i', 1
+                    )
+                ) AS "library_name"
+            FROM
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" AS f
+            JOIN
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" AS c
+            ON
+                f."id" = c."id",
+                LATERAL FLATTEN(INPUT => PARSE_JSON(c."content"):"cells") AS cell,
+                LATERAL FLATTEN(INPUT => cell.VALUE:"source") AS source_line
+            WHERE
+                LOWER(f."path") LIKE '%.ipynb'
+                AND c."binary" = FALSE
+                AND c."content" IS NOT NULL
+                AND cell.VALUE:"cell_type"::STRING = 'code'
+        ) AS all_imports
+        WHERE
+            "library_name" IS NOT NULL
+        GROUP BY
+            "library_name"
+    ) AS import_counts
 )
-SELECT 'Module,Frequency'
-UNION ALL
-SELECT module_name || ',' || Frequency::VARCHAR
-FROM ordered_modules
-WHERE rn = 2;
+WHERE
+    rn = 2;

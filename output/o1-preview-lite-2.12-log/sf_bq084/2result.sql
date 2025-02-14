@@ -1,20 +1,30 @@
-WITH MonthStats AS (
-  SELECT
-    EXTRACT(MONTH FROM TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "Month",
-    COUNT(DISTINCT "transaction_hash") AS "Transaction_Count",
-    (MAX("block_timestamp") - MIN("block_timestamp")) / 1e6 AS "Duration_Seconds"
-  FROM
-    "GOOG_BLOCKCHAIN"."GOOG_BLOCKCHAIN_ARBITRUM_ONE_US"."LOGS"
-  WHERE
-    EXTRACT(YEAR FROM TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) = 2023
-  GROUP BY
-    EXTRACT(MONTH FROM TO_TIMESTAMP_NTZ("block_timestamp" / 1e6))
-)
 SELECT
-  TO_CHAR("Month") AS "Month",
-  "Transaction_Count",
-  ROUND("Transaction_Count" / "Duration_Seconds", 4) AS "Transactions_Per_Second"
+  "Year",
+  "Month_num",
+  "Month",
+  "Monthly_Transaction_Count",
+  ROUND(("Monthly_Transaction_Count" / "Seconds_In_Month"), 4) AS "Computed_Transactions_Per_Second"
 FROM
-  MonthStats
-ORDER BY
-  "Transaction_Count" DESC NULLS LAST;
+(
+  SELECT
+    YEAR(TO_TIMESTAMP_NTZ("block_timestamp", 6)) AS "Year",
+    MONTH(TO_TIMESTAMP_NTZ("block_timestamp", 6)) AS "Month_num",
+    TO_CHAR(TO_TIMESTAMP_NTZ("block_timestamp", 6), 'Mon') AS "Month",
+    COUNT(*) AS "Monthly_Transaction_Count",
+    DATEDIFF(
+      'second',
+      DATE_FROM_PARTS(YEAR(TO_TIMESTAMP_NTZ("block_timestamp", 6)), MONTH(TO_TIMESTAMP_NTZ("block_timestamp", 6)), 1),
+      DATEADD(
+        'month',
+        1,
+        DATE_FROM_PARTS(YEAR(TO_TIMESTAMP_NTZ("block_timestamp", 6)), MONTH(TO_TIMESTAMP_NTZ("block_timestamp", 6)), 1)
+      )
+    ) AS "Seconds_In_Month"
+  FROM "GOOG_BLOCKCHAIN"."GOOG_BLOCKCHAIN_ARBITRUM_ONE_US"."LOGS"
+  WHERE YEAR(TO_TIMESTAMP_NTZ("block_timestamp", 6)) = 2023
+  GROUP BY
+    YEAR(TO_TIMESTAMP_NTZ("block_timestamp", 6)),
+    MONTH(TO_TIMESTAMP_NTZ("block_timestamp", 6)),
+    TO_CHAR(TO_TIMESTAMP_NTZ("block_timestamp", 6), 'Mon')
+)
+ORDER BY "Monthly_Transaction_Count" DESC NULLS LAST;

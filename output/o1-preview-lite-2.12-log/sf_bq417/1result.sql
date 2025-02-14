@@ -1,31 +1,36 @@
 SELECT
-  dp."collection_id" AS "Collection_ID",
-  dp."PatientID" AS "Patient_ID",
-  dp."StudyInstanceUID",
-  dp."StudyDate",
-  dp."SeriesInstanceUID",
-  dp."SeriesDate",
-  dp."SeriesDescription",
-  dp."Modality",
-  dp."Manufacturer",
-  dp."ManufacturerModelName",
-  ROUND(SUM(dp."instance_size") / 1000000, 4) AS "Series_Size_MB",
-  CONCAT('s3://idc-open-data/', dp."SeriesInstanceUID", '/*') AS "Series_AWS_URL"
+    "collection_id",
+    "PatientID",
+    "StudyInstanceUID",
+    "StudyDate",
+    "StudyDescription",
+    "SeriesInstanceUID",
+    "SeriesDate",
+    "SeriesDescription",
+    "SeriesNumber",
+    "Modality",
+    "Manufacturer",
+    "ManufacturerModelName",
+    "series_aws_url" AS "SeriesAWSURL",
+    SUM("instance_size") / 1000000.0 AS "TotalSizeMB"
 FROM
-  IDC.IDC_V17.DICOM_PIVOT dp
+    IDC.IDC_V17.DICOM_ALL
 WHERE
-  dp."PatientSex" = 'M'
-  AND TO_NUMBER(REGEXP_SUBSTR(dp."PatientAge", '^[0-9]+')) > 60
-  AND dp."BodyPartExamined" = 'MEDIASTINUM'
-  AND dp."StudyDate" > '2014-09-01'
+    SUBSTR("PatientAge", 1, 3) = '018'
+    AND "PatientSex" = 'M'
+    AND "BodyPartExamined" = 'MEDIASTINUM'
+    AND "StudyDate" > '2014-09-01'
 GROUP BY
-  dp."collection_id",
-  dp."PatientID",
-  dp."StudyInstanceUID",
-  dp."StudyDate",
-  dp."SeriesInstanceUID",
-  dp."SeriesDate",
-  dp."SeriesDescription",
-  dp."Modality",
-  dp."Manufacturer",
-  dp."ManufacturerModelName";
+    "collection_id",
+    "PatientID",
+    "StudyInstanceUID",
+    "StudyDate",
+    "StudyDescription",
+    "SeriesInstanceUID",
+    "SeriesDate",
+    "SeriesDescription",
+    "SeriesNumber",
+    "Modality",
+    "Manufacturer",
+    "ManufacturerModelName",
+    "series_aws_url";

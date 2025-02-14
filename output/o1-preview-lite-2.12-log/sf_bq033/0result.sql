@@ -1,34 +1,33 @@
-WITH months AS (
-    SELECT
-        DATEADD(month, ROW_NUMBER() OVER (ORDER BY NULL) - 1, '2008-01-01') AS month_date
-    FROM
-        TABLE(GENERATOR(ROWCOUNT => ((2022 - 2008 + 1) * 12)))
+WITH numbers AS (
+  SELECT ROW_NUMBER() OVER (ORDER BY NULL) - 1 AS n
+  FROM TABLE(GENERATOR(ROWCOUNT => 180))
 ),
-publications_filtered AS (
-    SELECT
-        DATE_TRUNC('month', TO_DATE(TO_CHAR(t."filing_date"), 'YYYYMMDD')) AS filing_month
-    FROM
-        PATENTS.PATENTS.PUBLICATIONS t,
-        LATERAL FLATTEN(input => t."abstract_localized") f
-    WHERE
-        t."country_code" = 'US'
-        AND t."filing_date" BETWEEN 20080101 AND 20221231
-        AND f.value['text']::STRING ILIKE '%internet of things%'
+months AS (
+  SELECT
+    TO_CHAR(DATEADD(month, n, DATE '2008-01-01'), 'YYYY-MM') AS "Month",
+    EXTRACT(YEAR FROM DATEADD(month, n, DATE '2008-01-01')) AS "Year"
+  FROM numbers
 )
 SELECT
-    EXTRACT(year FROM m.month_date) AS "Year",
-    EXTRACT(month FROM m.month_date) AS "Month",
-    COALESCE(pc.num_publications, 0) AS "Num_Publications"
+  m."Month",
+  m."Year",
+  COALESCE(c."Number_of_filings", 0) AS "Number_of_filings"
 FROM
-    months m
-    LEFT JOIN (
-        SELECT
-            filing_month,
-            COUNT(*) AS num_publications
-        FROM
-            publications_filtered
-        GROUP BY
-            filing_month
-    ) pc ON pc.filing_month = m.month_date
+  months m
+LEFT JOIN (
+  SELECT
+    TO_CHAR(TO_DATE(t."filing_date"::TEXT, 'YYYYMMDD'), 'YYYY-MM') AS "Month",
+    COUNT(DISTINCT t."publication_number") AS "Number_of_filings"
+  FROM
+    PATENTS.PATENTS.PUBLICATIONS t,
+    LATERAL FLATTEN(input => t."abstract_localized") f
+  WHERE
+    t."country_code" = 'US'
+    AND t."filing_date" BETWEEN 20080101 AND 20221231
+    AND t."filing_date" <> 0
+    AND f.value:"text"::STRING ILIKE '%internet of things%'
+  GROUP BY
+    "Month"
+) c ON m."Month" = c."Month"
 ORDER BY
-    "Year", "Month";
+  m."Month";

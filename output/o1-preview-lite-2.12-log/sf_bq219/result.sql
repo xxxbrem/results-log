@@ -1,59 +1,74 @@
-WITH last_24_months AS (
-    SELECT 
-        DATE_TRUNC('month', "date") AS "sale_month",
+WITH monthly_category_volume AS (
+    SELECT
+        DATE_TRUNC('month', "date") AS "month",
         "category_name",
-        SUM("volume_sold_liters") AS "monthly_volume_liters"
+        SUM("volume_sold_liters") AS "category_volume"
     FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
-    WHERE "date" >= DATEADD(month, -24, (SELECT MAX("date") FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"))
-    GROUP BY DATE_TRUNC('month', "date"), "category_name"
+    WHERE "date" >= '2022-01-01'
+      AND "date" < DATE_TRUNC('month', CURRENT_DATE)
+    GROUP BY
+        DATE_TRUNC('month', "date"),
+        "category_name"
 ),
-monthly_totals AS (
-    SELECT 
-        "sale_month",
-        SUM("monthly_volume_liters") AS "total_monthly_volume"
-    FROM last_24_months
-    GROUP BY "sale_month"
+monthly_total_volume AS (
+    SELECT
+        DATE_TRUNC('month', "date") AS "month",
+        SUM("volume_sold_liters") AS "total_volume"
+    FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
+    WHERE "date" >= '2022-01-01'
+      AND "date" < DATE_TRUNC('month', CURRENT_DATE)
+    GROUP BY
+        DATE_TRUNC('month', "date")
 ),
-category_percentages AS (
-    SELECT 
-        l24."sale_month",
-        l24."category_name",
-        (l24."monthly_volume_liters" / mt."total_monthly_volume") * 100 AS "percentage_contribution"
-    FROM last_24_months l24
-    JOIN monthly_totals mt ON l24."sale_month" = mt."sale_month"
+category_monthly_percentage AS (
+    SELECT
+        mcv."month",
+        mcv."category_name",
+        (mcv."category_volume" / mtv."total_volume") * 100 AS "percentage"
+    FROM monthly_category_volume mcv
+    JOIN monthly_total_volume mtv
+        ON mcv."month" = mtv."month"
 ),
-category_average_percentages AS (
+category_stats AS (
     SELECT
         "category_name",
-        AVG("percentage_contribution") AS "average_percentage"
-    FROM category_percentages
+        AVG("percentage") AS "avg_percentage",
+        COUNT(DISTINCT "month") AS "months_count"
+    FROM category_monthly_percentage
     GROUP BY "category_name"
-    HAVING AVG("percentage_contribution") >= 1
 ),
-filtered_category_percentages AS (
+filtered_categories AS (
     SELECT
-        cp."sale_month",
-        cp."category_name",
-        cp."percentage_contribution"
-    FROM category_percentages cp
-    INNER JOIN category_average_percentages cap ON cp."category_name" = cap."category_name"
+        "category_name"
+    FROM category_stats
+    WHERE
+        "avg_percentage" >= 1
+        AND "months_count" >= 24
 ),
-corr_pairs AS (
-    SELECT 
-        t1."category_name" AS "category1",
-        t2."category_name" AS "category2",
-        CORR(t1."percentage_contribution", t2."percentage_contribution") AS "correlation_coefficient"
-    FROM filtered_category_percentages t1
-    JOIN filtered_category_percentages t2 ON t1."sale_month" = t2."sale_month" AND t1."category_name" < t2."category_name"
-    GROUP BY t1."category_name", t2."category_name"
+filtered_category_percentage AS (
+    SELECT
+        cmp."category_name",
+        cmp."month",
+        cmp."percentage"
+    FROM category_monthly_percentage cmp
+    WHERE cmp."category_name" IN (SELECT "category_name" FROM filtered_categories)
 ),
-lowest_correlation AS (
-    SELECT 
-        "category1",
-        "category2",
-        ROUND("correlation_coefficient", 4) AS "correlation_coefficient"
-    FROM corr_pairs
-    ORDER BY "correlation_coefficient" ASC
-    LIMIT 1
+correlations AS (
+    SELECT
+        fc1."category_name" AS "Category1",
+        fc2."category_name" AS "Category2",
+        CORR(fc1."percentage", fc2."percentage") AS "Correlation"
+    FROM filtered_category_percentage fc1
+    JOIN filtered_category_percentage fc2
+        ON fc1."month" = fc2."month"
+        AND fc1."category_name" < fc2."category_name"
+    GROUP BY
+        fc1."category_name",
+        fc2."category_name"
 )
-SELECT * FROM lowest_correlation;
+SELECT
+    "Category1",
+    "Category2"
+FROM correlations
+ORDER BY "Correlation" ASC NULLS LAST
+LIMIT 1;

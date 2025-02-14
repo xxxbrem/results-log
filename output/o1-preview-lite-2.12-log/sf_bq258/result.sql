@@ -1,51 +1,45 @@
-WITH category_monthly AS (
+SELECT
+    "year",
+    "month",
+    "category",
+    "total_revenue",
+    "total_completed_orders",
+    ROUND(
+        (("total_revenue" - LAG("total_revenue") OVER (PARTITION BY "category" ORDER BY "year", "month"))
+         / NULLIF(LAG("total_revenue") OVER (PARTITION BY "category" ORDER BY "year", "month"), 0)) * 100,
+        4
+    ) AS "Revenue_MoM_Growth(%)",
+    ROUND(
+        (("total_completed_orders" - LAG("total_completed_orders") OVER (PARTITION BY "category" ORDER BY "year", "month"))
+         / NULLIF(LAG("total_completed_orders") OVER (PARTITION BY "category" ORDER BY "year", "month"), 0)) * 100,
+        4
+    ) AS "Orders_MoM_Growth(%)",
+    ROUND("total_cost", 4) AS "total_cost",
+    ROUND("total_profit", 4) AS "total_profit",
+    ROUND("profit_to_cost_ratio", 4) AS "profit_to_cost_ratio"
+FROM (
     SELECT
+        EXTRACT(YEAR FROM TO_TIMESTAMP_NTZ(o."delivered_at" / 1e6)) AS "year",
+        EXTRACT(MONTH FROM TO_TIMESTAMP_NTZ(o."delivered_at" / 1e6)) AS "month",
         p."category",
-        DATE_TRUNC('month', TO_TIMESTAMP(o."delivered_at" / 1000000)) AS "month",
-        SUM(oi."sale_price") AS "revenue",
-        COUNT(DISTINCT oi."order_id") AS "orders",
+        SUM(oi."sale_price") AS "total_revenue",
+        COUNT(DISTINCT o."order_id") AS "total_completed_orders",
         SUM(p."cost") AS "total_cost",
-        SUM(oi."sale_price" - p."cost") AS "profit"
+        SUM(oi."sale_price" - p."cost") AS "total_profit",
+        SUM(oi."sale_price" - p."cost") / NULLIF(SUM(p."cost"), 0) AS "profit_to_cost_ratio"
     FROM
-        THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDER_ITEMS oi
-        JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDERS o ON oi."order_id" = o."order_id"
-        JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS p ON oi."product_id" = p."id"
+        "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDER_ITEMS" oi
+    JOIN
+        "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDERS" o
+        ON oi."order_id" = o."order_id"
+    JOIN
+        "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."PRODUCTS" p
+        ON oi."product_id" = p."id"
     WHERE
         o."status" = 'Complete'
-        AND o."delivered_at" IS NOT NULL
-        AND o."delivered_at" < 1640995200000000
+        AND TO_TIMESTAMP_NTZ(o."delivered_at" / 1e6) < '2022-01-01'
     GROUP BY
-        p."category",
-        DATE_TRUNC('month', TO_TIMESTAMP(o."delivered_at" / 1000000))
-),
-category_monthly_with_growth AS (
-    SELECT
-        "category" AS "Product_Category",
-        TO_CHAR("month", 'YYYY-MM') AS "Month",
-        "revenue",
-        "orders",
-        "total_cost",
-        "profit",
-        "profit" / NULLIF("total_cost", 0) AS "Profit_to_Cost_Ratio",
-        LAG("revenue") OVER (PARTITION BY "category" ORDER BY "month") AS "prev_revenue",
-        LAG("orders") OVER (PARTITION BY "category" ORDER BY "month") AS "prev_orders"
-    FROM category_monthly
-),
-final AS (
-    SELECT
-        "Product_Category",
-        "Month",
-        ROUND( ( ("revenue" - "prev_revenue") / NULLIF("prev_revenue", 0) ) * 100, 2) AS "Revenue_Growth(%)",
-        ROUND( ( ("orders" - "prev_orders") / NULLIF("prev_orders", 0) ) * 100, 2) AS "Orders_Growth(%)",
-        ROUND("total_cost", 4) AS "Total_Cost",
-        ROUND("profit", 4) AS "Profit",
-        ROUND("Profit_to_Cost_Ratio", 4) AS "Profit_to_Cost_Ratio"
-    FROM category_monthly_with_growth
-)
-SELECT
-    *
-FROM
-    final
+        "year", "month", p."category"
+) base_data
 ORDER BY
-    "Product_Category",
-    "Month";
+    "year", "month", "category";

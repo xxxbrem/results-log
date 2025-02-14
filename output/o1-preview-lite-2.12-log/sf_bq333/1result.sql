@@ -1,15 +1,16 @@
-SELECT
-    "browser",
-    AVG("session_duration") AS "average_session_duration"
+SELECT "browser",
+       AVG("session_duration_in_seconds") AS "average_session_duration"
 FROM (
-    SELECT
-        "session_id",
-        "browser",
-        MAX("created_at") - MIN("created_at") AS "session_duration"
+    SELECT "browser",
+           "session_id",
+           (MAX("created_at") - MIN("created_at")) / 1000000 AS "session_duration_in_seconds"
     FROM "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."EVENTS"
-    GROUP BY "session_id", "browser"
-) AS session_durations
+    WHERE "created_at" IS NOT NULL
+      AND "session_id" IS NOT NULL
+    GROUP BY "browser", "session_id"
+    HAVING (MAX("created_at") - MIN("created_at")) > 0
+) AS "session_durations"
 GROUP BY "browser"
 HAVING COUNT(DISTINCT "session_id") > 10
-ORDER BY "average_session_duration" ASC NULLS LAST
+ORDER BY "average_session_duration" ASC
 LIMIT 3;

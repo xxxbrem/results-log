@@ -1,170 +1,161 @@
-WITH FilteredInstances AS (
-    SELECT
-        *,
-        TRY_TO_DOUBLE("SliceThickness") AS SliceThicknessDouble,
-        TRY_TO_DOUBLE("Exposure") AS ExposureDouble,
-        TRY_TO_DOUBLE("ImagePositionPatient"[2]::STRING) AS zPosition,
-        TRY_TO_DOUBLE("ImageOrientationPatient"[0]::STRING) AS IOP1,
-        TRY_TO_DOUBLE("ImageOrientationPatient"[1]::STRING) AS IOP2,
-        TRY_TO_DOUBLE("ImageOrientationPatient"[2]::STRING) AS IOP3,
-        TRY_TO_DOUBLE("ImageOrientationPatient"[3]::STRING) AS IOP4,
-        TRY_TO_DOUBLE("ImageOrientationPatient"[4]::STRING) AS IOP5,
-        TRY_TO_DOUBLE("ImageOrientationPatient"[5]::STRING) AS IOP6,
-        TRY_TO_DOUBLE("ImagePositionPatient"[0]::STRING) AS ImagePositionX,
-        TRY_TO_DOUBLE("ImagePositionPatient"[1]::STRING) AS ImagePositionY
-    FROM
-        "IDC"."IDC_V17"."DICOM_ALL"
-    WHERE
-        "Modality" = 'CT' AND
-        "collection_id" != 'NLST' AND
-        "TransferSyntaxUID" NOT IN ('1.2.840.10008.1.2.4.70', '1.2.840.10008.1.2.4.51') AND
-        NOT ("ImageType" ILIKE '%LOCALIZER%')
+WITH series_data AS (
+  SELECT
+    "SeriesInstanceUID",
+    "SeriesNumber",
+    "StudyInstanceUID",
+    "PatientID",
+    "ImageOrientationPatient",
+    "ImagePositionPatient",
+    CAST("SliceThickness" AS FLOAT) AS "SliceThickness",
+    "PixelSpacing",
+    "Rows",
+    "Columns",
+    CAST("Exposure" AS FLOAT) AS "Exposure",
+    "SOPInstanceUID",
+    "instance_size"
+  FROM IDC.IDC_V17.DICOM_ALL
+  WHERE 
+    "Modality" = 'CT'
+    AND "collection_id" != 'NLST'
+    AND "TransferSyntaxUID" NOT IN ('1.2.840.10008.1.2.4.70', '1.2.840.10008.1.2.4.51')
+    AND "ImageType" NOT ILIKE '%LOCALIZER%'
 ),
-
-SeriesChecks AS (
-    SELECT
-        "SeriesInstanceUID",
-        COUNT(DISTINCT "ImageOrientationPatient") AS DistinctImageOrientationPatientCount,
-        COUNT(DISTINCT "PixelSpacing") AS DistinctPixelSpacingCount,
-        COUNT(*) AS TotalSOPInstances,
-        COUNT(DISTINCT "ImagePositionPatient") AS DistinctImagePositionPatientCount,
-        COUNT(DISTINCT CONCAT(
-            TO_VARCHAR(TRY_TO_DOUBLE("ImagePositionPatient"[0]::STRING)),
-            ',',
-            TO_VARCHAR(TRY_TO_DOUBLE("ImagePositionPatient"[1]::STRING))
-        )) AS DistinctFirstTwoComponents,
-        COUNT(DISTINCT "Rows") AS DistinctRowsCount,
-        COUNT(DISTINCT "Columns") AS DistinctColumnsCount
-    FROM
-        FilteredInstances
-    GROUP BY
-        "SeriesInstanceUID"
-    HAVING
-        DistinctImageOrientationPatientCount = 1 AND
-        DistinctPixelSpacingCount = 1 AND
-        TotalSOPInstances = DistinctImagePositionPatientCount AND
-        DistinctFirstTwoComponents = 1 AND
-        DistinctRowsCount = 1 AND
-        DistinctColumnsCount = 1
+series_filtered AS (
+  SELECT 
+    sd.*,
+    COUNT(DISTINCT sd."ImageOrientationPatient") OVER (PARTITION BY sd."SeriesInstanceUID") AS orientation_count,
+    COUNT(DISTINCT sd."PixelSpacing") OVER (PARTITION BY sd."SeriesInstanceUID") AS pixel_spacing_count,
+    COUNT(DISTINCT sd."Rows") OVER (PARTITION BY sd."SeriesInstanceUID") AS rows_count,
+    COUNT(DISTINCT sd."Columns") OVER (PARTITION BY sd."SeriesInstanceUID") AS columns_count,
+    COUNT(DISTINCT sd."SOPInstanceUID") OVER (PARTITION BY sd."SeriesInstanceUID") AS num_instances,
+    COUNT(DISTINCT sd."ImagePositionPatient") OVER (PARTITION BY sd."SeriesInstanceUID") AS num_positions
+  FROM series_data sd
 ),
-
-PerInstanceComputed AS (
-    SELECT
-        f.*,
-        (f.IOP2 * f.IOP6 - f.IOP3 * f.IOP5) AS cp_x,
-        (f.IOP3 * f.IOP4 - f.IOP1 * f.IOP6) AS cp_y,
-        (f.IOP1 * f.IOP5 - f.IOP2 * f.IOP4) AS cp_z,
-        SQRT(
-            POWER(f.IOP2 * f.IOP6 - f.IOP3 * f.IOP5, 2) +
-            POWER(f.IOP3 * f.IOP4 - f.IOP1 * f.IOP6, 2) +
-            POWER(f.IOP1 * f.IOP5 - f.IOP2 * f.IOP4, 2)
-        ) AS cp_magnitude,
-        ABS(
-            (f.IOP1 * f.IOP5 - f.IOP2 * f.IOP4) / 
-            NULLIF(
-                SQRT(
-                    POWER(f.IOP2 * f.IOP6 - f.IOP3 * f.IOP5, 2) +
-                    POWER(f.IOP3 * f.IOP4 - f.IOP1 * f.IOP6, 2) +
-                    POWER(f.IOP1 * f.IOP5 - f.IOP2 * f.IOP4, 2)
-                ), 0)
-        ) AS DotProductValue
-    FROM
-        FilteredInstances f
+series_filtered2 AS (
+  SELECT *
+  FROM series_filtered
+  WHERE 
+    orientation_count = 1
+    AND pixel_spacing_count = 1
+    AND rows_count = 1
+    AND columns_count = 1
+    AND num_instances = num_positions
 ),
-
-SeriesWithDotProduct AS (
-    SELECT
-        p."SeriesInstanceUID",
-        MAX(p."SeriesNumber") AS "SeriesNumber",
-        MAX(p."StudyInstanceUID") AS "StudyInstanceUID",
-        MAX(p."PatientID") AS "PatientID",
-        MAX(p.DotProductValue) AS MaxDotProductValue
-    FROM
-        PerInstanceComputed p
-    WHERE
-        p."SeriesInstanceUID" IN (SELECT "SeriesInstanceUID" FROM SeriesChecks)
-    GROUP BY
-        p."SeriesInstanceUID"
-    HAVING
-        MAX(p.DotProductValue) BETWEEN 0.99 AND 1.01
+series_orientation AS (
+  SELECT DISTINCT
+    "SeriesInstanceUID",
+    "SeriesNumber",
+    "StudyInstanceUID",
+    "PatientID",
+    "ImageOrientationPatient"
+  FROM series_filtered2
 ),
-
-SlicePositions AS (
-    SELECT DISTINCT
-        p."SeriesInstanceUID",
-        p.zPosition
-    FROM
-        PerInstanceComputed p
-    WHERE
-        p."SeriesInstanceUID" IN (SELECT "SeriesInstanceUID" FROM SeriesWithDotProduct)
+series_orientation_parsed AS (
+  SELECT 
+    so.*,
+    CAST(so."ImageOrientationPatient"[0] AS FLOAT) AS m1,
+    CAST(so."ImageOrientationPatient"[1] AS FLOAT) AS m2,
+    CAST(so."ImageOrientationPatient"[2] AS FLOAT) AS m3,
+    CAST(so."ImageOrientationPatient"[3] AS FLOAT) AS m4,
+    CAST(so."ImageOrientationPatient"[4] AS FLOAT) AS m5,
+    CAST(so."ImageOrientationPatient"[5] AS FLOAT) AS m6
+  FROM series_orientation so
 ),
-
-SliceIntervals AS (
-    SELECT
-        s."SeriesInstanceUID",
-        s.zPosition,
-        ROW_NUMBER() OVER (PARTITION BY s."SeriesInstanceUID" ORDER BY s.zPosition) AS rn
-    FROM
-        SlicePositions s
+series_normal AS (
+  SELECT 
+    sop.*,
+    ((sop.m2 * sop.m6) - (sop.m3 * sop.m5)) AS normal_x,
+    ((sop.m3 * sop.m4) - (sop.m1 * sop.m6)) AS normal_y,
+    ((sop.m1 * sop.m5) - (sop.m2 * sop.m4)) AS normal_z
+  FROM series_orientation_parsed sop
 ),
-
-SliceDifferences AS (
-    SELECT
-        s1."SeriesInstanceUID",
-        s1.zPosition,
-        s2.zPosition AS NextZPosition,
-        ABS(s2.zPosition - s1.zPosition) AS SliceIntervalDifference
-    FROM
-        SliceIntervals s1
-        INNER JOIN SliceIntervals s2
-            ON s1."SeriesInstanceUID" = s2."SeriesInstanceUID" AND s1.rn + 1 = s2.rn
+series_dot_product AS (
+  SELECT
+    sn.*,
+    ABS(
+      (sn.normal_x * 0) + (sn.normal_y * 0) + (sn.normal_z * 1)
+    ) AS "MaxDotProduct"
+  FROM series_normal sn
 ),
-
-SeriesSliceIntervals AS (
-    SELECT
-        s."SeriesInstanceUID",
-        MAX(s.SliceIntervalDifference) AS MaxSliceIntervalDifference,
-        MIN(s.SliceIntervalDifference) AS MinSliceIntervalDifference
-    FROM
-        SliceDifferences s
-    GROUP BY
-        s."SeriesInstanceUID"
+series_instances AS (
+  SELECT 
+    s."SeriesInstanceUID",
+    CAST(s."ImagePositionPatient"[2] AS FLOAT) AS z_position
+  FROM series_filtered2 s
+),
+series_slice_diff AS (
+  SELECT
+    si."SeriesInstanceUID",
+    si.z_position,
+    ROW_NUMBER() OVER (PARTITION BY si."SeriesInstanceUID" ORDER BY si.z_position) AS rn
+  FROM series_instances si
+),
+series_slice_intervals AS (
+  SELECT
+    s1."SeriesInstanceUID",
+    s1.z_position AS z1,
+    s2.z_position AS z2,
+    ABS(s2.z_position - s1.z_position) AS interval_diff
+  FROM series_slice_diff s1
+  JOIN series_slice_diff s2
+    ON s1."SeriesInstanceUID" = s2."SeriesInstanceUID" AND s1.rn = s2.rn - 1
+),
+series_slice_stats AS (
+  SELECT
+    "SeriesInstanceUID",
+    MAX(interval_diff) AS "MaxSliceIntervalDiff",
+    MIN(interval_diff) AS "MinSliceIntervalDiff"
+  FROM series_slice_intervals
+  GROUP BY "SeriesInstanceUID"
+),
+series_exposure AS (
+  SELECT
+    s."SeriesInstanceUID",
+    COUNT(DISTINCT s."Exposure") AS "NumDistinctExposureValues",
+    MAX(s."Exposure") AS "MaxExposureValue",
+    MIN(s."Exposure") AS "MinExposureValue"
+  FROM series_filtered2 s
+  GROUP BY s."SeriesInstanceUID"
+),
+series_size AS (
+  SELECT
+    "SeriesInstanceUID",
+    SUM("instance_size") / (1024 * 1024) AS "SeriesSizeMB",
+    COUNT(*) AS "NumInstances"
+  FROM series_filtered2
+  GROUP BY "SeriesInstanceUID"
+),
+series_slice_thickness AS (
+  SELECT
+    s."SeriesInstanceUID",
+    COUNT(DISTINCT s."SliceThickness") AS "NumDistinctSliceThickness"
+  FROM series_filtered2 s
+  GROUP BY s."SeriesInstanceUID"
+),
+final_series AS (
+  SELECT
+    sdp."SeriesInstanceUID",
+    sdp."SeriesNumber",
+    sdp."StudyInstanceUID",
+    sdp."PatientID",
+    ROUND(sdp."MaxDotProduct", 4) AS "MaxDotProduct",
+    ss."NumInstances",
+    st."NumDistinctSliceThickness",
+    ROUND(sss."MaxSliceIntervalDiff", 4) AS "MaxSliceIntervalDiff",
+    ROUND(sss."MinSliceIntervalDiff", 4) AS "MinSliceIntervalDiff",
+    ROUND((sss."MaxSliceIntervalDiff" - sss."MinSliceIntervalDiff"), 4) AS "ToleranceSliceIntervalDiff",
+    se."NumDistinctExposureValues",
+    se."MaxExposureValue",
+    se."MinExposureValue",
+    ROUND((se."MaxExposureValue" - se."MinExposureValue"), 4) AS "ExposureRange",
+    ROUND(ss."SeriesSizeMB", 4) AS "SeriesSizeMB"
+  FROM series_dot_product sdp
+  JOIN series_size ss ON sdp."SeriesInstanceUID" = ss."SeriesInstanceUID"
+  JOIN series_slice_thickness st ON sdp."SeriesInstanceUID" = st."SeriesInstanceUID"
+  LEFT JOIN series_slice_stats sss ON sdp."SeriesInstanceUID" = sss."SeriesInstanceUID"
+  LEFT JOIN series_exposure se ON sdp."SeriesInstanceUID" = se."SeriesInstanceUID"
 )
-
-SELECT
-    swd."SeriesInstanceUID",
-    swd."SeriesNumber",
-    swd."StudyInstanceUID",
-    swd."PatientID",
-    ROUND(swd.MaxDotProductValue, 4) AS MaxDotProductValue,
-    sc.TotalSOPInstances,
-    COUNT(DISTINCT pc.SliceThicknessDouble) AS NumberOfDistinctSliceThicknessValues,
-    ROUND(ssi.MaxSliceIntervalDifference, 4) AS MaxSliceIntervalDifference,
-    ROUND(ssi.MinSliceIntervalDifference, 4) AS MinSliceIntervalDifference,
-    ROUND(ssi.MaxSliceIntervalDifference - ssi.MinSliceIntervalDifference, 4) AS SliceIntervalDifferenceTolerance,
-    COUNT(DISTINCT pc.ExposureDouble) AS NumberOfDistinctExposureValues,
-    MAX(pc.ExposureDouble) AS MaxExposureValue,
-    MIN(pc.ExposureDouble) AS MinExposureValue,
-    ROUND(MAX(pc.ExposureDouble) - MIN(pc.ExposureDouble), 4) AS ExposureValueRange,
-    ROUND(SUM(pc."instance_size") / (1024 * 1024), 4) AS TotalSeriesSizeMiB
-FROM
-    SeriesWithDotProduct swd
-    INNER JOIN SeriesChecks sc
-        ON swd."SeriesInstanceUID" = sc."SeriesInstanceUID"
-    INNER JOIN PerInstanceComputed pc
-        ON swd."SeriesInstanceUID" = pc."SeriesInstanceUID"
-    LEFT JOIN SeriesSliceIntervals ssi
-        ON swd."SeriesInstanceUID" = ssi."SeriesInstanceUID"
-GROUP BY
-    swd."SeriesInstanceUID",
-    swd."SeriesNumber",
-    swd."StudyInstanceUID",
-    swd."PatientID",
-    swd.MaxDotProductValue,
-    sc.TotalSOPInstances,
-    ssi.MaxSliceIntervalDifference,
-    ssi.MinSliceIntervalDifference
-ORDER BY
-    SliceIntervalDifferenceTolerance DESC NULLS LAST,
-    ExposureValueRange DESC NULLS LAST,
-    swd."SeriesInstanceUID" DESC
+SELECT *
+FROM final_series
+WHERE ABS("MaxDotProduct" - 1) <= 0.01
+ORDER BY "ToleranceSliceIntervalDiff" DESC NULLS LAST, "ExposureRange" DESC NULLS LAST, "SeriesInstanceUID" DESC;

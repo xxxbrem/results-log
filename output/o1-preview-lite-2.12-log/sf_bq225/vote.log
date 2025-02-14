@@ -1,14 +1,45 @@
-After reviewing the SQL queries and their results, I have determined that **`1result.sql`** is the correct answer. Here are the reasons for this choice:
+After comparing both SQL queries and their results, I conclude that **1result.sql** is the correct choice.
 
-1. **Comprehensive Extension Mapping**: The SQL in `1result.sql` provides a more extensive mapping of file extensions to programming languages. It includes multiple extensions for each language, capturing a wider range of files. For example, for C++ it includes `'cpp', 'c++', 'cxx', 'hpp', 'h++', 'cc', 'hh'`, ensuring more C++ files are counted.
+**Reasoning:**
 
-2. **Accurate File Counts**: The file counts in the results of `1result.sql` are higher for languages with multiple extensions, indicating a more accurate representation. For instance, C++ has a higher file count compared to `2result.sql`, reflecting the inclusion of more file extensions.
+1. **Extension Extraction Logic:**
 
-3. **Consistent Methodology**: The use of regular expressions and `REGEXP_SUBSTR` in `1result.sql` provides a consistent approach to extract file extensions, improving the reliability of the results.
+   - **1result.sql** uses regular expressions to accurately extract the file extensions, considering edge cases where the filename might not have an extension or when the extension starts with a special character.
+   
+     ```sql
+     REGEXP_SUBSTR(REGEXP_SUBSTR(f."path", '[^/\\\\]+$'), '\\.[^\\.]+$')
+     ```
+     
+     This extracts the part of the filename after the last dot, effectively capturing the extension.
 
-4. **Better Representation of Popular Languages**: The results from `1result.sql` align well with commonly known language popularity, with C, JavaScript, Java, and C++ appearing at the top, which is expected given their widespread use.
+   - **0result.sql** uses a combination of string manipulation functions that may not handle all edge cases as effectively.
+   
+     ```sql
+     LOWER(SPLIT_PART(REGEXP_REPLACE(f."path", '^.*/', ''), '.', -1))
+     ```
+     
+     This method might fail if filenames contain multiple dots or special characters.
 
-Based on these reasons, **`1result.sql`** is the most appropriate SQL query to determine the top 10 widely used languages according to file counts.
+2. **Handling Special Filenames:**
+
+   - **1result.sql** considers filenames without extensions (like `Dockerfile`) by checking whether the mapping's extension starts with a dot and adjusts the matching logic accordingly.
+   
+     ```sql
+     WHEN LEFT(mapping."extension", 1) = '.'
+     ```
+   
+   - **0result.sql** handles `Dockerfile` specifically but may not generalize well to other filenames without extensions.
+   
+3. **Readability and Maintainability:**
+
+   - **1result.sql** presents a clearer approach by directly matching file extensions and filenames, making it easier to understand and maintain.
+   - The use of regular expressions in **1result.sql** provides a robust solution for pattern matching.
+
+4. **Results Consistency:**
+
+   - Both queries produce the same results, but **1result.sql** achieves this with a methodology that's more reliable across diverse filenames.
+
+Therefore, **1result.sql** is more accurate and robust for determining the programming languages based on file extensions in the dataset.
 
 ```plaintext
 1result.sql

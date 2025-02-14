@@ -1,59 +1,49 @@
-WITH last_24_months AS (
-    SELECT 
-        DATE_TRUNC('month', "date") AS "sale_month",
-        "category_name",
-        SUM("volume_sold_liters") AS "monthly_volume_liters"
+WITH total_volume_per_month AS (
+    SELECT DATE_TRUNC('month', "date") AS "month",
+           SUM("volume_sold_liters") AS "total_volume"
     FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
-    WHERE "date" >= DATEADD(month, -24, (SELECT MAX("date") FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"))
-    GROUP BY DATE_TRUNC('month', "date"), "category_name"
+    WHERE "date" >= '2022-01-01' AND "date" < DATE_TRUNC('month', CURRENT_DATE)
+    GROUP BY "month"
 ),
-monthly_totals AS (
-    SELECT 
-        "sale_month",
-        SUM("monthly_volume_liters") AS "total_monthly_volume"
-    FROM last_24_months
-    GROUP BY "sale_month"
+category_volume_per_month AS (
+    SELECT DATE_TRUNC('month', "date") AS "month",
+           "category",
+           "category_name",
+           SUM("volume_sold_liters") AS "category_volume"
+    FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
+    WHERE "date" >= '2022-01-01' AND "date" < DATE_TRUNC('month', CURRENT_DATE)
+    GROUP BY "month", "category", "category_name"
 ),
-category_percentages AS (
-    SELECT 
-        l24."sale_month",
-        l24."category_name",
-        (l24."monthly_volume_liters" / mt."total_monthly_volume") * 100 AS "percentage_contribution"
-    FROM last_24_months l24
-    JOIN monthly_totals mt ON l24."sale_month" = mt."sale_month"
+category_percentage_per_month AS (
+    SELECT c."month",
+           c."category",
+           c."category_name",
+           c."category_volume" / t."total_volume" AS "percentage"
+    FROM category_volume_per_month c
+    JOIN total_volume_per_month t ON c."month" = t."month"
 ),
-category_average_percentages AS (
-    SELECT
-        "category_name",
-        AVG("percentage_contribution") AS "average_percentage"
-    FROM category_percentages
-    GROUP BY "category_name"
-    HAVING AVG("percentage_contribution") >= 1
+category_stats AS (
+    SELECT "category",
+           "category_name",
+           COUNT(*) AS "months_with_data",
+           AVG("percentage") AS "average_monthly_percentage"
+    FROM category_percentage_per_month
+    GROUP BY "category", "category_name"
+    HAVING AVG("percentage") >= 0.01 AND COUNT(*) >= 24
 ),
-filtered_category_percentages AS (
-    SELECT
-        cp."sale_month",
-        cp."category_name",
-        cp."percentage_contribution"
-    FROM category_percentages cp
-    INNER JOIN category_average_percentages cap ON cp."category_name" = cap."category_name"
-),
-corr_pairs AS (
-    SELECT 
-        t1."category_name" AS "category1",
-        t2."category_name" AS "category2",
-        CORR(t1."percentage_contribution", t2."percentage_contribution") AS "correlation_coefficient"
-    FROM filtered_category_percentages t1
-    JOIN filtered_category_percentages t2 ON t1."sale_month" = t2."sale_month" AND t1."category_name" < t2."category_name"
-    GROUP BY t1."category_name", t2."category_name"
-),
-lowest_correlation AS (
-    SELECT 
-        "category1",
-        "category2",
-        ROUND("correlation_coefficient", 4) AS "correlation_coefficient"
-    FROM corr_pairs
-    ORDER BY "correlation_coefficient" ASC
-    LIMIT 1
+selected_category_percentages AS (
+    SELECT cpm."month",
+           cpm."category",
+           cpm."category_name",
+           cpm."percentage"
+    FROM category_percentage_per_month cpm
+    WHERE cpm."category" IN (SELECT "category" FROM category_stats)
 )
-SELECT * FROM lowest_correlation;
+SELECT
+    a."category_name" AS "Category1",
+    b."category_name" AS "Category2"
+FROM selected_category_percentages a
+JOIN selected_category_percentages b ON a."month" = b."month" AND a."category" < b."category"
+GROUP BY a."category", a."category_name", b."category", b."category_name"
+ORDER BY CORR(a."percentage", b."percentage") ASC
+LIMIT 1;

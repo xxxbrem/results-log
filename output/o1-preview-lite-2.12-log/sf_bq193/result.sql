@@ -1,40 +1,33 @@
 SELECT
-  lines.line AS "Line",
-  COUNT(*) AS "Frequency",
-  LISTAGG(DISTINCT langs.language_name, ', ') WITHIN GROUP (ORDER BY langs.language_name) AS "Languages"
-FROM
-  (
-    SELECT
-      sf."repo_name",
-      TRIM(t.value::STRING) AS line
-    FROM
-      GITHUB_REPOS.GITHUB_REPOS.SAMPLE_FILES sf
-    JOIN
-      GITHUB_REPOS.GITHUB_REPOS.SAMPLE_CONTENTS sc
-      ON sf."id" = sc."id",
-    LATERAL FLATTEN(input => SPLIT(sc."content", '\n')) t
-    WHERE
-      sf."path" ILIKE '%readme.md'
-      AND sc."binary" = FALSE
-      AND t.value IS NOT NULL
-      AND TRIM(t.value::STRING) != ''
-      AND TRIM(t.value::STRING) NOT ILIKE '#%'
-      AND TRIM(t.value::STRING) NOT ILIKE '//%'
-  ) AS lines
-LEFT JOIN
-  (
-    SELECT
-      l."repo_name",
-      k.value:"name"::STRING AS language_name
-    FROM
-      GITHUB_REPOS.GITHUB_REPOS.LANGUAGES l,
-      LATERAL FLATTEN(input => l."language") k
-    WHERE
-      k.value:"name" IS NOT NULL
-  ) AS langs
-  ON lines."repo_name" = langs."repo_name"
+  lr."line",
+  COUNT(*) AS "occurrence",
+  LISTAGG(DISTINCT lang_flat."language", ', ') WITHIN GROUP (ORDER BY lang_flat."language") AS "languages"
+FROM (
+  SELECT
+    c."sample_repo_name",
+    TRIM(line.VALUE::STRING) AS "line"
+  FROM
+    "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" c,
+    LATERAL FLATTEN(input => SPLIT(c."content", '\n')) line
+  WHERE
+    c."sample_path" = 'README.md'
+    AND c."binary" = FALSE
+    AND c."content" IS NOT NULL
+    AND TRIM(line.VALUE::STRING) != ''
+    AND NOT TRIM(line.VALUE::STRING) LIKE '#%'
+    AND NOT TRIM(line.VALUE::STRING) LIKE '//%'
+) lr
+JOIN (
+  SELECT
+    l."repo_name",
+    lang.VALUE:"name"::STRING AS "language"
+  FROM
+    "GITHUB_REPOS"."GITHUB_REPOS"."LANGUAGES" l,
+    LATERAL FLATTEN(input => l."language") lang
+) lang_flat
+  ON lr."sample_repo_name" = lang_flat."repo_name"
 GROUP BY
-  lines.line
+  lr."line"
 ORDER BY
-  "Frequency" DESC NULLS LAST
+  "occurrence" DESC NULLS LAST, lr."line"
 LIMIT 100;

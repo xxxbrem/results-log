@@ -1,33 +1,43 @@
-SELECT 
-  ROUND(ABS(AVG_2020."average_hourly_value" - AVG_2019."average_hourly_value"), 4) AS "difference"
-FROM 
-  (
-    SELECT AVG("average_value") AS "average_hourly_value"
-    FROM (
-      SELECT DATE_TRUNC('hour', TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "hour",
-             AVG(CAST("value" AS FLOAT)) AS "average_value"
-      FROM "CRYPTO"."CRYPTO_ETHEREUM"."TOKEN_TRANSFERS"
-      WHERE "token_address" = '0x68e54af74b22acaccffa04ccaad13be16ed14eac'
-        AND ("from_address" IN ('0x8babf0ba311aab914c00e8fda7e8558a8b66de5d', 
-                                '0xfbd6c6b112214d949dcdfb1217153bc0a742862f')
-             OR "to_address" IN ('0x8babf0ba311aab914c00e8fda7e8558a8b66de5d', 
-                                 '0xfbd6c6b112214d949dcdfb1217153bc0a742862f'))
-        AND EXTRACT(year FROM TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) = 2019
-      GROUP BY "hour"
-    ) AS "hourly_values"
-  ) AS AVG_2019,
-  (
-    SELECT AVG("average_value") AS "average_hourly_value"
-    FROM (
-      SELECT DATE_TRUNC('hour', TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) AS "hour",
-             AVG(CAST("value" AS FLOAT)) AS "average_value"
-      FROM "CRYPTO"."CRYPTO_ETHEREUM"."TOKEN_TRANSFERS"
-      WHERE "token_address" = '0x68e54af74b22acaccffa04ccaad13be16ed14eac'
-        AND ("from_address" IN ('0x8babf0ba311aab914c00e8fda7e8558a8b66de5d', 
-                                '0xfbd6c6b112214d949dcdfb1217153bc0a742862f')
-             OR "to_address" IN ('0x8babf0ba311aab914c00e8fda7e8558a8b66de5d', 
-                                 '0xfbd6c6b112214d949dcdfb1217153bc0a742862f'))
-        AND EXTRACT(year FROM TO_TIMESTAMP_NTZ("block_timestamp" / 1e6)) = 2020
-      GROUP BY "hour"
-    ) AS "hourly_values"
-  ) AS AVG_2020;
+WITH transaction_values AS (
+  SELECT
+    EXTRACT(YEAR FROM TO_TIMESTAMP("block_timestamp" / 1e6)) AS "year",
+    DATE_TRUNC('hour', TO_TIMESTAMP("block_timestamp" / 1e6)) AS "hour",
+    TRY_TO_DOUBLE("value") AS "value"
+  FROM "CRYPTO"."CRYPTO_ETHEREUM"."TOKEN_TRANSFERS"
+  WHERE
+    "token_address" = '0x68e54af74b22acaccffa04ccaad13be16ed14eac' AND
+    (
+      "from_address" = '0x8babf0ba311aab914c00e8fda7e8558a8b66de5d' OR
+      "to_address" = '0xfbd6c6b112214d949dcdfb1217153bc0a742862f'
+    ) AND
+    "block_timestamp" BETWEEN 1546300800000000 AND 1609459199000000
+    AND TRY_TO_DOUBLE("value") IS NOT NULL
+),
+hourly_totals AS (
+  SELECT
+    "year",
+    "hour",
+    SUM("value") AS "total_value"
+  FROM transaction_values
+  GROUP BY "year", "hour"
+),
+hourly_changes AS (
+  SELECT
+    "year",
+    "hour",
+    "total_value",
+    "total_value" - LAG("total_value") OVER (PARTITION BY "year" ORDER BY "hour") AS "value_change"
+  FROM hourly_totals
+),
+average_hourly_changes AS (
+  SELECT
+    "year",
+    AVG(ABS("value_change")) AS "average_hourly_change"
+  FROM hourly_changes
+  WHERE "value_change" IS NOT NULL
+  GROUP BY "year"
+)
+SELECT
+  (SELECT "average_hourly_change" FROM average_hourly_changes WHERE "year" = 2020) -
+  (SELECT "average_hourly_change" FROM average_hourly_changes WHERE "year" = 2019)
+AS "difference_in_average_hourly_change";

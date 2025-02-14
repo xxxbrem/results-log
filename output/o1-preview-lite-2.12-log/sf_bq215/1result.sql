@@ -1,76 +1,41 @@
-WITH patent_citations AS (
-  SELECT
-    p."publication_number" AS "citing_pub_num",
-    c.value:"publication_number"::STRING AS "cited_pub_num"
-  FROM
-    PATENTS.PATENTS.PUBLICATIONS p,
-    LATERAL FLATTEN(input => p."citation") AS c
-  WHERE
-    p."country_code" = 'US'
-    AND p."kind_code" = 'B2'
-    AND p."grant_date" BETWEEN 20150101 AND 20181231
+WITH ipc_counts AS (
+  SELECT 
+    t1."publication_number",
+    SUBSTR(fipc.value::VARIANT:"code"::STRING, 1, 4) AS "ipc4_code",
+    COUNT(*) AS "occurrences_per_ipc"
+  FROM PATENTS.PATENTS.PUBLICATIONS t1
+  CROSS JOIN LATERAL FLATTEN(input => t1."citation") fc
+  JOIN PATENTS.PATENTS.PUBLICATIONS cp ON fc.value::VARIANT:"publication_number"::STRING = cp."publication_number"
+  CROSS JOIN LATERAL FLATTEN(input => cp."ipc") fipc
+  WHERE t1."country_code" = 'US'
+    AND t1."kind_code" = 'B2'
+    AND t1."grant_date" BETWEEN 20150101 AND 20181231
+  GROUP BY t1."publication_number", "ipc4_code"
 ),
-cited_ipc_codes AS (
-  SELECT
-    p."publication_number" AS "cited_pub_num",
-    SUBSTR(ipc.value:"code"::STRING, 1, 4) AS "ipc_code"
-  FROM
-    PATENTS.PATENTS.PUBLICATIONS p,
-    LATERAL FLATTEN(input => p."ipc") AS ipc
+total_occurrences AS (
+  SELECT 
+    "publication_number",
+    SUM("occurrences_per_ipc") AS "total_occurrences"
+  FROM ipc_counts
+  GROUP BY "publication_number"
 ),
-citations_with_ipc AS (
+sum_occurrences_squared AS (
   SELECT
-    pc."citing_pub_num",
-    cic."ipc_code"
-  FROM
-    patent_citations pc
-  LEFT JOIN cited_ipc_codes cic
-    ON pc."cited_pub_num" = cic."cited_pub_num"
-  WHERE
-    cic."ipc_code" IS NOT NULL
-),
-total_citations AS (
-  SELECT
-    "citing_pub_num",
-    COUNT(*) AS "n_i"
-  FROM
-    citations_with_ipc
-  GROUP BY
-    "citing_pub_num"
-),
-ipc_citation_counts AS (
-  SELECT
-    "citing_pub_num",
-    "ipc_code",
-    COUNT(*) AS "n_ik"
-  FROM
-    citations_with_ipc
-  GROUP BY
-    "citing_pub_num",
-    "ipc_code"
-),
-originality_components AS (
-  SELECT
-    icc."citing_pub_num",
-    SUM(POWER(icc."n_ik"::FLOAT / tc."n_i"::FLOAT, 2)) AS "sum_sq"
-  FROM
-    ipc_citation_counts icc
-  JOIN total_citations tc
-    ON icc."citing_pub_num" = tc."citing_pub_num"
-  GROUP BY
-    icc."citing_pub_num"
+    "publication_number",
+    SUM(POWER("occurrences_per_ipc", 2)) AS "sum_occurrences_per_ipc_squared"
+  FROM ipc_counts
+  GROUP BY "publication_number"
 ),
 originality_scores AS (
   SELECT
-    oc."citing_pub_num" AS "publication_number",
-    1 - oc."sum_sq" AS "originality_score"
-  FROM
-    originality_components oc
+    t."publication_number",
+    1 - (s."sum_occurrences_per_ipc_squared" / POWER(t."total_occurrences", 2)) AS "originality_score"
+  FROM total_occurrences t
+  JOIN sum_occurrences_squared s ON t."publication_number" = s."publication_number"
+  WHERE t."total_occurrences" > 0
 )
-SELECT
-  "publication_number"
-FROM
-  originality_scores
-ORDER BY
-  "originality_score" DESC NULLS LAST
+
+SELECT "publication_number" AS "Publication_Number", ROUND("originality_score", 4) AS "Originality_Score"
+FROM originality_scores
+ORDER BY "originality_score" DESC NULLS LAST, "publication_number" ASC
 LIMIT 1;

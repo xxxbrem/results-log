@@ -1,19 +1,10 @@
-SELECT
-    u."UserName",
-    COALESCE(received."UpvotesReceived", 0) AS "Upvotes_Received",
-    COALESCE(given."UpvotesGiven", 0) AS "Upvotes_Given"
-FROM
-    "META_KAGGLE"."META_KAGGLE"."USERS" u
-LEFT JOIN (
-    SELECT "ToUserId", COUNT(*) AS "UpvotesReceived"
-    FROM "META_KAGGLE"."META_KAGGLE"."FORUMMESSAGEVOTES"
-    GROUP BY "ToUserId"
-) received ON u."Id" = received."ToUserId"
-LEFT JOIN (
-    SELECT "FromUserId", COUNT(*) AS "UpvotesGiven"
-    FROM "META_KAGGLE"."META_KAGGLE"."FORUMMESSAGEVOTES"
-    GROUP BY "FromUserId"
-) given ON u."Id" = given."FromUserId"
-WHERE received."UpvotesReceived" IS NOT NULL
-ORDER BY received."UpvotesReceived" DESC NULLS LAST
+SELECT u."UserName",
+       COUNT(v."Id") AS "Total_upvotes_received",
+       (SELECT COUNT(vg."Id")
+        FROM META_KAGGLE.META_KAGGLE.FORUMMESSAGEVOTES vg
+        WHERE vg."FromUserId" = u."Id") AS "Total_upvotes_given"
+FROM META_KAGGLE.META_KAGGLE.USERS u
+JOIN META_KAGGLE.META_KAGGLE.FORUMMESSAGEVOTES v ON u."Id" = v."ToUserId"
+GROUP BY u."UserName", u."Id"
+ORDER BY "Total_upvotes_received" DESC NULLS LAST
 LIMIT 3;

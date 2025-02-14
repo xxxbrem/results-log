@@ -1,11 +1,10 @@
-SELECT t."dma_name", SUM(t."score") AS "total_search_score"
-FROM GOOGLE_TRENDS.GOOGLE_TRENDS.TOP_TERMS t
-WHERE t."term" IN (
-    SELECT DISTINCT "term"
+WITH target_week AS (
+    SELECT MAX("week") AS "week"
     FROM GOOGLE_TRENDS.GOOGLE_TRENDS.TOP_RISING_TERMS
-    WHERE "week" = '2022-10-09'
+    WHERE "week" <= DATEADD(year, -1, (SELECT MAX("week") FROM GOOGLE_TRENDS.GOOGLE_TRENDS.TOP_RISING_TERMS))
 )
-AND t."week" = '2022-10-09'
-GROUP BY t."dma_name"
-ORDER BY "total_search_score" DESC NULLS LAST
+SELECT "term"
+FROM GOOGLE_TRENDS.GOOGLE_TRENDS.TOP_RISING_TERMS
+WHERE "week" = (SELECT "week" FROM target_week)
+  AND "rank" = 1
 LIMIT 1;

@@ -5,10 +5,7 @@ WHERE r."repo_name" IN (
     FROM GITHUB_REPOS.GITHUB_REPOS.SAMPLE_FILES AS f
     JOIN GITHUB_REPOS.GITHUB_REPOS.SAMPLE_CONTENTS AS c
       ON f."id" = c."id"
-    WHERE f."path" LIKE '%.py'
-      AND c."size" < 15000
-      AND c."binary" = FALSE
-      AND c."content" LIKE '%def%'
+    WHERE f."path" ILIKE '%.py' AND c."size" < 15000 AND c."content" ILIKE '%def %'
 )
 ORDER BY r."watch_count" DESC NULLS LAST
 LIMIT 3;

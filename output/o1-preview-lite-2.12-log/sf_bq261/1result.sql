@@ -1,32 +1,24 @@
 SELECT
-  "Month",
-  "Product_ID",
-  ROUND("Total_Cost", 4) AS "Total_Cost",
-  ROUND("Total_Profit", 4) AS "Total_Profit"
+    TO_CHAR("order_month", 'YYYY-MM-DD') AS "Month",
+    "product_name" AS "Product_Name",
+    ROUND("total_cost", 4) AS "Total_Cost",
+    ROUND("total_profit", 4) AS "Total_Profit"
 FROM
 (
-  SELECT
-    TO_VARCHAR(TO_TIMESTAMP("oi"."created_at" / 1e6), 'YYYY-MM') AS "Month",
-    "oi"."product_id" AS "Product_ID",
-    SUM("inv"."cost") AS "Total_Cost",
-    SUM("oi"."sale_price" - "inv"."cost") AS "Total_Profit",
-    ROW_NUMBER() OVER (
-      PARTITION BY TO_VARCHAR(TO_TIMESTAMP("oi"."created_at" / 1e6), 'YYYY-MM')
-      ORDER BY SUM("oi"."sale_price" - "inv"."cost") DESC NULLS LAST
-    ) AS "Rank"
-  FROM
-    THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDER_ITEMS AS "oi"
-  INNER JOIN
-    THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.INVENTORY_ITEMS AS "inv"
-    ON "oi"."inventory_item_id" = "inv"."id"
-  WHERE
-    TO_TIMESTAMP("oi"."created_at" / 1e6) < DATE '2024-01-01'
-    AND "oi"."status" = 'Complete'
-  GROUP BY
-    "Month",
-    "Product_ID"
+    SELECT
+        DATE_TRUNC('month', TO_TIMESTAMP_NTZ(oi."created_at" / 1e6)) AS "order_month",
+        p."name" AS "product_name",
+        SUM(p."cost") AS "total_cost",
+        SUM(oi."sale_price" - p."cost") AS "total_profit",
+        ROW_NUMBER() OVER (
+            PARTITION BY DATE_TRUNC('month', TO_TIMESTAMP_NTZ(oi."created_at" / 1e6))
+            ORDER BY SUM(oi."sale_price" - p."cost") DESC NULLS LAST
+        ) AS "rank"
+    FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."ORDER_ITEMS" oi
+    JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE."PRODUCTS" p
+      ON oi."product_id" = p."id"
+    WHERE TO_TIMESTAMP_NTZ(oi."created_at" / 1e6) < '2024-01-01'
+    GROUP BY "order_month", p."name"
 )
-WHERE
-  "Rank" = 1
-ORDER BY
-  "Month" ASC;
+WHERE "rank" = 1
+ORDER BY "order_month" ASC;

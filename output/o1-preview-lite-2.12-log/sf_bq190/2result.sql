@@ -1,54 +1,20 @@
-WITH youngest AS (
-  SELECT
-    "gender",
-    MIN("age") AS "Age"
-  FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.USERS
-  WHERE "gender" IN ('M', 'F')
-    AND "created_at" BETWEEN 1546300800000000 AND 1651276800000000
-  GROUP BY "gender"
-),
-youngest_counts AS (
-  SELECT
-    CASE u."gender"
-      WHEN 'M' THEN 'Male'
-      WHEN 'F' THEN 'Female'
-      ELSE u."gender"
-    END AS "Gender",
-    'Youngest' AS "Age_Type",
-    u."age" AS "Age",
-    COUNT(*) AS "Count"
-  FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.USERS u
-  INNER JOIN youngest y ON u."gender" = y."gender" AND u."age" = y."Age"
-  WHERE u."created_at" BETWEEN 1546300800000000 AND 1651276800000000
-  GROUP BY "Gender", "Age_Type", u."age"
-),
-oldest AS (
-  SELECT
-    "gender",
-    MAX("age") AS "Age"
-  FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.USERS
-  WHERE "gender" IN ('M', 'F')
-    AND "created_at" BETWEEN 1546300800000000 AND 1651276800000000
-  GROUP BY "gender"
-),
-oldest_counts AS (
-  SELECT
-    CASE u."gender"
-      WHEN 'M' THEN 'Male'
-      WHEN 'F' THEN 'Female'
-      ELSE u."gender"
-    END AS "Gender",
-    'Oldest' AS "Age_Type",
-    u."age" AS "Age",
-    COUNT(*) AS "Count"
-  FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.USERS u
-  INNER JOIN oldest o ON u."gender" = o."gender" AND u."age" = o."Age"
-  WHERE u."created_at" BETWEEN 1546300800000000 AND 1651276800000000
-  GROUP BY "Gender", "Age_Type", u."age"
+WITH filtered_users AS (
+    SELECT "gender", "age"
+    FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.USERS
+    WHERE "created_at" BETWEEN 1546300800000000 AND 1651363199999999
 )
-SELECT "Gender", "Age_Type", "Age", "Count"
-FROM youngest_counts
-UNION ALL
-SELECT "Gender", "Age_Type", "Age", "Count"
-FROM oldest_counts
-ORDER BY "Gender", "Age_Type";
+SELECT
+    s."gender" AS "Gender",
+    s."min_age" AS "Min_Age",
+    COUNT(CASE WHEN u."age" = s."min_age" THEN 1 END) AS "Users_with_Min_Age",
+    s."max_age" AS "Max_Age",
+    COUNT(CASE WHEN u."age" = s."max_age" THEN 1 END) AS "Users_with_Max_Age"
+FROM (
+    SELECT "gender", MIN("age") AS "min_age", MAX("age") AS "max_age"
+    FROM filtered_users
+    GROUP BY "gender"
+) s
+JOIN filtered_users u
+    ON u."gender" = s."gender"
+GROUP BY s."gender", s."min_age", s."max_age"
+ORDER BY s."gender";

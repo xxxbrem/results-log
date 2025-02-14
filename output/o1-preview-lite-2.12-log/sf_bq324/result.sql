@@ -1,7 +1,19 @@
-SELECT SUM(d."NumberOfFrames"::INT) AS "Total_number_of_frames"
-FROM IDC.IDC_V17.DICOM_ALL d
-JOIN IDC.IDC_V17.DICOM_METADATA_CURATED_SERIES_LEVEL c
-  ON d."SeriesInstanceUID" = c."SeriesInstanceUID"
-WHERE d."collection_id" = 'tcga_brca'
-  AND d."Modality" = 'SM'
-  AND c."illuminationType_CodeMeaning" = 'Brightfield illumination';
+WITH matching_images AS (
+    SELECT DISTINCT t."SOPInstanceUID"
+    FROM "IDC"."IDC_V17"."DICOM_ALL" t,
+         LATERAL FLATTEN(input => t."SpecimenDescriptionSequence") sds,
+         LATERAL FLATTEN(input => sds.value:"SpecimenPreparationSequence") sps,
+         LATERAL FLATTEN(input => sps.value:"SpecimenPreparationStepContentItemSequence") spscis,
+         LATERAL FLATTEN(input => spscis.value:"ConceptNameCodeSequence") cncs,
+         LATERAL FLATTEN(input => spscis.value:"ConceptCodeSequence") ccs
+    WHERE t."Modality" = 'SM'
+      AND t."collection_id" = 'tcga_brca'
+      AND (
+          cncs.value:"CodeMeaning"::STRING ILIKE '%eosin%'
+          OR ccs.value:"CodeMeaning"::STRING ILIKE '%eosin%'
+          OR spscis.value:"TextValue"::STRING ILIKE '%eosin%'
+      )
+)
+SELECT SUM(TRY_TO_NUMBER(t."NumberOfFrames")) AS "TotalFrames"
+FROM "IDC"."IDC_V17"."DICOM_ALL" t
+JOIN matching_images m ON t."SOPInstanceUID" = m."SOPInstanceUID";

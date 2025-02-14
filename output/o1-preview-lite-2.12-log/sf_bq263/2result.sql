@@ -1,17 +1,24 @@
 SELECT
-  TO_VARCHAR(DATE_TRUNC('month', TO_DATE(TO_TIMESTAMP(oi."created_at" / 1e6))), 'Mon-YYYY') AS "Month",
-  ROUND(SUM(oi."sale_price"), 4) AS "Total_Sales",
-  ROUND(SUM(ii."cost"), 4) AS "Total_Costs",
-  COUNT(DISTINCT oi."order_id") AS "Completed_Order_Count",
-  ROUND(SUM(oi."sale_price" - ii."cost"), 4) AS "Profit",
-  ROUND(SUM(oi."sale_price" - ii."cost") / NULLIF(SUM(oi."sale_price"), 0), 4) AS "Profit_Margin"
-FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDER_ITEMS oi
-JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS p
-  ON oi."product_id" = p."id"
-JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.INVENTORY_ITEMS ii
-  ON oi."inventory_item_id" = ii."id"
-WHERE p."category" = 'Sleep & Lounge'
-  AND oi."status" = 'Complete'
-  AND TO_DATE(TO_TIMESTAMP(oi."created_at" / 1e6)) BETWEEN '2023-01-01' AND '2023-12-31'
-GROUP BY DATE_TRUNC('month', TO_DATE(TO_TIMESTAMP(oi."created_at" / 1e6)))
-ORDER BY DATE_TRUNC('month', TO_DATE(TO_TIMESTAMP(oi."created_at" / 1e6)));
+  TO_CHAR(DATE_TRUNC('month', TO_TIMESTAMP("o"."created_at" / 1000000)), 'Mon-YYYY') AS "Month",
+  ROUND(SUM("oi"."sale_price"), 4) AS "Total_Sales",
+  ROUND(SUM("p"."cost"), 4) AS "Total_Cost",
+  COUNT(DISTINCT "o"."order_id") AS "Number_of_Complete_Orders",
+  ROUND(SUM("oi"."sale_price" - "p"."cost"), 4) AS "Total_Profit",
+  ROUND(SUM("oi"."sale_price" - "p"."cost") / NULLIF(SUM("p"."cost"), 0), 4) AS "Profit_to_Cost_Ratio"
+FROM
+  "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDERS" AS "o"
+JOIN
+  "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDER_ITEMS" AS "oi"
+  ON "o"."order_id" = "oi"."order_id"
+JOIN
+  "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."PRODUCTS" AS "p"
+  ON "oi"."product_id" = "p"."id"
+WHERE
+  "o"."status" = 'Complete'
+  AND "o"."created_at" BETWEEN 1672531200000000 AND 1704067199000000
+  AND "p"."category" = 'Sleep & Lounge'
+GROUP BY
+  "Month"
+ORDER BY
+  MIN("o"."created_at")
+;

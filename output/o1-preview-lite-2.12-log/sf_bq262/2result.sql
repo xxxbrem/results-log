@@ -1,35 +1,46 @@
 WITH monthly_data AS (
   SELECT
-    TO_DATE(TO_CHAR(TO_TIMESTAMP_NTZ("oi"."created_at" / 1e6), 'YYYY-MM-01'), 'YYYY-MM-DD') AS "Month",
-    "p"."category" AS "Product_Category",
-    COUNT(DISTINCT "oi"."order_id") AS "Order_Count",
-    ROUND(SUM("oi"."sale_price"), 4) AS "Revenue",
-    ROUND(SUM("oi"."sale_price" - "p"."cost"), 4) AS "Profit"
-  FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDER_ITEMS AS "oi"
-  JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS AS "p"
-    ON "oi"."product_id" = "p"."id"
-  WHERE TO_TIMESTAMP_NTZ("oi"."created_at" / 1e6) >= '2019-06-01'
-    AND TO_TIMESTAMP_NTZ("oi"."created_at" / 1e6) <= '2019-12-31'
-  GROUP BY 1, 2
+    TO_VARCHAR(TO_TIMESTAMP(oi."created_at" / 1e6), 'YYYY-MM') AS "Month",
+    p."category" AS "Product_Category",
+    COUNT(DISTINCT oi."order_id") AS "Total_Orders",
+    SUM(oi."sale_price") AS "Total_Revenue",
+    SUM(oi."sale_price" - p."cost") AS "Total_Profit"
+  FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDER_ITEMS oi
+  JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS p ON oi."product_id" = p."id"
+  WHERE TO_VARCHAR(TO_TIMESTAMP(oi."created_at" / 1e6), 'YYYY-MM') BETWEEN '2019-06' AND '2019-12'
+  GROUP BY "Month", "Product_Category"
+),
+june_data AS (
+  SELECT 
+    "Product_Category",
+    "Total_Orders" AS "June_Total_Orders",
+    "Total_Revenue" AS "June_Total_Revenue",
+    "Total_Profit" AS "June_Total_Profit"
+  FROM monthly_data
+  WHERE "Month" = '2019-06'
 )
 SELECT
-  TO_CHAR("Month", 'YYYY-MM') AS "Month",
-  "Product_Category",
-  "Order_Count",
-  "Revenue",
-  "Profit",
-  ROUND(
-    (("Order_Count" - LAG("Order_Count") OVER (PARTITION BY "Product_Category" ORDER BY "Month"))
-    / NULLIF(LAG("Order_Count") OVER (PARTITION BY "Product_Category" ORDER BY "Month"), 0)) * 100, 4
-  ) AS "Order_Count_Growth_Rate",
-  ROUND(
-    (("Revenue" - LAG("Revenue") OVER (PARTITION BY "Product_Category" ORDER BY "Month"))
-    / NULLIF(LAG("Revenue") OVER (PARTITION BY "Product_Category" ORDER BY "Month"), 0)) * 100, 4
-  ) AS "Revenue_Growth_Rate",
-  ROUND(
-    (("Profit" - LAG("Profit") OVER (PARTITION BY "Product_Category" ORDER BY "Month"))
-    / NULLIF(LAG("Profit") OVER (PARTITION BY "Product_Category" ORDER BY "Month"), 0)) * 100, 4
-  ) AS "Profit_Growth_Rate"
-FROM monthly_data
-WHERE "Month" >= '2019-07-01' AND "Month" <= '2019-12-01'
-ORDER BY "Month", "Product_Category";
+  md."Month",
+  md."Product_Category",
+  md."Total_Orders",
+  md."Total_Revenue",
+  md."Total_Profit",
+  CASE 
+    WHEN jd."June_Total_Orders" IS NOT NULL AND jd."June_Total_Orders" != 0 THEN 
+      ROUND(((md."Total_Orders" - jd."June_Total_Orders") / jd."June_Total_Orders") * 100, 4)
+    ELSE NULL 
+  END AS "MoM_Growth_Orders(%)",
+  CASE 
+    WHEN jd."June_Total_Revenue" IS NOT NULL AND jd."June_Total_Revenue" != 0 THEN 
+      ROUND(((md."Total_Revenue" - jd."June_Total_Revenue") / jd."June_Total_Revenue") * 100, 4)
+    ELSE NULL 
+  END AS "MoM_Growth_Revenue(%)",
+  CASE 
+    WHEN jd."June_Total_Profit" IS NOT NULL AND jd."June_Total_Profit" != 0 THEN 
+      ROUND(((md."Total_Profit" - jd."June_Total_Profit") / jd."June_Total_Profit") * 100, 4)
+    ELSE NULL 
+  END AS "MoM_Growth_Profit(%)"
+FROM monthly_data md
+LEFT JOIN june_data jd ON md."Product_Category" = jd."Product_Category"
+WHERE md."Month" BETWEEN '2019-07' AND '2019-12'
+ORDER BY md."Month", md."Product_Category";

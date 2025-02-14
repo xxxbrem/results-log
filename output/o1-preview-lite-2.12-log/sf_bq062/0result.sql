@@ -1,39 +1,21 @@
-WITH exploded_licenses AS (
-    SELECT
-        "System",
-        LA.VALUE::STRING AS "License"
-    FROM
-        "DEPS_DEV_V1"."DEPS_DEV_V1"."PACKAGEVERSIONS",
-        LATERAL FLATTEN(INPUT => PARSE_JSON("Licenses")) AS LA
-    WHERE
-        LA.VALUE IS NOT NULL AND LA.VALUE::STRING != ''
+WITH LicenseCounts AS (
+    SELECT t."System",
+           REPLACE(f.value::STRING, '"', '') AS "License",
+           COUNT(*) AS "PackageCount"
+    FROM "DEPS_DEV_V1"."DEPS_DEV_V1"."PACKAGEVERSIONS" t,
+         LATERAL FLATTEN(input => t."Licenses") f
+    WHERE TRIM(REPLACE(f.value::STRING, '"', '')) IS NOT NULL AND TRIM(REPLACE(f.value::STRING, '"', '')) != ''
+    GROUP BY t."System", "License"
 ),
-license_counts AS (
-    SELECT
-        "System",
-        "License",
-        COUNT(*) AS "num_packages"
-    FROM
-        exploded_licenses
-    GROUP BY
-        "System",
-        "License"
-),
-ranked_licenses AS (
-    SELECT
-        "System",
-        "License",
-        "num_packages",
-        RANK() OVER (PARTITION BY "System" ORDER BY "num_packages" DESC NULLS LAST) AS "rank"
-    FROM
-        license_counts
+RankedLicenses AS (
+    SELECT "System",
+           "License",
+           "PackageCount",
+           ROW_NUMBER() OVER (PARTITION BY "System" ORDER BY "PackageCount" DESC NULLS LAST) AS rn
+    FROM LicenseCounts
 )
-SELECT
-    "System",
-    "License" AS "Most_Frequently_Used_License"
-FROM
-    ranked_licenses
-WHERE
-    "rank" = 1
-ORDER BY
-    "System";
+SELECT "System",
+       "License" AS "Most_Frequent_License"
+FROM RankedLicenses
+WHERE rn = 1
+ORDER BY "System";

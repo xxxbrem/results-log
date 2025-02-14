@@ -1,62 +1,54 @@
-WITH daily_data AS (
-    SELECT
-        s."DATE" AS "Date",
-        s."ASIN",
-        s."PRODUCT_TITLE" AS "Product_Title",
-        s."ORDERED_UNITS",
-        s."ORDERED_REVENUE",
-        ROUND(s."ORDERED_REVENUE" / NULLIF(s."ORDERED_UNITS", 0), 4) AS "Average_Selling_Price_ASP",
-        t."GLANCE_VIEWS",
-        ROUND(s."ORDERED_UNITS" / NULLIF(t."GLANCE_VIEWS", 0), 4) AS "Conversion_Rate",
-        s."SHIPPED_UNITS",
-        s."SHIPPED_REVENUE",
-        ROUND(n."NET_PPM", 4) AS "Net_Profit_Margin_PPM",
-        i."SELLABLE_ON_HAND_UNITS" AS "Inventory_Details"
-    FROM
-        AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET.PUBLIC.RETAIL_ANALYTICS_SALES s
-        LEFT JOIN AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET.PUBLIC.RETAIL_ANALYTICS_TRAFFIC t
-            ON s."ASIN" = t."ASIN"
-            AND s."DATE" = t."DATE"
-            AND t."DISTRIBUTOR_VIEW" = 'Manufacturing'
-        LEFT JOIN AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET.PUBLIC.RETAIL_ANALYTICS_NET_PPM n
-            ON s."ASIN" = n."ASIN"
-            AND s."DATE" = n."DATE"
-            AND n."DISTRIBUTOR_VIEW" = 'Manufacturing'
-        LEFT JOIN AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET.PUBLIC.RETAIL_ANALYTICS_INVENTORY i
-            ON s."ASIN" = i."ASIN"
-            AND s."DATE" = i."DATE"
-            AND i."DISTRIBUTOR_VIEW" = 'Manufacturing'
-    WHERE
-        s."DATE" BETWEEN '2022-01-07' AND '2022-02-06'
-        AND s."DISTRIBUTOR_VIEW" = 'Manufacturing'
-)
 SELECT
-    dd."Date",
-    dd."ASIN",
-    dd."Product_Title",
-    dd."ORDERED_UNITS",
-    dd."ORDERED_REVENUE",
-    dd."Average_Selling_Price_ASP",
-    dd."GLANCE_VIEWS",
-    dd."Conversion_Rate",
-    dd."SHIPPED_UNITS",
-    dd."SHIPPED_REVENUE",
-    dd."Net_Profit_Margin_PPM",
-    dd."Inventory_Details",
-    SUM(dd."ORDERED_UNITS") OVER (PARTITION BY dd."ASIN") AS "Total_Ordered_Units",
-    ROUND(AVG(dd."ORDERED_UNITS") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Ordered_Units",
-    SUM(dd."ORDERED_REVENUE") OVER (PARTITION BY dd."ASIN") AS "Total_Ordered_Revenue",
-    ROUND(AVG(dd."ORDERED_REVENUE") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Ordered_Revenue",
-    ROUND(AVG(dd."Average_Selling_Price_ASP") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Selling_Price_ASP_Avg",
-    SUM(dd."GLANCE_VIEWS") OVER (PARTITION BY dd."ASIN") AS "Total_Glance_Views",
-    ROUND(AVG(dd."GLANCE_VIEWS") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Glance_Views",
-    ROUND(AVG(dd."Conversion_Rate") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Conversion_Rate",
-    SUM(dd."SHIPPED_UNITS") OVER (PARTITION BY dd."ASIN") AS "Total_Shipped_Units",
-    ROUND(AVG(dd."SHIPPED_UNITS") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Shipped_Units",
-    SUM(dd."SHIPPED_REVENUE") OVER (PARTITION BY dd."ASIN") AS "Total_Shipped_Revenue",
-    ROUND(AVG(dd."SHIPPED_REVENUE") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Shipped_Revenue",
-    ROUND(AVG(dd."Net_Profit_Margin_PPM") OVER (PARTITION BY dd."ASIN"), 4) AS "Average_Net_Profit_Margin_PPM"
+    s."DATE" AS "date",
+    s."ASIN",
+    s."PROGRAM" AS "program",
+    s."PERIOD" AS "period",
+    s."DISTRIBUTOR_VIEW" AS "distributor_view",
+    SUM(s."ORDERED_UNITS") AS "total_ordered_units",
+    SUM(s."ORDERED_REVENUE") AS "ordered_revenue",
+    ROUND(SUM(s."ORDERED_REVENUE") / NULLIF(SUM(s."ORDERED_UNITS"), 0), 4) AS "average_selling_price",
+    SUM(t."GLANCE_VIEWS") AS "glance_views",
+    ROUND(SUM(s."ORDERED_UNITS") / NULLIF(SUM(t."GLANCE_VIEWS"), 0), 4) AS "conversion_rate",
+    SUM(s."SHIPPED_UNITS") AS "shipped_units",
+    SUM(s."SHIPPED_REVENUE") AS "shipped_revenue",
+    ROUND(AVG(n."NET_PPM"), 4) AS "average_net_ppm",
+    ROUND(AVG(i."PROCURABLE_PRODUCT_OOS"), 4) AS "average_procurable_product_oos",
+    ROUND(AVG(i."SELLABLE_ON_HAND_UNITS"), 4) AS "total_on_hand_units",
+    ROUND(AVG(i."SELLABLE_ON_HAND_INVENTORY"), 4) AS "total_on_hand_value",
+    SUM(i."NET_RECEIVED_UNITS") AS "net_received_units",
+    SUM(i."NET_RECEIVED") AS "net_received_value",
+    SUM(i."OPEN_PURCHASE_ORDER_QUANTITY") AS "open_purchase_order_quantities",
+    SUM(i."UNFILLED_CUSTOMER_ORDERED_UNITS") AS "unfilled_customer_ordered_units",
+    ROUND(AVG(i."VENDOR_CONFIRMATION_RATE"), 4) AS "average_vendor_confirmation_rate",
+    ROUND(AVG(i."RECEIVE_FILL_RATE"), 4) AS "receive_fill_rate",
+    ROUND(AVG(i."SELL_THROUGH_RATE"), 4) AS "sell_through_rate",
+    ROUND(AVG(i."OVERALL_VENDOR_LEAD_TIME_DAYS"), 4) AS "vendor_lead_time"
 FROM
-    daily_data dd
+    "AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET"."PUBLIC"."RETAIL_ANALYTICS_SALES" s
+LEFT JOIN
+    "AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET"."PUBLIC"."RETAIL_ANALYTICS_TRAFFIC" t
+    ON s."DATE" = t."DATE" AND
+       s."ASIN" = t."ASIN" AND
+       s."DISTRIBUTOR_VIEW" = t."DISTRIBUTOR_VIEW"
+LEFT JOIN
+    "AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET"."PUBLIC"."RETAIL_ANALYTICS_INVENTORY" i
+    ON s."DATE" = i."DATE" AND
+       s."ASIN" = i."ASIN" AND
+       s."DISTRIBUTOR_VIEW" = i."DISTRIBUTOR_VIEW"
+LEFT JOIN
+    "AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET"."PUBLIC"."RETAIL_ANALYTICS_NET_PPM" n
+    ON s."DATE" = n."DATE" AND
+       s."ASIN" = n."ASIN" AND
+       s."DISTRIBUTOR_VIEW" = n."DISTRIBUTOR_VIEW"
+WHERE
+    s."DATE" BETWEEN '2022-01-07' AND '2022-02-06' AND
+    s."DISTRIBUTOR_VIEW" = 'Manufacturing'
+GROUP BY
+    s."DATE",
+    s."ASIN",
+    s."PROGRAM",
+    s."PERIOD",
+    s."DISTRIBUTOR_VIEW"
 ORDER BY
-    dd."Date", dd."ASIN";
+    s."DATE",
+    s."ASIN";

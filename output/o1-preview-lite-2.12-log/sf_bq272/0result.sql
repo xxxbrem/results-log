@@ -1,38 +1,27 @@
-WITH monthly_profits AS (
-    SELECT
-        TO_CHAR(TO_TIMESTAMP(oi."created_at" / 1e6), 'Mon-YYYY') AS "Month",
-        p."name" AS "Product_Name",
-        ROUND(SUM(oi."sale_price" - p."cost"), 4) AS "Total_Profit"
-    FROM
-        "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDER_ITEMS" AS oi
-    INNER JOIN
-        "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."PRODUCTS" AS p
-        ON oi."product_id" = p."id"
-    WHERE
-        oi."status" NOT IN ('Cancelled', 'Returned')
-        AND TO_TIMESTAMP(oi."created_at" / 1e6) >= TO_TIMESTAMP('2019-01-01', 'YYYY-MM-DD')
-        AND TO_TIMESTAMP(oi."created_at" / 1e6) < TO_TIMESTAMP('2022-09-01', 'YYYY-MM-DD')
-    GROUP BY
-        "Month",
-        p."name"
-),
-ranked_profits AS (
-    SELECT
-        "Month",
-        "Product_Name",
-        "Total_Profit",
-        RANK() OVER (PARTITION BY "Month" ORDER BY "Total_Profit" DESC NULLS LAST) AS rank
-    FROM
-        monthly_profits
-)
-SELECT
-    "Month",
-    "Product_Name",
-    "Total_Profit"
-FROM
-    ranked_profits
-WHERE
-    rank <= 3
-ORDER BY
-    "Month",
-    rank;
+SELECT 
+    TO_CHAR(TO_TIMESTAMP_NTZ(oi."created_at" / 1000000), 'Mon-YYYY') AS "Month",
+    p."name" AS "Product_Name",
+    SUM(oi."sale_price") - SUM(ii."cost") AS "Profit"
+FROM 
+    "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDER_ITEMS" AS oi
+JOIN 
+    "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."INVENTORY_ITEMS" AS ii
+    ON oi."inventory_item_id" = ii."id"
+JOIN 
+    "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."PRODUCTS" AS p
+    ON oi."product_id" = p."id"
+WHERE 
+    oi."status" NOT IN ('Cancelled', 'Returned')
+    AND oi."returned_at" IS NULL
+    AND oi."created_at" >= 1546300800000000  -- January 1, 2019 in microseconds
+    AND oi."created_at" < 1661990400000000   -- September 1, 2022 in microseconds
+GROUP BY 
+    "Month", p."name"
+QUALIFY 
+    ROW_NUMBER() OVER (
+        PARTITION BY "Month"
+        ORDER BY SUM(oi."sale_price") - SUM(ii."cost") DESC
+    ) <= 3
+ORDER BY 
+    "Month" ASC,
+    "Profit" DESC NULLS LAST;

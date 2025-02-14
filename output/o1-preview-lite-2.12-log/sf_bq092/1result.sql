@@ -1,40 +1,41 @@
-WITH received AS (
-    SELECT 
-        f.value::STRING AS "Address",
-        t."type" AS "Type",
-        SUM(t."value") AS "TotalReceived"
-    FROM "CRYPTO"."CRYPTO_BITCOIN_CASH"."OUTPUTS" t,
-    LATERAL FLATTEN(input => t."addresses") f
-    WHERE t."block_timestamp" BETWEEN 1680307200000000 AND 1682899199000000
-    GROUP BY "Address", "Type"
-),
-sent AS (
-    SELECT 
-        f.value::STRING AS "Address",
-        t."type" AS "Type",
-        SUM(t."value") AS "TotalSent"
-    FROM "CRYPTO"."CRYPTO_BITCOIN_CASH"."INPUTS" t,
-    LATERAL FLATTEN(input => t."addresses") f
-    WHERE t."block_timestamp" BETWEEN 1680307200000000 AND 1682899199000000
-    GROUP BY "Address", "Type"
-),
-net_changes AS (
+WITH net_balances AS (
+  SELECT
+    "address",
+    SUM("total_credits") - SUM("total_debits") AS "resulting_balance"
+  FROM (
+    -- Credits (Outputs)
     SELECT
-        COALESCE(r."Address", s."Address") AS "Address",
-        COALESCE(r."Type", s."Type") AS "Type",
-        ROUND(COALESCE(r."TotalReceived", 0) - COALESCE(s."TotalSent", 0), 4) AS "NetChange"
-    FROM received r
-    FULL OUTER JOIN sent s ON r."Address" = s."Address" AND r."Type" = s."Type"
-),
-ranked_net_changes AS (
+      f.value::STRING AS "address",
+      0 AS "total_debits",
+      t."value" AS "total_credits"
+    FROM
+      "CRYPTO"."CRYPTO_DASH"."OUTPUTS" t,
+      LATERAL FLATTEN(input => t."addresses") f
+    WHERE
+      t."block_timestamp" BETWEEN 1680307200000000 AND 1682812799000000
+
+    UNION ALL
+
+    -- Debits (Inputs)
     SELECT
-        "Address",
-        "Type",
-        "NetChange",
-        ROW_NUMBER() OVER (ORDER BY "NetChange" DESC NULLS LAST) AS rn_desc,
-        ROW_NUMBER() OVER (ORDER BY "NetChange" ASC NULLS LAST) AS rn_asc
-    FROM net_changes
+      f.value::STRING AS "address",
+      t."value" AS "total_debits",
+      0 AS "total_credits"
+    FROM
+      "CRYPTO"."CRYPTO_DASH"."INPUTS" t,
+      LATERAL FLATTEN(input => t."addresses") f
+    WHERE
+      t."block_timestamp" BETWEEN 1680307200000000 AND 1682812799000000
+  ) GROUP BY "address"
 )
-SELECT "Address", "Type", "NetChange"
-FROM ranked_net_changes
-WHERE rn_desc = 1 OR rn_asc = 1;
+SELECT "address", ROUND("resulting_balance", 4) AS "resulting_balance"
+FROM (
+  SELECT
+    "address",
+    "resulting_balance",
+    RANK() OVER (ORDER BY "resulting_balance" DESC NULLS LAST) AS rank_desc,
+    RANK() OVER (ORDER BY "resulting_balance" ASC NULLS LAST) AS rank_asc
+  FROM net_balances
+)
+WHERE rank_desc = 1 OR rank_asc = 1
+ORDER BY "resulting_balance" DESC NULLS LAST;

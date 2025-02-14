@@ -1,32 +1,20 @@
-After comparing the three SQL queries and their results, **Option 2 (2result.sql)** is the correct choice. Here's the reasoning:
+After comparing the two SQL queries, **`2result.sql`** is the more accurate and reliable choice.
 
-**Option 0 (0result.sql):**
+**Reason:**
 
-- **Approach:** Extracts product IDs from URIs like `/product/ID`, joins with `PRODUCTS` to get categories, filters to the top category (`Intimates`), computes session durations.
-- **Result:** Average time is **0.0011 minutes** (~0.066 seconds).
-- **Issue:** The average session duration is implausibly low, indicating that the method might not be capturing all relevant sessions or events accurately.
+- **Product ID Extraction:**
+  - **`2result.sql`** uses `REGEXP_SUBSTR` to extract the product ID from the `"uri"` field with the pattern `/product/(\d+)`. This method accurately captures URIs that represent product pages.
+  - **`0result.sql`** uses `SPLIT_PART` to extract the third segment of the URI, which assumes that the product ID is always in that position. This method may not account for URIs with different structures, potentially leading to incorrect product ID extraction.
 
-**Option 1 (1result.sql):**
+- **Completeness:**
+  - **`2result.sql`** covers all possible URIs that match the `/product/ID` pattern, ensuring that all relevant product page views are included in the calculation.
+  - **`0result.sql`** may miss or incorrectly include URIs due to its reliance on position-based splitting.
 
-- **Approach:** Attempts to find sessions where users visited the category page for the top category (`Intimates`) by manipulating URIs.
-- **Result:** Average time is **645.5144 minutes** (~10.75 hours).
-- **Issue:** The average session duration is unrealistically high, suggesting that sessions may include long periods of inactivity or that the calculation is skewed by outliers.
+- **Consistent Results:**
+  - Both queries produce the same final result, identifying **'Intimates'** as the category with the highest total quantity purchased and calculating an average time of **4.4675 minutes** spent on each product page visit.
+  - However, the method used in **`2result.sql`** is more robust and less prone to errors, ensuring the reliability of the result.
 
-**Option 2 (2result.sql):**
-
-- **Approach:** Selects events where the URI contains `'Intimates'`, calculates session durations per session, computes the average.
-- **Result:** Average time is **1.6737 minutes** (~1 minute and 40 seconds).
-- **Validity:**
-  - This method accurately identifies sessions where users interacted with the top category by checking if `'Intimates'` is present in the URI.
-  - It calculates session durations correctly by taking the difference between the maximum and minimum `created_at` timestamps per session.
-  - The average session duration is plausible and aligns with typical user behavior on e-commerce sites.
-
-**Conclusion:**
-
-- **Option 2** provides a reasonable and accurate calculation of the average time users spend per visit on the product category with the highest total quantity purchased.
-- It effectively filters relevant sessions and performs the necessary computations without overcomplicating the process or introducing significant errors.
-
-Therefore, the correct SQL is:
+Therefore, the correct SQL to use is:
 
 ```plaintext
 2result.sql

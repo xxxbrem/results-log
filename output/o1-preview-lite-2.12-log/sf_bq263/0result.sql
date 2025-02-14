@@ -1,27 +1,16 @@
-WITH sales_data AS (
-    SELECT
-        DATE_TRUNC('month', TO_TIMESTAMP(oi."created_at" / 1e6)) AS "Month",
-        oi."sale_price",
-        ii."cost",
-        (oi."sale_price" - ii."cost") AS "Profit",
-        oi."order_id"
-    FROM THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDER_ITEMS oi
-    JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS p ON p."id" = oi."product_id"
-    JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.INVENTORY_ITEMS ii ON ii."id" = oi."inventory_item_id"
-    JOIN THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDERS o ON o."order_id" = oi."order_id"
-    WHERE
-        p."category" = 'Sleep & Lounge'
-        AND o."status" = 'Complete'
-        AND oi."created_at" >= 1672531200000000
-        AND oi."created_at" < 1704067200000000
-)
-SELECT
-    TO_CHAR("Month", 'Mon-YYYY') AS "Month",
-    ROUND(SUM("sale_price"), 4) AS "Total_Sales",
-    ROUND(SUM("cost"), 4) AS "Total_Costs",
-    COUNT(DISTINCT "order_id") AS "Completed_Order_Count",
-    ROUND(SUM("Profit"), 4) AS "Profit",
-    ROUND((SUM("Profit") / NULLIF(SUM("sale_price"), 0)) * 100, 4) AS "Profit_Margin"
-FROM sales_data
+SELECT DATE_TRUNC('month', TO_TIMESTAMP(o."created_at" / 1e6)) AS "Month",
+       SUM(oi."sale_price") AS "Total_Sales",
+       SUM(p."cost") AS "Total_Cost",
+       COUNT(DISTINCT o."order_id") AS "Number_of_Complete_Orders",
+       SUM(oi."sale_price" - p."cost") AS "Total_Profit",
+       ROUND(SUM(oi."sale_price" - p."cost") / NULLIF(SUM(p."cost"), 0), 4) AS "Profit_to_Cost_Ratio"
+FROM "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDERS" o
+JOIN "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."ORDER_ITEMS" oi
+  ON o."order_id" = oi."order_id"
+JOIN "THELOOK_ECOMMERCE"."THELOOK_ECOMMERCE"."PRODUCTS" p
+  ON oi."product_id" = p."id"
+WHERE o."status" = 'Complete'
+  AND TO_TIMESTAMP(o."created_at" / 1e6) BETWEEN '2023-01-01' AND '2023-12-31 23:59:59'
+  AND p."category" = 'Sleep & Lounge'
 GROUP BY "Month"
 ORDER BY "Month";

@@ -1,29 +1,29 @@
 SELECT
-  ROUND(
-    (
-      SELECT COUNT(*)
-      FROM "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" f
-      JOIN "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" c
-        ON f."id" = c."id"
-      WHERE f."path" ILIKE '%readme.md%'
-        AND c."content" ILIKE '%Copyright (c)%'
-        AND f."repo_name" NOT IN (
-          SELECT DISTINCT l."repo_name"
-          FROM "GITHUB_REPOS"."GITHUB_REPOS"."LANGUAGES" l,
-            LATERAL FLATTEN(input => l."language") lang
-          WHERE lang.VALUE::STRING ILIKE '%python%'
+    (SELECT COUNT(*)::FLOAT
+    FROM GITHUB_REPOS.GITHUB_REPOS.SAMPLE_CONTENTS sc
+    WHERE LOWER(sc."sample_path") LIKE '%readme.md%'
+      AND LOWER(sc."content") LIKE '%copyright (c)%'
+      AND sc."sample_repo_name" IN (
+          SELECT DISTINCT t."repo_name"
+          FROM GITHUB_REPOS.GITHUB_REPOS.LANGUAGES t
+          WHERE t."repo_name" NOT IN (
+              SELECT DISTINCT t2."repo_name"
+              FROM GITHUB_REPOS.GITHUB_REPOS.LANGUAGES t2,
+                   LATERAL FLATTEN(input => t2."language") f
+              WHERE LOWER(f.value::STRING) LIKE '%python%'
+          )
+      )
+    ) / 
+    (SELECT COUNT(*)
+    FROM GITHUB_REPOS.GITHUB_REPOS.SAMPLE_CONTENTS sc
+    WHERE sc."sample_repo_name" IN (
+        SELECT DISTINCT t."repo_name"
+        FROM GITHUB_REPOS.GITHUB_REPOS.LANGUAGES t
+        WHERE t."repo_name" NOT IN (
+            SELECT DISTINCT t2."repo_name"
+            FROM GITHUB_REPOS.GITHUB_REPOS.LANGUAGES t2,
+                 LATERAL FLATTEN(input => t2."language") f
+            WHERE LOWER(f.value::STRING) LIKE '%python%'
         )
-    )::FLOAT /
-    (
-      SELECT COUNT(*)
-      FROM "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" f
-      WHERE f."path" ILIKE '%readme.md%'
-        AND f."repo_name" NOT IN (
-          SELECT DISTINCT l."repo_name"
-          FROM "GITHUB_REPOS"."GITHUB_REPOS"."LANGUAGES" l,
-            LATERAL FLATTEN(input => l."language") lang
-          WHERE lang.VALUE::STRING ILIKE '%python%'
-        )
-    ),
-    4
-  ) AS "proportion";
+    )
+    ) AS "Proportion";

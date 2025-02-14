@@ -1,24 +1,24 @@
 WITH months AS (
-  SELECT
-    YEAR(DATEADD(month, ROW_NUMBER() OVER (ORDER BY NULL) - 1, '2008-01-01')) AS "Year",
-    MONTH(DATEADD(month, ROW_NUMBER() OVER (ORDER BY NULL) - 1, '2008-01-01')) AS "Month"
-  FROM TABLE(GENERATOR(ROWCOUNT => 180))
+    SELECT
+        TO_CHAR(DATEADD(month, ROW_NUMBER() OVER (ORDER BY NULL) - 1, TO_DATE('2008-01-01', 'YYYY-MM-DD')), 'YYYYMM') AS "filing_year_month"
+    FROM
+        TABLE(GENERATOR(ROWCOUNT => 180))
 ),
-counts AS (
-  SELECT
-    YEAR(TRY_TO_DATE("filing_date"::STRING, 'YYYYMMDD')) AS "Year",
-    MONTH(TRY_TO_DATE("filing_date"::STRING, 'YYYYMMDD')) AS "Month",
-    COUNT(*) AS "Num_Publications"
-  FROM PATENTS.PATENTS.PUBLICATIONS
-  WHERE "country_code" = 'US'
-    AND "abstract_localized" IS NOT NULL
-    AND ARRAY_SIZE("abstract_localized") > 0
-    AND "abstract_localized"[0]:"text"::STRING ILIKE '%internet of things%'
-    AND TRY_TO_DATE("filing_date"::STRING, 'YYYYMMDD') IS NOT NULL
-    AND YEAR(TRY_TO_DATE("filing_date"::STRING, 'YYYYMMDD')) BETWEEN 2008 AND 2022
-  GROUP BY "Year", "Month"
+filings AS (
+    SELECT 
+        SUBSTR(t."filing_date"::VARCHAR, 1, 6) AS "filing_year_month",
+        COUNT(DISTINCT t."publication_number") AS "num_filings"
+    FROM PATENTS.PATENTS.PUBLICATIONS t,
+         LATERAL FLATTEN(INPUT => t."abstract_localized") f
+    WHERE t."country_code" = 'US'
+      AND LOWER(f.value:"text"::STRING) LIKE '%internet of things%'
+      AND t."filing_date" BETWEEN 20080101 AND 20221231
+    GROUP BY "filing_year_month"
 )
-SELECT m."Year", m."Month", COALESCE(c."Num_Publications", 0) AS "Num_Publications"
+SELECT
+    TO_CHAR(TO_DATE(m."filing_year_month" || '01', 'YYYYMMDD'), 'Month') AS "Month",
+    TO_NUMBER(SUBSTR(m."filing_year_month", 1, 4)) AS "Year",
+    COALESCE(f."num_filings", 0) AS "Number_of_filings"
 FROM months m
-LEFT JOIN counts c ON m."Year" = c."Year" AND m."Month" = c."Month"
-ORDER BY m."Year", m."Month";
+LEFT JOIN filings f ON m."filing_year_month" = f."filing_year_month"
+ORDER BY m."filing_year_month";

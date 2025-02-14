@@ -1,6 +1,9 @@
-SELECT COUNT(*) AS "Total_pull_requests"
-FROM "GITHUB_REPOS_DATE"."YEAR"."_2023" e
-WHERE e."type" = 'PullRequestEvent'
-  AND PARSE_JSON(e."payload"):"action"::STRING = 'opened'
-  AND PARSE_JSON(e."payload"):"pull_request":"base":"repo":"language"::STRING = 'JavaScript'
-  AND e."created_at" >= 1674000000000000 AND e."created_at" < 1674086400000000;
+SELECT COUNT(*) AS "Number_of_Pull_Requests"
+FROM "GITHUB_REPOS_DATE"."DAY"."_20230118" e
+JOIN (
+    SELECT DISTINCT "repo_name"
+    FROM "GITHUB_REPOS_DATE"."GITHUB_REPOS"."LANGUAGES", LATERAL FLATTEN(input => "language") l
+    WHERE l.value::STRING ILIKE '%JavaScript%'
+) j
+  ON e."repo"::VARIANT:"name"::STRING = j."repo_name"
+WHERE e."type" = 'PullRequestEvent';

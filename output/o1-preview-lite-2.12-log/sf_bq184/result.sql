@@ -1,52 +1,47 @@
-WITH dates AS (
-    SELECT
-        DATEADD('day', ROW_NUMBER() OVER (ORDER BY NULL) - 1, '2017-01-01') AS "Date"
-    FROM TABLE(
-        GENERATOR(ROWCOUNT => 1826)
-    )
+WITH date_list AS (
+    SELECT DATEADD(day, ROW_NUMBER() OVER (ORDER BY NULL) - 1, '2017-01-01') AS "Date"
+    FROM TABLE(GENERATOR(ROWCOUNT => 1826))
 ),
-contracts_created_by_users AS (
+external_creations AS (
     SELECT
-        TO_DATE(TO_TIMESTAMP(t."block_timestamp"::NUMBER / 1000000)) AS "Date",
-        COUNT(*) AS "Contracts_Created_by_Users"
-    FROM
-        CRYPTO.CRYPTO_ETHEREUM.TRANSACTIONS t
-    LEFT JOIN
-        CRYPTO.CRYPTO_ETHEREUM.CONTRACTS c
-    ON
-        t."from_address" = c."address"
+      DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1000000)) AS "Date",
+      COUNT(*) AS "External_Creations"
+    FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRACES"
     WHERE
-        ("to_address" IS NULL OR "to_address" = '')
-        AND c."address" IS NULL  -- Exclude if from_address is a contract
-        AND TO_DATE(TO_TIMESTAMP(t."block_timestamp"::NUMBER / 1000000)) BETWEEN '2017-01-01' AND '2021-12-31'
-    GROUP BY
-        "Date"
+      "trace_type" = 'create' 
+      AND "trace_address" IS NULL
+      AND DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1000000)) BETWEEN '2017-01-01' AND '2021-12-31'
+    GROUP BY "Date"
 ),
-contracts_created_by_contracts AS (
+internal_creations AS (
     SELECT
-        TO_DATE(TO_TIMESTAMP(tr."block_timestamp"::NUMBER / 1000000)) AS "Date",
-        COUNT(*) AS "Contracts_Created_by_Contracts"
-    FROM
-        CRYPTO.CRYPTO_ETHEREUM.TRACES tr
-    INNER JOIN
-        CRYPTO.CRYPTO_ETHEREUM.CONTRACTS c
-    ON
-        tr."from_address" = c."address"
+      DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1000000)) AS "Date",
+      COUNT(*) AS "Internal_Creations"
+    FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRACES"
     WHERE
-        tr."trace_type" = 'create'
-        AND TO_DATE(TO_TIMESTAMP(tr."block_timestamp"::NUMBER / 1000000)) BETWEEN '2017-01-01' AND '2021-12-31'
-    GROUP BY
-        "Date"
+      "trace_type" = 'create' 
+      AND "trace_address" IS NOT NULL
+      AND DATE(TO_TIMESTAMP_NTZ("block_timestamp" / 1000000)) BETWEEN '2017-01-01' AND '2021-12-31'
+    GROUP BY "Date"
 )
 SELECT
-    d."Date",
-    SUM(COALESCE(cu."Contracts_Created_by_Users", 0)) OVER (ORDER BY d."Date") AS "Cumulative_Contracts_Created_by_Users",
-    SUM(COALESCE(cc."Contracts_Created_by_Contracts", 0)) OVER (ORDER BY d."Date") AS "Cumulative_Contracts_Created_by_Contracts"
-FROM
-    dates d
-LEFT JOIN
-    contracts_created_by_users cu ON d."Date" = cu."Date"
-LEFT JOIN
-    contracts_created_by_contracts cc ON d."Date" = cc."Date"
-ORDER BY
-    d."Date";
+    "Date",
+    SUM("External_Creations") OVER (
+        ORDER BY "Date" 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS "Cumulative_External_Creations",
+    SUM("Internal_Creations") OVER (
+        ORDER BY "Date"
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS "Cumulative_Internal_Creations"
+FROM (
+    SELECT
+        dl."Date",
+        COALESCE(ec."External_Creations", 0) AS "External_Creations",
+        COALESCE(ic."Internal_Creations", 0) AS "Internal_Creations"
+    FROM date_list dl
+    LEFT JOIN external_creations ec ON dl."Date" = ec."Date"
+    LEFT JOIN internal_creations ic ON dl."Date" = ic."Date"
+    WHERE dl."Date" BETWEEN '2017-01-01' AND '2021-12-31'
+)
+ORDER BY "Date";

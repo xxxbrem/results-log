@@ -1,27 +1,72 @@
-WITH discharge_stats AS (
-  SELECT
-    COUNT(*) AS total_deaths,
-    COUNT(DISTINCT dr."Age") AS total_ages,
-    (COUNT(*) / COUNT(DISTINCT dr."Age")) AS average_deaths
-  FROM DEATH.DEATH.DEATHRECORDS dr
-  JOIN DEATH.DEATH.RACE r ON dr."Race" = r."Code"
-  JOIN DEATH.DEATH.ICD10CODE icd ON dr."Icd10Code" = icd."Code"
-  WHERE r."Description" = 'White'
-    AND icd."Description" ILIKE '%discharge%'
-    AND icd."Description" NOT ILIKE '%urethral discharge%'
-    AND icd."Description" NOT ILIKE '%firework discharge%'
-    AND icd."Description" NOT ILIKE '%legal intervention involving firearm discharge%'
+WITH discharge_codes AS (
+  SELECT DISTINCT "Code"
+  FROM DEATH.DEATH.ICD10CODE
+  WHERE "Description" ILIKE '%discharge%'
+    AND "Description" NOT IN ('Urethral discharge', 'Discharge of firework', 'Legal intervention involving firearm discharge')
 ),
-vehicle_stats AS (
+vehicle_codes AS (
+  SELECT DISTINCT "Code"
+  FROM DEATH.DEATH.ICD10CODE
+  WHERE "Description" ILIKE '%vehicle%'
+),
+discharge_counts AS (
   SELECT
-    COUNT(*) AS total_deaths,
-    COUNT(DISTINCT dr."Age") AS total_ages,
-    (COUNT(*) / COUNT(DISTINCT dr."Age")) AS average_deaths
-  FROM DEATH.DEATH.DEATHRECORDS dr
-  JOIN DEATH.DEATH.RACE r ON dr."Race" = r."Code"
-  JOIN DEATH.DEATH.ICD10CODE icd ON dr."Icd10Code" = icd."Code"
-  WHERE r."Description" = 'White'
-    AND icd."Description" ILIKE '%vehicle%'
+    ar."Description" AS "AgeGroup",
+    dr."Icd10Code",
+    COUNT(*) AS "DeathCount"
+  FROM
+    DEATH.DEATH.DEATHRECORDS dr
+  JOIN discharge_codes dc ON dr."Icd10Code" = dc."Code"
+  JOIN DEATH.DEATH.AGERECODE27 ar ON dr."AgeRecode27" = ar."Code"
+  WHERE
+    dr."Race" = 1
+  GROUP BY
+    ar."Description", dr."Icd10Code"
+),
+vehicle_counts AS (
+  SELECT
+    ar."Description" AS "AgeGroup",
+    dr."Icd10Code",
+    COUNT(*) AS "DeathCount"
+  FROM
+    DEATH.DEATH.DEATHRECORDS dr
+  JOIN vehicle_codes vc ON dr."Icd10Code" = vc."Code"
+  JOIN DEATH.DEATH.AGERECODE27 ar ON dr."AgeRecode27" = ar."Code"
+  WHERE
+    dr."Race" = 1
+  GROUP BY
+    ar."Description", dr."Icd10Code"
+),
+discharge_avg AS (
+  SELECT
+    "AgeGroup",
+    AVG("DeathCount") AS "AvgDeathsPerCode"
+  FROM
+    discharge_counts
+  GROUP BY
+    "AgeGroup"
+),
+vehicle_avg AS (
+  SELECT
+    "AgeGroup",
+    AVG("DeathCount") AS "AvgDeathsPerCode"
+  FROM
+    vehicle_counts
+  GROUP BY
+    "AgeGroup"
+),
+avg_difference AS (
+  SELECT
+    d."AgeGroup",
+    d."AvgDeathsPerCode" - v."AvgDeathsPerCode" AS "DifferenceInAverageDeathsPerCode"
+  FROM
+    discharge_avg d
+  JOIN vehicle_avg v ON d."AgeGroup" = v."AgeGroup"
 )
-SELECT ROUND((discharge_stats.average_deaths - vehicle_stats.average_deaths), 4) AS "Difference_in_average_deaths"
-FROM discharge_stats, vehicle_stats;
+SELECT
+  "AgeGroup",
+  ROUND("DifferenceInAverageDeathsPerCode", 4) AS "DifferenceInAverageDeathsPerCode"
+FROM
+  avg_difference
+ORDER BY
+  "DifferenceInAverageDeathsPerCode" DESC NULLS LAST;

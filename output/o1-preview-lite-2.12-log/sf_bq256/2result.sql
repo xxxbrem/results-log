@@ -1,35 +1,55 @@
-WITH top_address AS (
-  SELECT "from_address"
-  FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRANSACTIONS"
-  WHERE
-    "receipt_status" = 1
+WITH excluded_transactions AS (
+  SELECT DISTINCT "transaction_hash"
+  FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRACES"
+  WHERE "call_type" IN ('delegatecall', 'callcode', 'staticcall')
     AND "block_timestamp" < 1630454400000000
-    AND "input" = '0x'
+),
+top_address AS (
+  SELECT "from_address" AS address
+  FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRANSACTIONS" t
+  WHERE t."receipt_status" = 1
+    AND t."block_timestamp" < 1630454400000000
+    AND t."hash" NOT IN (SELECT "transaction_hash" FROM excluded_transactions)
   GROUP BY "from_address"
   ORDER BY COUNT(*) DESC NULLS LAST
   LIMIT 1
 ),
 incoming AS (
-  SELECT "to_address", SUM("value") AS total_received
+  SELECT SUM("value") AS total_incoming
   FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRANSACTIONS"
-  WHERE
-    "receipt_status" = 1
+  WHERE "to_address" = (SELECT address FROM top_address)
     AND "block_timestamp" < 1630454400000000
-    AND "input" = '0x'
-  GROUP BY "to_address"
 ),
 outgoing AS (
-  SELECT "from_address",
-         SUM("value" + ("receipt_gas_used" * "receipt_effective_gas_price")) AS total_spent
+  SELECT SUM("value") AS total_outgoing
   FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRANSACTIONS"
-  WHERE
-    "receipt_status" = 1
+  WHERE "from_address" = (SELECT address FROM top_address)
     AND "block_timestamp" < 1630454400000000
-    AND "input" = '0x'
-  GROUP BY "from_address"
+),
+gas_fees AS (
+  SELECT SUM("gas_price" * "receipt_gas_used") AS total_gas_fees
+  FROM "CRYPTO"."CRYPTO_ETHEREUM"."TRANSACTIONS"
+  WHERE "from_address" = (SELECT address FROM top_address)
+    AND "block_timestamp" < 1630454400000000
+),
+miner_rewards AS (
+  SELECT SUM(
+    CASE
+      WHEN "number" <= 4370000 THEN 5 * POWER(10,18)
+      WHEN "number" <= 7280000 THEN 3 * POWER(10,18)
+      ELSE 2 * POWER(10,18)
+    END
+  ) AS total_miner_rewards
+  FROM "CRYPTO"."CRYPTO_ETHEREUM"."BLOCKS"
+  WHERE "miner" = (SELECT address FROM top_address)
+    AND "timestamp" < 1630454400000000
 )
 SELECT
-  ROUND((COALESCE(incoming.total_received, 0) - COALESCE(outgoing.total_spent, 0)) / 1e18, 4) AS "Ether_balance"
-FROM top_address
-LEFT JOIN incoming ON top_address."from_address" = incoming."to_address"
-LEFT JOIN outgoing ON top_address."from_address" = outgoing."from_address";
+  (SELECT address FROM top_address) AS "Address",
+  ROUND((
+    COALESCE((SELECT total_incoming FROM incoming), 0) +
+    COALESCE((SELECT total_miner_rewards FROM miner_rewards), 0) -
+    COALESCE((SELECT total_outgoing FROM outgoing), 0) -
+    COALESCE((SELECT total_gas_fees FROM gas_fees), 0)
+  ) / POWER(10,18), 4) AS "Final_Ether_Balance"
+;

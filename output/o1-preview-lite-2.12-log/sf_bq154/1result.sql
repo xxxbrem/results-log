@@ -1,58 +1,90 @@
-WITH data AS (
-    SELECT 
-        t1."ParticipantBarcode",
-        t2."icd_o_3_histology",
-        LOG(t1."normalized_count", 10) AS "log_expression"
-    FROM 
-        PANCANCER_ATLAS_1.PANCANCER_ATLAS_FILTERED.EBPP_ADJUSTPANCAN_ILLUMINAHISEQ_RNASEQV2_GENEXP_FILTERED t1
-    JOIN 
-        PANCANCER_ATLAS_1.PANCANCER_ATLAS_FILTERED.CLINICAL_PANCAN_PATIENT_WITH_FOLLOWUP_FILTERED t2
-            ON t1."ParticipantBarcode" = t2."bcr_patient_barcode"
-    WHERE 
-        t1."Symbol" = 'IGF2'
-        AND t2."acronym" = 'LGG'
-        AND t1."normalized_count" > 0
+WITH Patient_Expression AS
+(
+    SELECT "ParticipantBarcode", AVG(LOG(10, "normalized_count" +1)) AS "Avg_Log_Expression"
+    FROM PANCANCER_ATLAS_1.PANCANCER_ATLAS_FILTERED.EBPP_ADJUSTPANCAN_ILLUMINAHISEQ_RNASEQV2_GENEXP_FILTERED
+    WHERE "Study" = 'LGG' AND "Symbol" = 'IGF2' AND "normalized_count" IS NOT NULL
+    GROUP BY "ParticipantBarcode"
 ),
-ranks AS (
-    SELECT 
-        d.*,
-        RANK() OVER (ORDER BY d."log_expression" ASC NULLS LAST) AS rank_start
-    FROM data d
+Patient_Data AS
+(
+    SELECT pe."ParticipantBarcode", pe."Avg_Log_Expression", c."icd_o_3_histology"
+    FROM Patient_Expression pe
+    JOIN PANCANCER_ATLAS_1.PANCANCER_ATLAS_FILTERED.CLINICAL_PANCAN_PATIENT_WITH_FOLLOWUP_FILTERED c
+    ON pe."ParticipantBarcode" = c."bcr_patient_barcode"
+    WHERE c."icd_o_3_histology" IS NOT NULL 
+      AND NOT REGEXP_LIKE(c."icd_o_3_histology", '^\\[.*\\]$')
 ),
-average_ranks AS (
-    SELECT 
-        r."ParticipantBarcode",
-        r."icd_o_3_histology",
-        r."log_expression",
-        AVG(r.rank_start) OVER (PARTITION BY r."log_expression") AS avg_rank
-    FROM ranks r
-),
-group_stats AS (
-    SELECT 
-        "icd_o_3_histology",
-        COUNT(*) AS n_i,
-        SUM(avg_rank) AS sum_ranks,
-        AVG(avg_rank) AS R_i
-    FROM average_ranks
+Group_Sizes AS
+(
+    SELECT "icd_o_3_histology", COUNT(*) AS "Group_Size"
+    FROM Patient_Data
     GROUP BY "icd_o_3_histology"
+    HAVING COUNT(*) > 1
 ),
-total_stats AS (
-    SELECT 
-        COUNT(*) AS N,
-        AVG(avg_rank) AS mean_rank
-    FROM average_ranks
+Filtered_Patient_Data AS
+(
+    SELECT pd."ParticipantBarcode", pd."Avg_Log_Expression", pd."icd_o_3_histology"
+    FROM Patient_Data pd
+    JOIN Group_Sizes gs ON pd."icd_o_3_histology" = gs."icd_o_3_histology"
 ),
-sum_term AS (
-    SELECT 
-        SUM(gstats.n_i * POWER(gstats.R_i - tstats.mean_rank, 2)) AS sum_value,
-        tstats.N,
-        tstats.mean_rank
-    FROM group_stats gstats
-    CROSS JOIN total_stats tstats
-    GROUP BY tstats.N, tstats.mean_rank
+Ranked_Values AS
+(
+    SELECT
+        fd."ParticipantBarcode", fd."Avg_Log_Expression", fd."icd_o_3_histology",
+        RANK() OVER (ORDER BY fd."Avg_Log_Expression") AS "Rank"
+    FROM Filtered_Patient_Data fd
+),
+Value_Ranks AS
+(
+    SELECT
+        rv."Avg_Log_Expression",
+        AVG(rv."Rank") AS "Avg_Rank"
+    FROM Ranked_Values rv
+    GROUP BY rv."Avg_Log_Expression"
+),
+Patient_Ranks AS
+(
+    SELECT rv."ParticipantBarcode", rv."Avg_Log_Expression", rv."icd_o_3_histology", vr."Avg_Rank"
+    FROM Ranked_Values rv
+    JOIN Value_Ranks vr ON rv."Avg_Log_Expression" = vr."Avg_Log_Expression"
+),
+Group_Sums AS
+(
+    SELECT pr."icd_o_3_histology", COUNT(*) AS n_i,
+           SUM(pr."Avg_Rank") AS S_i
+    FROM Patient_Ranks pr
+    GROUP BY pr."icd_o_3_histology"
+),
+Overall_Sums AS
+(
+    SELECT
+        SUM(gs.n_i) AS N,
+        SUM(gs.S_i) AS Sum_S_i
+    FROM Group_Sums gs
+),
+Compute_Numerator AS
+(
+    SELECT SUM((gs.S_i * gs.S_i) / gs.n_i) AS Numerator_Term
+    FROM Group_Sums gs
+),
+Compute_Denominator AS
+(
+    SELECT SUM(POWER(pr."Avg_Rank",2)) AS Sum_Q_i
+    FROM Patient_Ranks pr
+),
+H_Score AS
+(
+    SELECT
+        (os.N -1) *
+        (
+            (cn.Numerator_Term - (os.Sum_S_i * os.Sum_S_i) / os.N)
+            /
+            (cd.Sum_Q_i - (os.Sum_S_i * os.Sum_S_i) / os.N)
+        ) AS "Kruskal_Wallis_H_score"
+    FROM Overall_Sums os, Compute_Numerator cn, Compute_Denominator cd
 )
-SELECT 
-    ROUND(
-        (12.0 / (sum_term.N * (sum_term.N + 1))) * sum_term.sum_value, 4
-    ) AS "H-score"
-FROM sum_term;
+
+SELECT
+    (SELECT COUNT(*) FROM Group_Sizes) AS "Total_Groups",
+    (SELECT COUNT(*) FROM Patient_Ranks) AS "Total_Samples",
+    (SELECT ROUND("Kruskal_Wallis_H_score", 4) FROM H_Score) AS "Kruskal_Wallis_H_score";

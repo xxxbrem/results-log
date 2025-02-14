@@ -1,88 +1,63 @@
-WITH us_patents AS (
-    SELECT
-        p."publication_number"
-    FROM
-        PATENTS.PATENTS.PUBLICATIONS p
-    WHERE
-        p."country_code" = 'US'
-        AND p."kind_code" = 'B2'
-        AND p."grant_date" BETWEEN 20150101 AND 20181231
-),
-citing_citations AS (
-    SELECT
-        t."publication_number" AS citing_pub_num,
-        cit.value:"publication_number"::STRING AS cited_publication_number
-    FROM
-        us_patents t
-        JOIN PATENTS.PATENTS.PUBLICATIONS p ON t."publication_number" = p."publication_number",
-        LATERAL FLATTEN(input => p."citation") cit
-    WHERE
-        cit.value:"publication_number" IS NOT NULL
-),
-cited_ipc_codes AS (
-    SELECT
-        cp."publication_number" AS cited_publication_number,
-        SUBSTR(ipc.value:"code"::STRING, 1, 4) AS cited_ipc4_code
-    FROM
-        PATENTS.PATENTS.PUBLICATIONS cp,
-        LATERAL FLATTEN(input => cp."ipc") ipc
-    WHERE
-        ipc.value:"code" IS NOT NULL
-),
-citations_with_ipc AS (
-    SELECT
-        cc.citing_pub_num,
-        cc.cited_publication_number,
-        cic.cited_ipc4_code
-    FROM
-        citing_citations cc
-        LEFT JOIN cited_ipc_codes cic ON cc.cited_publication_number = cic.cited_publication_number
-),
-n_i AS (
-    SELECT
-        citing_pub_num,
-        COUNT(DISTINCT cited_publication_number) AS n_i
-    FROM
-        citing_citations
-    GROUP BY
-        citing_pub_num
-),
-n_i_k AS (
-    SELECT
-        citing_pub_num,
-        cited_ipc4_code,
-        COUNT(DISTINCT cited_publication_number) AS n_i_k
-    FROM
-        citations_with_ipc
-    WHERE
-        cited_ipc4_code IS NOT NULL
-    GROUP BY
-        citing_pub_num,
-        cited_ipc4_code
-),
-originality_calc AS (
-    SELECT
-        n_i.citing_pub_num,
-        n_i.n_i,
-        SUM( POWER(n_i_k.n_i_k::FLOAT / n_i.n_i, 2) ) AS sum_of_squares
-    FROM
-        n_i
-        JOIN n_i_k ON n_i.citing_pub_num = n_i_k.citing_pub_num
-    GROUP BY
-        n_i.citing_pub_num, n_i.n_i
-),
-originality_scores AS (
-    SELECT
-        citing_pub_num AS "Publication_Number",
-        ROUND(1 - sum_of_squares, 4) AS originality
-    FROM
-        originality_calc
-)
 SELECT
-    "Publication_Number"
+    "publication_number",
+    "originality_score"
 FROM
-    originality_scores
-ORDER BY
-    originality DESC NULLS LAST,
-    "Publication_Number"
-LIMIT 1;
+    (
+        WITH t AS (
+            SELECT
+                "publication_number"
+            FROM
+                PATENTS.PATENTS.PUBLICATIONS
+            WHERE
+                "kind_code" = 'B2'
+                AND "grant_date" BETWEEN 20150101 AND 20181231
+                AND "publication_number" LIKE 'US-%'
+        ),
+        nk_table AS (
+            SELECT
+                t."publication_number" AS "publication_number",
+                SUBSTR(ipc_cited.value::VARIANT:"code"::STRING, 1, 4) AS "ipc4_code",
+                COUNT(*) AS "n_k"
+            FROM
+                t
+                JOIN PATENTS.PATENTS.PUBLICATIONS t_pub ON t_pub."publication_number" = t."publication_number"
+                CROSS JOIN LATERAL FLATTEN(input => t_pub."citation") c
+                LEFT JOIN PATENTS.PATENTS.PUBLICATIONS p
+                    ON p."publication_number" = c.value::VARIANT:"publication_number"::STRING
+                LEFT JOIN LATERAL FLATTEN(input => p."ipc") ipc_cited
+            WHERE
+                ipc_cited.value::VARIANT:"code"::STRING IS NOT NULL
+            GROUP BY
+                t."publication_number",
+                SUBSTR(ipc_cited.value::VARIANT:"code"::STRING, 1, 4)
+        ),
+        nk_sums AS (
+            SELECT
+                "publication_number",
+                SUM(POWER("n_k", 2)) AS "sum_nk_squared",
+                SUM("n_k") AS "sum_nk"
+            FROM
+                nk_table
+            GROUP BY
+                "publication_number"
+        ),
+        originality_scores AS (
+            SELECT
+                t."publication_number",
+                CASE WHEN nk_sums."sum_nk" IS NOT NULL AND nk_sums."sum_nk" <> 0
+                    THEN ROUND(1 - (nk_sums."sum_nk_squared" / POWER(nk_sums."sum_nk", 2)), 4)
+                    ELSE 0
+                END AS "originality_score"
+            FROM
+                t
+                LEFT JOIN nk_sums ON t."publication_number" = nk_sums."publication_number"
+        )
+        SELECT
+            "publication_number",
+            "originality_score"
+        FROM
+            originality_scores
+        ORDER BY
+            "originality_score" DESC NULLS LAST
+        LIMIT 1
+    );

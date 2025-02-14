@@ -1,101 +1,74 @@
-WITH monthly_sales AS (
+WITH monthly_category_volume AS (
     SELECT
-        DATE_TRUNC('month', "date") AS "Month",
-        SUM("volume_sold_liters") AS "Total_Monthly_Volume_Liters"
-    FROM
-        "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
-    WHERE
-        "date" >= DATEADD(month, -24, DATE '2020-04-01')
-        AND "date" < DATE '2020-05-01'
+        DATE_TRUNC('month', "date") AS "month",
+        "category_name",
+        SUM("volume_sold_liters") AS "category_volume"
+    FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
+    WHERE "date" >= '2022-01-01'
+      AND "date" < DATE_TRUNC('month', CURRENT_DATE)
+    GROUP BY
+        DATE_TRUNC('month', "date"),
+        "category_name"
+),
+monthly_total_volume AS (
+    SELECT
+        DATE_TRUNC('month', "date") AS "month",
+        SUM("volume_sold_liters") AS "total_volume"
+    FROM "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
+    WHERE "date" >= '2022-01-01'
+      AND "date" < DATE_TRUNC('month', CURRENT_DATE)
     GROUP BY
         DATE_TRUNC('month', "date")
 ),
-category_monthly_sales AS (
-    SELECT
-        DATE_TRUNC('month', "date") AS "Month",
-        "category",
-        "category_name",
-        SUM("volume_sold_liters") AS "Category_Monthly_Volume_Liters"
-    FROM
-        "IOWA_LIQUOR_SALES"."IOWA_LIQUOR_SALES"."SALES"
-    WHERE
-        "date" >= DATEADD(month, -24, DATE '2020-04-01')
-        AND "date" < DATE '2020-05-01'
-    GROUP BY
-        DATE_TRUNC('month', "date"),
-        "category",
-        "category_name"
-),
 category_monthly_percentage AS (
     SELECT
-        cms."Month",
-        cms."category",
-        cms."category_name",
-        (cms."Category_Monthly_Volume_Liters" / ms."Total_Monthly_Volume_Liters") * 100 AS "Monthly_Percentage"
-    FROM
-        category_monthly_sales cms
-        JOIN monthly_sales ms ON cms."Month" = ms."Month"
+        mcv."month",
+        mcv."category_name",
+        (mcv."category_volume" / mtv."total_volume") * 100 AS "percentage"
+    FROM monthly_category_volume mcv
+    JOIN monthly_total_volume mtv
+        ON mcv."month" = mtv."month"
 ),
-category_average_percentage AS (
+category_stats AS (
     SELECT
-        "category",
         "category_name",
-        AVG("Monthly_Percentage") AS "Average_Percentage"
-    FROM
-        category_monthly_percentage
-    GROUP BY
-        "category",
-        "category_name"
+        AVG("percentage") AS "avg_percentage",
+        COUNT(DISTINCT "month") AS "months_count"
+    FROM category_monthly_percentage
+    GROUP BY "category_name"
 ),
-selected_categories AS (
+filtered_categories AS (
     SELECT
-        "category",
         "category_name"
-    FROM
-        category_average_percentage
+    FROM category_stats
     WHERE
-        "Average_Percentage" >= 1.0
+        "avg_percentage" >= 1
+        AND "months_count" >= 24
 ),
-category_percentages AS (
+filtered_category_percentage AS (
     SELECT
-        cmp."category",
         cmp."category_name",
-        cmp."Month",
-        cmp."Monthly_Percentage"
-    FROM
-        category_monthly_percentage cmp
-        JOIN selected_categories sc ON cmp."category" = sc."category"
+        cmp."month",
+        cmp."percentage"
+    FROM category_monthly_percentage cmp
+    WHERE cmp."category_name" IN (SELECT "category_name" FROM filtered_categories)
 ),
-paired_percentages AS (
+correlations AS (
     SELECT
-        cp1."category_name" AS "Category1",
-        cp2."category_name" AS "Category2",
-        cp1."Month",
-        cp1."Monthly_Percentage" AS "Percentage1",
-        cp2."Monthly_Percentage" AS "Percentage2"
-    FROM
-        category_percentages cp1
-        JOIN category_percentages cp2
-            ON cp1."Month" = cp2."Month"
-            AND cp1."category" < cp2."category"
-),
-correlation_coefficients AS (
-    SELECT
-        "Category1",
-        "Category2",
-        CORR("Percentage1", "Percentage2") AS "Pearson_Correlation_Coefficient"
-    FROM
-        paired_percentages
+        fc1."category_name" AS "Category1",
+        fc2."category_name" AS "Category2",
+        CORR(fc1."percentage", fc2."percentage") AS "Correlation"
+    FROM filtered_category_percentage fc1
+    JOIN filtered_category_percentage fc2
+        ON fc1."month" = fc2."month"
+        AND fc1."category_name" < fc2."category_name"
     GROUP BY
-        "Category1",
-        "Category2"
+        fc1."category_name",
+        fc2."category_name"
 )
 SELECT
     "Category1",
-    "Category2",
-    ROUND("Pearson_Correlation_Coefficient", 4) AS "Pearson_Correlation_Coefficient"
-FROM
-    correlation_coefficients
-ORDER BY
-    "Pearson_Correlation_Coefficient" ASC
+    "Category2"
+FROM correlations
+ORDER BY "Correlation" ASC NULLS LAST
 LIMIT 1;

@@ -1,28 +1,83 @@
-WITH py_modules AS (
-    SELECT
-        REGEXP_SUBSTR(l.value, '^[[:space:]]*(from|import)[[:space:]]+([a-zA-Z0-9_\.]+)', 1,1,'i',2) AS "module_name"
-    FROM GITHUB_REPOS.GITHUB_REPOS.SAMPLE_CONTENTS sc
-        , LATERAL FLATTEN(INPUT => SPLIT(sc."content", '\n')) l
-    WHERE sc."sample_path" ILIKE '%.py' 
-        AND sc."content" ILIKE '%import%'
-),
-r_modules AS (
-    SELECT
-        REGEXP_SUBSTR(l.value, '^[[:space:]]*(library|require)[[:space:]]*\\([[:space:]]*([a-zA-Z0-9_\.]+)', 1,1,'i',2) AS "module_name"
-    FROM GITHUB_REPOS.GITHUB_REPOS.SAMPLE_CONTENTS sc
-        , LATERAL FLATTEN(INPUT => SPLIT(sc."content", '\n')) l
-    WHERE sc."sample_path" ILIKE '%.R' 
-        AND (sc."content" ILIKE '%library(%' OR sc."content" ILIKE '%require(%')
-)
-SELECT "module_name", "Frequency"
+SELECT
+    "library_name"
 FROM (
-    SELECT "module_name", COUNT(*) AS "Frequency",
-        ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC NULLS LAST) AS rn
+    SELECT
+        "library_name",
+        ROW_NUMBER() OVER (ORDER BY "total_count" DESC NULLS LAST) AS rn
     FROM (
-        SELECT "module_name" FROM py_modules WHERE "module_name" IS NOT NULL
-        UNION ALL
-        SELECT "module_name" FROM r_modules WHERE "module_name" IS NOT NULL
-    )
-    GROUP BY "module_name"
+        SELECT
+            "library_name",
+            COUNT(*) AS "total_count"
+        FROM (
+            -- Python imports
+            SELECT
+                LOWER(
+                    REGEXP_SUBSTR(c."content", '\\bimport\\s+([\\w\\.]+)', 1, 1, 'i', 1)
+                ) AS "library_name"
+            FROM
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" AS f
+            JOIN
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" AS c
+            ON
+                f."id" = c."id"
+            WHERE
+                LOWER(f."path") LIKE '%.py'
+                AND c."binary" = FALSE
+                AND c."content" IS NOT NULL
+
+            UNION ALL
+
+            -- R library imports
+            SELECT
+                LOWER(
+                    REGEXP_SUBSTR(c."content", '\\blibrary\\s*\\(\\s*["\']?([\\w\\.]+)["\']?', 1, 1, 'i', 1)
+                ) AS "library_name"
+            FROM
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" AS f
+            JOIN
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" AS c
+            ON
+                f."id" = c."id"
+            WHERE
+                (
+                    LOWER(f."path") LIKE '%.r'
+                    OR LOWER(f."path") LIKE '%.rmd'
+                    OR LOWER(f."path") LIKE '%.R'
+                    OR LOWER(f."path") LIKE '%.Rmd'
+                )
+                AND c."binary" = FALSE
+                AND c."content" IS NOT NULL
+
+            UNION ALL
+
+            -- IPython notebook imports
+            SELECT
+                LOWER(
+                    REGEXP_SUBSTR(
+                        source_line.VALUE::STRING,
+                        '\\bimport\\s+([\\w\\.]+)',
+                        1, 1, 'i', 1
+                    )
+                ) AS "library_name"
+            FROM
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_FILES" AS f
+            JOIN
+                "GITHUB_REPOS"."GITHUB_REPOS"."SAMPLE_CONTENTS" AS c
+            ON
+                f."id" = c."id",
+                LATERAL FLATTEN(INPUT => PARSE_JSON(c."content"):"cells") AS cell,
+                LATERAL FLATTEN(INPUT => cell.VALUE:"source") AS source_line
+            WHERE
+                LOWER(f."path") LIKE '%.ipynb'
+                AND c."binary" = FALSE
+                AND c."content" IS NOT NULL
+                AND cell.VALUE:"cell_type"::STRING = 'code'
+        ) AS all_imports
+        WHERE
+            "library_name" IS NOT NULL
+        GROUP BY
+            "library_name"
+    ) AS import_counts
 )
-WHERE rn = 2;
+WHERE
+    rn = 2;

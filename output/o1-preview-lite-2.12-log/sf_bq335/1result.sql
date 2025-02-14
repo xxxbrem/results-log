@@ -1,24 +1,42 @@
 SELECT
-  "address",
-  ROUND(SUM("total_value"), 4) AS "Total_Transaction_Value"
+    a."address",
+    TO_DATE(TO_TIMESTAMP_NTZ(a."last_transaction_timestamp"/1e6)) AS "last_transaction_date",
+    a."total_transaction_value"
 FROM (
-  SELECT
-    f.value::STRING AS "address",
-    t."value"::NUMBER AS "total_value",
-    TO_TIMESTAMP_NTZ(t."block_timestamp" / 1e6) AS "most_recent_tx_timestamp"
-  FROM "CRYPTO"."CRYPTO_BITCOIN"."INPUTS" t,
+    SELECT
+        f.VALUE::STRING AS "address",
+        MAX(t."block_timestamp") AS "last_transaction_timestamp",
+        SUM(t."value") AS "total_transaction_value"
+    FROM (
+        SELECT "block_timestamp", "addresses", "value"
+        FROM "CRYPTO"."CRYPTO_BITCOIN"."INPUTS"
+        WHERE "block_timestamp" BETWEEN 1506816000000000 AND 1509494399000000
+        UNION ALL
+        SELECT "block_timestamp", "addresses", "value"
+        FROM "CRYPTO"."CRYPTO_BITCOIN"."OUTPUTS"
+        WHERE "block_timestamp" BETWEEN 1506816000000000 AND 1509494399000000
+    ) t,
     LATERAL FLATTEN(input => t."addresses") f
-  
-  UNION ALL
-  
-  SELECT
-    f.value::STRING AS "address",
-    t."value"::NUMBER AS "total_value",
-    TO_TIMESTAMP_NTZ(t."block_timestamp" / 1e6) AS "most_recent_tx_timestamp"
-  FROM "CRYPTO"."CRYPTO_BITCOIN"."OUTPUTS" t,
-    LATERAL FLATTEN(input => t."addresses") f
-) combined_transactions
-GROUP BY "address"
-HAVING MAX("most_recent_tx_timestamp") BETWEEN '2017-10-01' AND '2017-10-31 23:59:59'
-ORDER BY "Total_Transaction_Value" DESC NULLS LAST
+    GROUP BY f.VALUE
+) a
+WHERE a."last_transaction_timestamp" = (
+    SELECT MAX("last_transaction_timestamp")
+    FROM (
+        SELECT
+            f.VALUE::STRING AS "address",
+            MAX(t."block_timestamp") AS "last_transaction_timestamp"
+        FROM (
+            SELECT "block_timestamp", "addresses"
+            FROM "CRYPTO"."CRYPTO_BITCOIN"."INPUTS"
+            WHERE "block_timestamp" BETWEEN 1506816000000000 AND 1509494399000000
+            UNION ALL
+            SELECT "block_timestamp", "addresses"
+            FROM "CRYPTO"."CRYPTO_BITCOIN"."OUTPUTS"
+            WHERE "block_timestamp" BETWEEN 1506816000000000 AND 1509494399000000
+        ) t,
+        LATERAL FLATTEN(input => t."addresses") f
+        GROUP BY f.VALUE
+    )
+)
+ORDER BY a."total_transaction_value" DESC NULLS LAST
 LIMIT 1;

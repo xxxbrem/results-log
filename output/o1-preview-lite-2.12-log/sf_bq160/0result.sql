@@ -1,25 +1,36 @@
-SELECT
-  t."CreationDate",
-  t."Title",
-  'general' AS "ParentForum",
-  COALESCE(t."TotalReplies", 0) AS "ReplyCount",
-  COALESCE(u."DistinctUserCount", 0) AS "DistinctUserCount",
-  COALESCE(v."TotalUpvotes", 0) AS "Upvotes",
-  COALESCE(t."TotalViews", 0) AS "TotalViews"
-FROM META_KAGGLE.META_KAGGLE.FORUMTOPICS t
-LEFT JOIN (
-  SELECT "ForumTopicId", COUNT(DISTINCT "PostUserId") AS "DistinctUserCount"
-  FROM META_KAGGLE.META_KAGGLE.FORUMMESSAGES
-  GROUP BY "ForumTopicId"
-) u ON t."Id" = u."ForumTopicId"
-LEFT JOIN (
-  SELECT m."ForumTopicId", COUNT(v."Id") AS "TotalUpvotes"
-  FROM META_KAGGLE.META_KAGGLE.FORUMMESSAGES m
-  LEFT JOIN META_KAGGLE.META_KAGGLE.FORUMMESSAGEVOTES v ON m."Id" = v."ForumMessageId"
-  GROUP BY m."ForumTopicId"
-) v ON t."Id" = v."ForumTopicId"
-WHERE t."ForumId" IN (
-  SELECT "Id" FROM META_KAGGLE.META_KAGGLE.FORUMS WHERE "Title" = 'General'
+WITH earliest_topics AS (
+    SELECT
+        ft."Id" AS "TopicId",
+        ft."CreationDate",
+        ft."Title",
+        f."Title" AS "ParentForum",
+        ft."TotalReplies",
+        ft."TotalViews"
+    FROM META_KAGGLE.META_KAGGLE.FORUMTOPICS ft
+    JOIN META_KAGGLE.META_KAGGLE.FORUMS f
+        ON ft."ForumId" = f."Id"
+    WHERE f."Title" = 'General'
+    ORDER BY ft."CreationDate" ASC
+    LIMIT 5
 )
-ORDER BY t."CreationDate" ASC
-LIMIT 5;
+SELECT
+    et."CreationDate",
+    et."Title",
+    et."ParentForum",
+    COALESCE(et."TotalReplies", 0) AS "ReplyCount",
+    COALESCE(COUNT(DISTINCT fm."PostUserId"), 0) AS "DistinctUserCount",
+    COALESCE(COUNT(fmv."Id"), 0) AS "Upvotes",
+    COALESCE(et."TotalViews", 0) AS "TotalViews"
+FROM earliest_topics et
+LEFT JOIN META_KAGGLE.META_KAGGLE.FORUMMESSAGES fm
+    ON fm."ForumTopicId" = et."TopicId"
+LEFT JOIN META_KAGGLE.META_KAGGLE.FORUMMESSAGEVOTES fmv
+    ON fmv."ForumMessageId" = fm."Id"
+GROUP BY
+    et."CreationDate",
+    et."Title",
+    et."ParentForum",
+    et."TotalReplies",
+    et."TotalViews"
+ORDER BY
+    et."CreationDate" ASC;
