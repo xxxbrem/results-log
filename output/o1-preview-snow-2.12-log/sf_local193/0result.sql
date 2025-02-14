@@ -1,43 +1,45 @@
-WITH customer_first_purchase AS (
-    SELECT 
-        "customer_id", 
-        MIN(TRY_TO_TIMESTAMP("payment_date", 'YYYY-MM-DD HH24:MI:SS.FF3')) AS initial_purchase_date
-    FROM SQLITE_SAKILA.SQLITE_SAKILA.PAYMENT
-    GROUP BY "customer_id"
-),
-customer_payments AS (
+SELECT
+    ROUND(AVG(
+        CASE
+            WHEN t.lifetime_sales > 0 THEN (t.sales_first_7_days / t.lifetime_sales) * 100
+            ELSE NULL
+        END
+    ), 4) AS "Average_7_Day_LTV_Percentage",
+    ROUND(AVG(
+        CASE
+            WHEN t.lifetime_sales > 0 THEN (t.sales_first_30_days / t.lifetime_sales) * 100
+            ELSE NULL
+        END
+    ), 4) AS "Average_30_Day_LTV_Percentage",
+    ROUND(AVG(t.lifetime_sales), 4) AS "Average_Total_Lifetime_Sales"
+FROM (
     SELECT
         p."customer_id",
-        TRY_TO_TIMESTAMP(p."payment_date", 'YYYY-MM-DD HH24:MI:SS.FF3') AS "payment_timestamp",
-        p."amount",
-        cfp.initial_purchase_date
-    FROM SQLITE_SAKILA.SQLITE_SAKILA.PAYMENT p
-    INNER JOIN customer_first_purchase cfp ON p."customer_id" = cfp."customer_id"
-),
-customer_ltv AS (
-    SELECT
-        "customer_id",
-        SUM("amount") AS total_ltv,
+        SUM(p."amount") AS lifetime_sales,
         SUM(
-            CASE 
-                WHEN "payment_timestamp" <= initial_purchase_date + INTERVAL '7 DAY' 
-                THEN "amount" 
-                ELSE 0 
+            CASE
+                WHEN p."payment_date" >= fp."first_purchase_date"
+                 AND p."payment_date" < DATEADD('second', 7 * 86400, fp."first_purchase_date")
+                THEN p."amount"
+                ELSE 0
             END
-        ) AS ltv_7_days,
+        ) AS sales_first_7_days,
         SUM(
-            CASE 
-                WHEN "payment_timestamp" <= initial_purchase_date + INTERVAL '30 DAY' 
-                THEN "amount" 
-                ELSE 0 
+            CASE
+                WHEN p."payment_date" >= fp."first_purchase_date"
+                 AND p."payment_date" < DATEADD('second', 30 * 86400, fp."first_purchase_date")
+                THEN p."amount"
+                ELSE 0
             END
-        ) AS ltv_30_days
-    FROM customer_payments
-    GROUP BY "customer_id"
-    HAVING SUM("amount") > 0
-)
-SELECT 
-    ROUND(AVG(total_ltv), 4) AS "Average_LTV",
-    ROUND(AVG((ltv_7_days / total_ltv) * 100), 4) AS "Percentage_LTV_in_first_7_days",
-    ROUND(AVG((ltv_30_days / total_ltv) * 100), 4) AS "Percentage_LTV_in_first_30_days"
-FROM customer_ltv;
+        ) AS sales_first_30_days
+    FROM "SQLITE_SAKILA"."SQLITE_SAKILA"."PAYMENT" p
+    JOIN (
+        SELECT
+            "customer_id",
+            MIN("payment_date") AS "first_purchase_date"
+        FROM "SQLITE_SAKILA"."SQLITE_SAKILA"."PAYMENT"
+        GROUP BY "customer_id"
+    ) fp ON p."customer_id" = fp."customer_id"
+    GROUP BY p."customer_id"
+    HAVING SUM(p."amount") > 0
+) t;
